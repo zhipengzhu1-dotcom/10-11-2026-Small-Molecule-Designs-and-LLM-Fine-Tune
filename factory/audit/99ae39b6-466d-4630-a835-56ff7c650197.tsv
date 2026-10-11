@@ -66,3 +66,9 @@ line	ts	verdict	superseded_by	pointers	note
 66	2026-10-11T22:31:50Z	ok		file:factory/audit/99ae39b6-466d-4630-a835-56ff7c650197.tsv; commit:cb9523b	The audit file holds 64 verdicts at cb9523b; the 6 superseding and 5 gap rows are lines 55-65.
 67	2026-10-11T22:31:51Z	ok		file:factory/audit/99ae39b6-466d-4630-a835-56ff7c650197.review.md; commit:cb9523b	The review names qwen3.5:9b and keeps its 9 flags verbatim with a note on each.
 68	2026-10-11T22:40:09Z	ok		commit:757d136; file:factory/test/hooks.test.mjs	The hooks test passes 18/18 under PowerShell after 757d136.
+69	2026-10-11T23:01:48Z	ok		transcript:99ae39b6-466d-4630-a835-56ff7c650197@2026-10-11T22:48:44; transcript:99ae39b6-466d-4630-a835-56ff7c650197@2026-10-11T22:52:52; file:~/.agents/.skill-lock.json; file:~/.claude/plugins/installed_plugins.json	The user answered yes to all in both grilling rounds.
+70	2026-10-11T23:01:49Z	ok		commit:271c5ba; file:scripts/ci.mjs; file:factory/checks/trail.mjs	271c5ba holds the four fixes; CI ran 105 pass, 1 skipped on node:24.15.0.
+71	2026-10-11T23:01:50Z	ok		commit:271c5ba; file:~/.claude/projects/C--Users-zhipe-Desktop-Claude-10-11-2026-Research-Paper-on-LLM-Fine-Tuning/memory/implement-spec-status.md; transcript:99ae39b6-466d-4630-a835-56ff7c650197@2026-10-11T22:48:44	Q14 approved a one-off push; pre-push CI passed before 7647801..271c5ba.
+72	2026-10-11T23:01:51Z	ok		commit:ea743d8; file:skills/orchestrator-lessons/SKILL.md; file:skills/fetch-paper-sources/SKILL.md; file:~/.claude/CLAUDE.md; file:~/.claude/skills/orchestrator-lessons/SKILL.md	Both skills are committed and reachable through the junctions.
+73	2026-10-11T23:01:52Z	ok		issue:13; issue:22; issue:1	gh lists #13 to #22 as sub-issues of #1.
+74	2026-10-11T23:01:52Z	ok		transcript:99ae39b6-466d-4630-a835-56ff7c650197@2026-10-11T22:52:52	git worktree list shows only the main checkout; the tag points at fc72f4c.
