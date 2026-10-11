@@ -63,3 +63,6 @@ line	ts	verdict	superseded_by	pointers	note
 63	2026-10-11T22:27:35Z	ok		transcript:14c93a90-c178-4f4b-b20f-235aebe7f882@2026-10-11T21:13:01; transcript:14c93a90-c178-4f4b-b20f-235aebe7f882@2026-10-11T21:23:18	Gap found by the audit.
 64	2026-10-11T22:27:36Z	ok		transcript:14c93a90-c178-4f4b-b20f-235aebe7f882@2026-10-11T21:53:00; commit:cb07afd	Gap found by the audit.
 65	2026-10-11T22:27:37Z	ok		transcript:14c93a90-c178-4f4b-b20f-235aebe7f882@2026-10-11T22:07:46; transcript:14c93a90-c178-4f4b-b20f-235aebe7f882@2026-10-11T22:17:24; issue:1	Gap found by the audit.
+66	2026-10-11T22:31:50Z	ok		file:factory/audit/99ae39b6-466d-4630-a835-56ff7c650197.tsv; commit:cb9523b	The audit file holds 64 verdicts at cb9523b; the 6 superseding and 5 gap rows are lines 55-65.
+67	2026-10-11T22:31:51Z	ok		file:factory/audit/99ae39b6-466d-4630-a835-56ff7c650197.review.md; commit:cb9523b	The review names qwen3.5:9b and keeps its 9 flags verbatim with a note on each.
+68	2026-10-11T22:40:09Z	ok		commit:757d136; file:factory/test/hooks.test.mjs	The hooks test passes 18/18 under PowerShell after 757d136.
