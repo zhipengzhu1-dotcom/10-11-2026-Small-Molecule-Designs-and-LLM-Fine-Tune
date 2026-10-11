@@ -19,7 +19,29 @@ export function readStream(root = defaultRoot()) {
       }
     }
   }
+  const decisions = join(root, 'factory', 'decisions.tsv');
+  if (existsSync(decisions)) events.push(...readDecisions(decisions));
   return sortByTs(events);
+}
+
+// show-me-your-work format: header ts phase decision why evidence result, one row per decision.
+// Only the orchestrator writes it, and it has no run column, so decision events carry run: null.
+const COLUMNS = ['ts', 'phase', 'decision', 'why', 'evidence', 'result'];
+
+function readDecisions(file) {
+  const lines = readFileSync(file, 'utf8').split(/\r?\n/);
+  const events = [];
+  lines.forEach((line, i) => {
+    if (i === 0 || line === '') return;
+    if (line === COLUMNS.join('\t')) return; // log.sh can repeat the header; see its comments
+    const cells = line.split('\t');
+    if (cells.length !== COLUMNS.length) throw new Error(`${file}:${i + 1}: expected ${COLUMNS.length} cells, got ${cells.length}`);
+    const [ts, ...rest] = cells;
+    const e = { ts, run: null, agent: 'orchestrator', type: 'decision' };
+    COLUMNS.slice(1).forEach((k, j) => (e[k] = rest[j]));
+    events.push(e);
+  });
+  return events;
 }
 
 // Each event must sit in its own agent's file: factory/agents/<run>/<agent>.jsonl.
