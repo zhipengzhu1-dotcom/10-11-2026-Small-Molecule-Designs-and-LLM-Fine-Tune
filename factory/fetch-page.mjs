@@ -4,7 +4,7 @@
 //
 //   node factory/fetch-page.mjs [--root <repo>] [--port 4174]
 import { createServer } from 'node:http';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultRoot, writeEvent } from './log.mjs';
@@ -64,8 +64,128 @@ export function createFetchPage({ root = defaultRoot() } = {}) {
       writeEvent({ root, run: failure.run, agent: AGENT, type: 'artifact', fields: { path: rel, kind: 'ref', ref } });
       return send(res, 201, 'application/json', JSON.stringify({ path: rel }));
     }
+    if (req.method === 'GET' && url.pathname === '/') return send(res, 200, 'text/html', page(openRefs(root)));
     send(res, 404, 'text/plain', 'not found');
   });
+}
+
+// One row per open ref: { ref, title, url, reason, run, ts }. The title comes from the
+// fetch.failed event's optional title field, else research/refs/catalog.tsv, else is empty.
+export function openRefs(root) {
+  const titles = catalogTitles(root);
+  return [...openFailures(root).values()].map((e) => ({
+    ref: e.ref, title: e.title || titles.get(e.ref) || '', url: e.url, reason: e.reason, run: e.run, ts: e.ts,
+  }));
+}
+
+// The catalog (issue #5) may not exist yet. Reads a header row naming a bibkey (or key/ref)
+// column and a title column; anything else yields no titles.
+function catalogTitles(root) {
+  const titles = new Map();
+  let text;
+  try {
+    text = readFileSync(join(root, 'research', 'refs', 'catalog.tsv'), 'utf8');
+  } catch {
+    return titles;
+  }
+  const [header, ...rows] = text.split(/\r?\n/).map((l) => l.split('\t'));
+  const keyCol = header.findIndex((h) => ['bibkey', 'key', 'ref'].includes(h.trim().toLowerCase()));
+  const titleCol = header.findIndex((h) => h.trim().toLowerCase() === 'title');
+  if (keyCol < 0 || titleCol < 0) return titles;
+  for (const cells of rows) if (cells[keyCol] && cells[titleCol]) titles.set(cells[keyCol], cells[titleCol]);
+  return titles;
+}
+
+// Event fields and catalog cells are untrusted text; escape all of it.
+const ENTITIES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ENTITIES[c]);
+
+function row(r) {
+  const link = /^https?:\/\//i.test(r.url)
+    ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>`
+    : `<span class="bad-url">${esc(r.url)}</span>`;
+  return `<li class="ref" data-ref="${esc(r.ref)}">
+  <div class="head"><span class="title${r.title ? '' : ' none'}">${esc(r.title || 'No title in the event or catalog')}</span><code>${esc(r.ref)}</code></div>
+  <div class="link">${link}</div>
+  <div class="reason">${esc(r.reason)}</div>
+  <label class="zone">Drop the file here or <span class="pick">choose a file</span><input type="file" hidden></label>
+  <div class="msg" role="status"></div>
+</li>`;
+}
+
+function page(refs) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fetch Page</title>
+<style>
+:root { --bg: #f7f7f5; --card: #fff; --fg: #1d1d1b; --muted: #6b6b66; --line: #deded8; --accent: #2f6fdf; --bad: #b3261e; --over: #e8f0fd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #161615; --card: #1f1f1d; --fg: #ececea; --muted: #a0a09a; --line: #34342f; --accent: #7aa5f5; --bad: #f2867c; --over: #1d2a40; } }
+:root[data-theme="dark"] { --bg: #161615; --card: #1f1f1d; --fg: #ececea; --muted: #a0a09a; --line: #34342f; --accent: #7aa5f5; --bad: #f2867c; --over: #1d2a40; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 860px; margin: 0 auto; padding: 32px 16px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 24px; }
+ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.ref { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-wrap: anywhere; }
+.ref.over { background: var(--over); border-color: var(--accent); }
+.ref.busy { opacity: .6; }
+.head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.title { font-weight: 600; }
+.title.none { color: var(--muted); font-weight: 400; font-style: italic; }
+code { color: var(--muted); font-size: 13px; }
+.link, .reason { font-size: 14px; margin-top: 4px; }
+.link a { color: var(--accent); }
+.reason { color: var(--muted); }
+.reason::before { content: "Failed: "; }
+.zone { display: block; margin-top: 10px; padding: 10px; border: 1.5px dashed var(--line); border-radius: 8px; text-align: center; color: var(--muted); font-size: 14px; cursor: pointer; }
+.ref.over .zone { border-color: var(--accent); color: var(--accent); }
+.pick { color: var(--accent); text-decoration: underline; }
+.msg { font-size: 13px; color: var(--bad); margin-top: 6px; }
+.msg:empty { display: none; }
+.empty { color: var(--muted); padding: 24px 0; }
+</style>
+</head>
+<body>
+<main>
+<h1>References to fetch</h1>
+<p class="sub">The agents could not download these. Drop each file on its row; it is saved to <code>research/refs/&lt;ref&gt;/raw/</code>.</p>
+<ul id="refs">${refs.map(row).join('\n')}</ul>
+<p class="empty" id="empty"${refs.length ? ' hidden' : ''}>Nothing to fetch. Every failed reference has a file.</p>
+</main>
+<script>
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', (e) => e.preventDefault());
+for (const row of document.querySelectorAll('.ref')) {
+  const msg = row.querySelector('.msg');
+  row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('over'); });
+  row.addEventListener('dragleave', (e) => { if (!row.contains(e.relatedTarget)) row.classList.remove('over'); });
+  row.addEventListener('drop', (e) => { e.preventDefault(); row.classList.remove('over'); upload(row, msg, e.dataTransfer.files); });
+  row.querySelector('input').addEventListener('change', (e) => upload(row, msg, e.target.files));
+}
+async function upload(row, msg, files) {
+  if (files.length !== 1) { msg.textContent = 'Drop one file at a time.'; return; }
+  const f = files[0];
+  row.classList.add('busy');
+  msg.textContent = '';
+  try {
+    const res = await fetch('/drop?ref=' + encodeURIComponent(row.dataset.ref) + '&name=' + encodeURIComponent(f.name), { method: 'POST', body: f });
+    if (!res.ok) throw new Error(await res.text());
+    row.remove();
+    document.getElementById('empty').hidden = document.querySelector('.ref') !== null;
+  } catch (err) {
+    msg.textContent = 'Not saved: ' + err.message;
+  } finally {
+    row.classList.remove('busy');
+  }
+}
+</script>
+</body>
+</html>
+`;
 }
 
 function send(res, status, type, body) {

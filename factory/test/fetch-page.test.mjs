@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readStream } from '../read.mjs';
 import { startFetchPage, tempRoot, write } from './helpers.mjs';
@@ -56,7 +56,53 @@ test('a drop for a ref with no open fetch.failed event is rejected and writes no
   assert.deepEqual(readStream(root).filter((e) => e.type === 'artifact').map((e) => e.path), ['research/refs/qwen2025/raw/a.pdf']);
 });
 
-const artifactPaths = (root) => readStream(root).filter((e) => e.type === 'artifact').map((e) => e.path);
+test('the page lists each open ref with its title, link and reason, and leaves out closed refs', async () => {
+  const root = tempRoot();
+  failed(root, 'qwen2025', ['title=Qwen2.5 Technical Report']); // title on the event
+  failed(root, 'hendrycks2021'); // title only in the catalog
+  failed(root, 'orphan2020'); // no title anywhere
+  failed(root, 'done2023', ['title=Already Fetched']);
+  write(['--root', root, '--run', 'run-1', '--agent', 'fetcher', 'artifact', 'path=research/refs/done2023/raw/d.pdf', 'kind=ref', 'ref=done2023']);
+  mkdirSync(join(root, 'research', 'refs'), { recursive: true });
+  writeFileSync(join(root, 'research', 'refs', 'catalog.tsv'),
+    'bibkey\ttitle\tyear\tstatus\nhendrycks2021\tMeasuring Mathematical Problem Solving With the MATH Dataset\t2021\tfetch-pending\n');
+
+  await withPage(root, async (url) => {
+    const res = await fetch(`${url}/`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /text\/html/);
+    const html = await res.text();
+    assert.match(html, /Qwen2\.5 Technical Report/);
+    assert.match(html, /Measuring Mathematical Problem Solving With the MATH Dataset/);
+    assert.match(html, /orphan2020/);
+    for (const ref of ['qwen2025', 'hendrycks2021', 'orphan2020']) {
+      assert.match(html, new RegExp(`href="https://example\\.org/${ref}\\.pdf"`));
+    }
+    assert.equal(html.match(/HTTP 403/g).length, 3);
+    assert.doesNotMatch(html, /done2023|Already Fetched/);
+  });
+});
+
+test('the page works with no catalog and no events, and escapes untrusted titles and links', async () => {
+  const empty = tempRoot();
+  await withPage(empty, async (url) => {
+    const res = await fetch(`${url}/`);
+    assert.equal(res.status, 200);
+    assert.match(await res.text(), /Nothing to fetch/);
+  });
+
+  const root = tempRoot();
+  const r = write(['--root', root, '--run', 'run-1', '--agent', 'fetcher', 'fetch.failed',
+    'ref=evil2024', 'url=javascript:alert(1)', 'reason=<img src=x onerror=alert(1)>', 'title=<script>alert(1)</script>']);
+  assert.equal(r.status, 0, r.stderr);
+  await withPage(root, async (url) => {
+    const html = await (await fetch(`${url}/`)).text();
+    assert.doesNotMatch(html, /<script>alert|<img src=x|href="javascript:/);
+    assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  });
+});
+
+const artifactPaths =(root) => readStream(root).filter((e) => e.type === 'artifact').map((e) => e.path);
 
 test('a dropped filename that tries to leave the raw folder is reduced to a plain name inside it', async () => {
   const cases = [
