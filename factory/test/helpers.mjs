@@ -34,7 +34,14 @@ export function writeAsync(args, extraEnv = {}) {
   });
 }
 
-export function hook(payload, extraEnv = {}) {
+// Runs the hook the way Claude Code does: payload JSON on stdin, CLAUDE_PROJECT_DIR in env,
+// cwd wherever the session is (a worktree, for subagents).
+export function hook(payload, extraEnv = {}, cwd = tempRoot()) {
   const input = typeof payload === 'string' ? payload : JSON.stringify(payload);
-  return spawnSync(process.execPath, [HOOK], { env: env(extraEnv), input, encoding: 'utf8' });
+  return spawnSync(process.execPath, [HOOK], { env: env(extraEnv), input, cwd, encoding: 'utf8' });
+}
+
+// Runs a command line through the platform shell, as an agent's Bash tool would.
+export function shell(command, cwd = tempRoot()) {
+  return spawnSync(command, { shell: true, env: env({}), cwd, encoding: 'utf8' });
 }
