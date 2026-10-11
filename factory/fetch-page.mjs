@@ -50,23 +50,39 @@ function saveNew(dir, name, body) {
 }
 
 export function createFetchPage({ root = defaultRoot() } = {}) {
-  return createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://127.0.0.1');
-    if (req.method === 'POST' && url.pathname === '/drop') {
-      const ref = url.searchParams.get('ref');
-      const failure = openFailures(root).get(ref);
-      if (!failure) return send(res, 404, 'text/plain', `no open fetch.failed event for ref ${ref}`);
-      if (!SAFE_REF.test(ref)) return send(res, 400, 'text/plain', `ref ${ref} is not a plain folder name`);
-      const body = Buffer.concat(await Array.fromAsync(req));
-      const dir = `research/refs/${ref}/raw`;
-      mkdirSync(join(root, dir), { recursive: true });
-      const rel = `${dir}/${saveNew(join(root, dir), safeName(url.searchParams.get('name')), body)}`;
-      writeEvent({ root, run: failure.run, agent: AGENT, type: 'artifact', fields: { path: rel, kind: 'ref', ref } });
-      return send(res, 201, 'application/json', JSON.stringify({ path: rel }));
-    }
-    if (req.method === 'GET' && url.pathname === '/') return send(res, 200, 'text/html', page(openRefs(root)));
-    send(res, 404, 'text/plain', 'not found');
-  });
+  return createServer((req, res) =>
+    handle(root, req, res).catch((err) => {
+      if (!res.headersSent) send(res, 500, 'text/plain', err.message);
+      else res.destroy();
+    }));
+}
+
+// The request handler on its own, so the factory dashboard can mount it later.
+export async function handle(root, req, res) {
+  const url = new URL(req.url, 'http://127.0.0.1');
+  // Bound to 127.0.0.1, so only this machine connects. A web page in the user's browser still
+  // can: refuse any Host but this one (DNS rebinding) and any cross-site Origin on a drop.
+  const port = req.socket.localPort;
+  const self = [`127.0.0.1:${port}`, `localhost:${port}`];
+  if (!self.includes(req.headers.host)) return send(res, 403, 'text/plain', 'local requests only');
+  const origin = req.headers.origin;
+  if (req.method !== 'GET' && origin !== undefined && !self.some((h) => origin === `http://${h}`)) {
+    return send(res, 403, 'text/plain', 'cross-site drop refused');
+  }
+  if (req.method === 'POST' && url.pathname === '/drop') {
+    const ref = url.searchParams.get('ref');
+    const failure = openFailures(root).get(ref);
+    if (!failure) return send(res, 404, 'text/plain', `no open fetch.failed event for ref ${ref}`);
+    if (!SAFE_REF.test(ref)) return send(res, 400, 'text/plain', `ref ${ref} is not a plain folder name`);
+    const body = Buffer.concat(await Array.fromAsync(req));
+    const dir = `research/refs/${ref}/raw`;
+    mkdirSync(join(root, dir), { recursive: true });
+    const rel = `${dir}/${saveNew(join(root, dir), safeName(url.searchParams.get('name')), body)}`;
+    writeEvent({ root, run: failure.run, agent: AGENT, type: 'artifact', fields: { path: rel, kind: 'ref', ref } });
+    return send(res, 201, 'application/json', JSON.stringify({ path: rel }));
+  }
+  if (req.method === 'GET' && url.pathname === '/') return send(res, 200, 'text/html', page(openRefs(root)));
+  send(res, 404, 'text/plain', 'not found');
 }
 
 // One row per open ref: { ref, title, url, reason, run, ts }. The title comes from the

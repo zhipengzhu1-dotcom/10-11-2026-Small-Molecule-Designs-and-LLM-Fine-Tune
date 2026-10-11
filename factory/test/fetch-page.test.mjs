@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
+import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import { readStream } from '../read.mjs';
 import { startFetchPage, tempRoot, write } from './helpers.mjs';
@@ -102,7 +104,47 @@ test('the page works with no catalog and no events, and escapes untrusted titles
   });
 });
 
-const artifactPaths =(root) => readStream(root).filter((e) => e.type === 'artifact').map((e) => e.path);
+const artifactPaths = (root) => readStream(root).filter((e) => e.type === 'artifact').map((e) => e.path);
+
+const lanAddress = () =>
+  Object.values(networkInterfaces()).flat().find((i) => i && i.family === 'IPv4' && !i.internal)?.address;
+
+test('the page cannot be reached from another machine\'s address', { skip: !lanAddress() && 'no non-loopback IPv4 interface' }, async () => {
+  const root = tempRoot();
+  await withPage(root, async (url) => {
+    const port = new URL(url).port;
+    await assert.rejects(fetch(`http://${lanAddress()}:${port}/`, { signal: AbortSignal.timeout(3000) }));
+  });
+});
+
+// Raw HTTP so the Host and Origin headers are exactly what a hostile page would send.
+function rawRequest(url, { method = 'GET', path = '/', headers = {}, body = '' }) {
+  const u = new URL(url);
+  return new Promise((resolve, reject) => {
+    const req = httpRequest({ host: '127.0.0.1', port: u.port, method, path, headers }, (res) => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode));
+    });
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+test('a request naming another host (DNS rebinding) or a drop from another site is refused', async () => {
+  const root = tempRoot();
+  failed(root, 'qwen2025');
+  await withPage(root, async (url) => {
+    const port = new URL(url).port;
+    assert.equal(await rawRequest(url, { headers: { host: `evil.example:${port}` } }), 403);
+    assert.equal(await rawRequest(url, { headers: { host: `localhost:${port}` } }), 200);
+    const path = '/drop?ref=qwen2025&name=x.pdf';
+    for (const origin of ['https://evil.example', 'null', `http://127.0.0.1:${Number(port) + 1}`]) {
+      assert.equal(await rawRequest(url, { method: 'POST', path, headers: { origin }, body: 'data' }), 403, origin);
+    }
+    assert.equal(await rawRequest(url, { method: 'POST', path, headers: { origin: url }, body: 'data' }), 201);
+  });
+  assert.deepEqual(artifactPaths(root), ['research/refs/qwen2025/raw/x.pdf']);
+});
 
 test('a dropped filename that tries to leave the raw folder is reduced to a plain name inside it', async () => {
   const cases = [
