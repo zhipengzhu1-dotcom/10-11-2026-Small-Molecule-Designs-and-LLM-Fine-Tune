@@ -4,9 +4,10 @@
 //   factory/agents/<session_id>/<agent_id>.jsonl under CLAUDE_PROJECT_DIR (the main checkout).
 // The run id is the orchestrator's session_id. A field the payload lacks is recorded as "unknown".
 // On SubagentStart it also tells the subagent its ids and the command to write its own events.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { UNKNOWN, defaultRoot, writeEvent } from '../log.mjs';
+import { UNKNOWN, activityFile, defaultRoot, writeEvent } from '../log.mjs';
 
 const ROLE_PARENT = 'orchestrator'; // subagents are spawned by the orchestrator session
 
@@ -16,6 +17,47 @@ const slash = (p) => p.replace(/\\/g, '/');
 function statusOf(message) {
   const m = /\b(PASS|ISSUES|BLOCKED)\b/.exec(message || '');
   return m ? m[1] : undefined;
+}
+
+// Subagents usually report through a SubagentHandback tool call, which last_assistant_message
+// doesn't include. Then read the subagent's transcript: the last SubagentHandback message,
+// else the last assistant text block. Any read or parse problem leaves the status unknown.
+function reportsFromTranscript(path) {
+  let text;
+  try {
+    text = readFileSync(path.replace(/^~(?=[\\/])/, homedir()), 'utf8');
+  } catch {
+    return [];
+  }
+  let handback, lastText;
+  for (const line of text.split('\n')) {
+    let o;
+    try {
+      o = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const content = o?.type === 'assistant' && o.message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (block?.type === 'tool_use' && block.name === 'SubagentHandback' && typeof block.input?.message === 'string') {
+        handback = block.input.message;
+      } else if (block?.type === 'text' && typeof block.text === 'string') {
+        lastText = block.text;
+      }
+    }
+  }
+  return [handback, lastText];
+}
+
+function stopStatus(payload) {
+  const direct = statusOf(payload.last_assistant_message);
+  if (direct || !payload.agent_transcript_path) return direct;
+  for (const report of reportsFromTranscript(payload.agent_transcript_path)) {
+    const s = statusOf(report);
+    if (s) return s;
+  }
+  return undefined;
 }
 
 // The writer is the log.mjs next to this hook, i.e. the main checkout's copy, never a worktree's.
@@ -59,7 +101,10 @@ function main() {
       break;
     }
     case 'SubagentStop': {
-      const fields = { role, status: statusOf(payload.last_assistant_message) };
+      // Claude Code's internal side agents (prompt suggestions, /btw) stop with an empty
+      // agent_type and never start. Skip them unless the agent already has an activity file.
+      if (!role && !existsSync(activityFile(root, run, agent))) break;
+      const fields = { role, status: stopStatus(payload) };
       if (payload.agent_transcript_path) fields.transcript = payload.agent_transcript_path;
       writeEvent({ root, run, agent, type: 'agent.stop', fields, fillUnknown: true });
       break;

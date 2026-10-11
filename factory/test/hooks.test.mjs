@@ -71,6 +71,25 @@ test('a hook payload missing the agent type records role unknown instead of drop
   assert.deepEqual(events.map((e) => [e.type, e.role]), [['agent.start', 'unknown'], ['agent.stop', 'unknown']]);
 });
 
+// Claude Code's internal side agents (prompt suggestions, /btw) fire SubagentStop with an empty
+// agent_type and never fire SubagentStart. They are not factory agents.
+for (const [label, over] of [['empty', { agent_type: '' }], ['missing', { agent_type: undefined }]]) {
+  test(`a SubagentStop with ${label} agent type for an agent that never started writes nothing`, () => {
+    const root = tempRoot();
+    const r = hook(stop({ ...over, agent_id: 'side1234', last_assistant_message: '', agent_transcript_path: 'C:\\nope\\agent-side1234.jsonl' }), { CLAUDE_PROJECT_DIR: root });
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(readStream(root), []);
+  });
+}
+
+test('a SubagentStop with no agent type still records the stop of an agent that did start', () => {
+  const root = tempRoot();
+  const env = { CLAUDE_PROJECT_DIR: root };
+  assert.equal(hook(start(), env).status, 0);
+  assert.equal(hook(stop({ agent_type: '' }), env).status, 0);
+  assert.deepEqual(readStream(root).map((e) => [e.type, e.role]), [['agent.start', 'general-purpose'], ['agent.stop', 'unknown']]);
+});
+
 test('a final message with no PASS, ISSUES or BLOCKED records status unknown', () => {
   const root = tempRoot();
   assert.equal(hook(stop({ last_assistant_message: 'Done, see the notes.' }), { CLAUDE_PROJECT_DIR: root }).status, 0);
@@ -81,6 +100,31 @@ test('the status is the first PASS, ISSUES or BLOCKED in the final message', () 
   const root = tempRoot();
   assert.equal(hook(stop({ last_assistant_message: 'Result: ISSUES. Two tables were BLOCKED by macros.' }), { CLAUDE_PROJECT_DIR: root }).status, 0);
   assert.equal(readStream(root)[0].status, 'ISSUES');
+});
+
+// Real subagents report through a SubagentHandback tool call, so last_assistant_message
+// carries no status word (seen on the first real spawn, agent a8ac4f829492d7dc9).
+const FIXTURES = join(REPO, 'factory', 'test', 'fixtures');
+for (const [file, message, expected] of [
+  ['transcript-handback.jsonl', '', 'PASS'],
+  ['transcript-handback.jsonl', 'Report delivered.', 'PASS'],
+  ['transcript-text.jsonl', '', 'ISSUES'],
+  ['transcript-no-status.jsonl', '', 'unknown'],
+  ['does-not-exist.jsonl', '', 'unknown'],
+]) {
+  test(`with no status in last_assistant_message, the status comes from the subagent transcript (${file}: ${expected})`, () => {
+    const root = tempRoot();
+    const r = hook(stop({ last_assistant_message: message, agent_transcript_path: join(FIXTURES, file) }), { CLAUDE_PROJECT_DIR: root });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(readStream(root)[0].status, expected);
+  });
+}
+
+test('a status in last_assistant_message wins over the transcript', () => {
+  const root = tempRoot();
+  const r = hook(stop({ last_assistant_message: 'BLOCKED: login wall', agent_transcript_path: join(FIXTURES, 'transcript-handback.jsonl') }), { CLAUDE_PROJECT_DIR: root });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readStream(root)[0].status, 'BLOCKED');
 });
 
 test('a payload missing the agent id or session id still records the event, as unknown', () => {
