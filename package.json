@@ -13,6 +13,7 @@
     "hooks:install": "git config core.hooksPath .githooks",
     "catalog:refs": "node scripts/catalog-refs.mjs",
     "check:references": "node factory/checks/references.mjs",
+    "check:brief": "node factory/checks/brief.mjs",
     "check:tables": "node factory/checks/tables.mjs --tex research/s1/raw/arxiv/latex/main.tex --notes research/s1/tables --notes research/s1/figures"
   }
 }
