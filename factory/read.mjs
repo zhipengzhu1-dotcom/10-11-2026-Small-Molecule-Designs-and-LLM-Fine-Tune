@@ -15,18 +15,29 @@ export function readStream(root = defaultRoot()) {
     for (const run of readdirSync(agentsDir, { withFileTypes: true })) {
       if (!run.isDirectory()) continue;
       for (const f of readdirSync(join(agentsDir, run.name))) {
-        if (f.endsWith('.jsonl')) events.push(...readActivity(join(agentsDir, run.name, f)));
+        if (f.endsWith('.jsonl')) events.push(...readActivity(join(agentsDir, run.name, f), run.name, f.slice(0, -6)));
       }
     }
   }
   return sortByTs(events);
 }
 
-function readActivity(file) {
-  const text = readFileSync(file, 'utf8');
-  const lines = text.split('\n');
+// Each event must sit in its own agent's file: factory/agents/<run>/<agent>.jsonl.
+function readActivity(file, run, agent) {
+  const lines = readFileSync(file, 'utf8').split('\n');
   lines.pop(); // the part after the last newline is empty, or a line still being written
-  return lines.map((line) => JSON.parse(line));
+  return lines.map((line, i) => {
+    const where = `${file}:${i + 1}`;
+    let e;
+    try {
+      e = JSON.parse(line);
+    } catch {
+      throw new Error(`${where}: corrupt line: ${line.slice(0, 80)}`);
+    }
+    if (e.agent !== agent) throw new Error(`${where}: event agent ${e.agent} does not match its file`);
+    if (e.run !== run) throw new Error(`${where}: event run ${e.run} does not match its folder`);
+    return e;
+  });
 }
 
 function sortByTs(events) {
