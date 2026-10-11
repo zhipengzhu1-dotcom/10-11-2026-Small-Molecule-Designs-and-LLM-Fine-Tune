@@ -53,8 +53,9 @@ const SEEDED = [
 
 test('the merged stream includes the seeded 2026-10-11 decisions, and their phases form one tree', () => {
   const decisions = readStream(REPO).filter((e) => e.type === 'decision');
-  const seeded = decisions.filter((e) => e.phase.startsWith('project/'));
-  assert.deepEqual(seeded.map((e) => e.phase).sort(), [...SEEDED].sort());
+  // The log is append-only and keeps growing, so the seeded rows must be present, not the only ones.
+  const seeded = decisions.filter((e) => SEEDED.includes(e.phase));
+  assert.deepEqual([...new Set(seeded.map((e) => e.phase))].sort(), [...SEEDED].sort());
 
   for (const e of seeded) {
     assert.ok(e.ts.startsWith('2026-10-11T'), `${e.phase} ts ${e.ts}`);
@@ -62,13 +63,14 @@ test('the merged stream includes the seeded 2026-10-11 decisions, and their phas
   }
 
   // A tree: every phase is a clean slash path, and all hang off one root.
+  // `start` rows mark where a run's rows begin (show-me-your-work) and sit outside the tree.
   const tree = {};
-  for (const e of seeded) {
+  for (const e of decisions.filter((d) => d.phase !== 'start')) {
     const parts = e.phase.split('/');
     for (const p of parts) assert.match(p, /^[a-z0-9][a-z0-9-]*$/, `bad segment in ${e.phase}`);
     let node = tree;
     for (const p of parts) node = node[p] ??= {};
   }
   assert.deepEqual(Object.keys(tree), ['project']);
-  assert.deepEqual(Object.keys(tree.project).sort(), ['hardware', 'intake', 'paper', 'plan', 'spec']);
+  for (const branch of ['hardware', 'intake', 'paper', 'plan', 'spec']) assert.ok(tree.project[branch], `no project/${branch}`);
 });
