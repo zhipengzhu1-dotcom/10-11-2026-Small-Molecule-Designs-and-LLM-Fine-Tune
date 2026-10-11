@@ -12,12 +12,17 @@ import { readStream } from './read.mjs';
 
 export const AGENT = 'fetch-page';
 
-// A fetch.failed event is open until an artifact event for the same ref follows it.
+// A fetch.failed event is open until an artifact event for the same ref follows it: one with
+// a matching ref field, or a path inside research/refs/<ref>/raw/.
 export function openFailures(root) {
   const open = new Map();
   for (const e of readStream(root)) {
     if (e.type === 'fetch.failed') open.set(e.ref, e);
-    else if (e.type === 'artifact' && e.ref) open.delete(e.ref);
+    else if (e.type === 'artifact') {
+      if (e.ref) open.delete(e.ref);
+      const m = /^research\/refs\/([^/]+)\/raw\//.exec(String(e.path).replace(/\\/g, '/'));
+      if (m) open.delete(m[1]);
+    }
   }
   return open;
 }

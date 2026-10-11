@@ -65,6 +65,8 @@ test('the page lists each open ref with its title, link and reason, and leaves o
   failed(root, 'orphan2020'); // no title anywhere
   failed(root, 'done2023', ['title=Already Fetched']);
   write(['--root', root, '--run', 'run-1', '--agent', 'fetcher', 'artifact', 'path=research/refs/done2023/raw/d.pdf', 'kind=ref', 'ref=done2023']);
+  failed(root, 'chrome2022', ['title=Fetched Later In Chrome']);
+  write(['--root', root, '--run', 'run-1', '--agent', 'fetcher', 'artifact', 'path=research/refs/chrome2022/raw/c.pdf', 'kind=ref']); // no ref field
   mkdirSync(join(root, 'research', 'refs'), { recursive: true });
   writeFileSync(join(root, 'research', 'refs', 'catalog.tsv'),
     'bibkey\ttitle\tyear\tstatus\nhendrycks2021\tMeasuring Mathematical Problem Solving With the MATH Dataset\t2021\tfetch-pending\n');
@@ -81,7 +83,7 @@ test('the page lists each open ref with its title, link and reason, and leaves o
       assert.match(html, new RegExp(`href="https://example\\.org/${ref}\\.pdf"`));
     }
     assert.equal(html.match(/HTTP 403/g).length, 3);
-    assert.doesNotMatch(html, /done2023|Already Fetched/);
+    assert.doesNotMatch(html, /done2023|Already Fetched|chrome2022|Fetched Later/);
   });
 });
 
