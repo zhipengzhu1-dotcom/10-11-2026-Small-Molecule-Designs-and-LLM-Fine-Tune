@@ -135,11 +135,13 @@ async function loadDiagrams() {
     const [{ createSwimlane }, { createGraph }] = await Promise.all([import('./swimlane.js'), import('./graph.js')]);
     lanes = createSwimlane({ labels: $('lane-labels'), plot: $('lane-plot'), axis: $('axis'), tip: $('lane-tip') }, { onSelect: selectAgent, roleOf });
     graph = createGraph({ stage: $('graph'), labels: $('graph-labels'), tip: $('graph-tip'), card: $('card') });
+    for (const box of document.querySelectorAll('#layers input')) box.addEventListener('change', () => graph.setLayer(box.dataset.kind, box.checked));
     if (state) render(state);
   } catch (err) {
     const note = 'three.js could not load (' + err.message + '), so the diagrams are off. The lists below still work.';
     $('lanes').replaceChildren(h('p', { class: 'nothree' }, note));
     $('graph').replaceWith(h('p', { class: 'nothree' }, note));
+    $('layers').hidden = true;
     $('tree').hidden = false;
     if (state) render(state);
   }

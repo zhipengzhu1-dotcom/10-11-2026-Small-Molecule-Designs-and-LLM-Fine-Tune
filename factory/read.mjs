@@ -26,6 +26,7 @@ export function readStream(root = defaultRoot()) {
 
 // show-me-your-work format: header ts phase decision why evidence result, one row per decision.
 // Only the orchestrator writes it, and it has no run column, so decision events carry run: null.
+// Each carries `line`, its line number in the file, which is how the audit and later rows cite it.
 const COLUMNS = ['ts', 'phase', 'decision', 'why', 'evidence', 'result'];
 
 function readDecisions(file) {
@@ -39,6 +40,7 @@ function readDecisions(file) {
     const [ts, ...rest] = cells;
     const e = { ts, run: null, agent: 'orchestrator', type: 'decision' };
     COLUMNS.slice(1).forEach((k, j) => (e[k] = rest[j]));
+    e.line = i + 1;
     events.push(e);
   });
   return events;

@@ -25,9 +25,10 @@ test('decision log rows join the stream as orchestrator decision events, merged 
   assert.deepEqual(events[0], {
     ts: '2026-10-11T10:00:00Z', run: null, agent: 'orchestrator', type: 'decision',
     phase: 'intake/fetch', decision: 'fetched the arXiv source', why: 'tables need LaTeX',
-    evidence: 'research/s1/source/', result: 'done',
+    evidence: 'research/s1/source/', result: 'done', line: 2,
   });
   assert.equal(events[2].evidence, "'=SUM(A1)");
+  assert.equal(events[2].line, 3);
 });
 
 test('a decision row with the wrong number of cells is reported with its line number', () => {

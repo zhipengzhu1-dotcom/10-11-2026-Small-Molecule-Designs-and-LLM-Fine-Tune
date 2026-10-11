@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Factory Viewer</title>
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
 </script>
 <style>
 /* Black, white and grey only. Status is told apart by fill: solid, grey, outline, pulse. */
@@ -63,6 +66,11 @@ main { display: grid; gap: 16px; padding: 16px; }
 .sw.run { background: var(--ink); opacity: .35; }
 .sw.dia { width: 7px; height: 7px; transform: rotate(45deg); background: var(--ink); margin: 0 7px 0 3px; }
 .sw.tick { width: 3px; height: 11px; background: var(--ink); } .sw.tick.fail { background: none; }
+.layers label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.layers input { accent-color: var(--ink); margin: 0; }
+.ln { display: inline-block; width: 22px; height: 0; border-top: 1px solid var(--faint); vertical-align: middle; }
+.ln.sup { border-top: 2px dashed var(--ink); } .ln.men { border-top: 2px dotted var(--mid); } .ln.evi { border-top-color: var(--faint); }
+.sw.cube { width: 7px; height: 7px; background: var(--mid); border: 0; margin: 0 2px 0 0; }
 
 /* the two three.js stages */
 .stage { position: relative; overflow: hidden; border-radius: 6px; touch-action: none; user-select: none; }
@@ -80,7 +88,7 @@ main { display: grid; gap: 16px; padding: 16px; }
 #graph { height: 560px; background: var(--panel); cursor: grab; }
 #graph.dragging { cursor: grabbing; }
 .labels { position: absolute; inset: 0; pointer-events: none; }
-.labels span { position: absolute; transform: translate(-50%, 0); font-size: 11px; color: var(--muted); white-space: nowrap; transition: opacity .15s; }
+.labels span { position: absolute; transform: translate(-50%, 0); font-size: 11px; color: var(--muted); white-space: nowrap; }
 .labels span.hi { color: var(--fg); font-weight: 600; }
 .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--panel); font-size: 12px; padding: 6px 9px; border-radius: 6px; max-width: 360px; overflow-wrap: anywhere; z-index: 2; }
 .tip[hidden] { display: none; }
@@ -129,7 +137,13 @@ summary .n { color: var(--muted); font-size: 12px; }
   </section>
   <div class="row">
     <section class="panel">
-      <h2>Decision graph <span class="muted" id="dcount"></span> <span class="hint">scroll to zoom · drag to pan or move a node · double-click to fit</span></h2>
+      <h2>Decision graph <span class="muted" id="dcount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · drag a node to move it · double-click to fit</span></h2>
+      <div class="legend layers" id="layers" style="margin-bottom:8px">
+        <label><input type="checkbox" data-kind="tree" checked><i class="ln tree"></i>phase tree</label>
+        <label><input type="checkbox" data-kind="supersedes" checked><i class="ln sup"></i>supersedes</label>
+        <label><input type="checkbox" data-kind="mentions" checked><i class="ln men"></i>mentions a ticket</label>
+        <label><input type="checkbox" data-kind="evidence"><i class="ln evi"></i><i class="sw cube"></i>shared evidence</label>
+      </div>
       <div class="stage" id="graph"><div class="labels" id="graph-labels"></div><div class="tip" id="graph-tip" hidden></div><div class="card" id="card" hidden></div></div>
       <div id="tree" hidden></div>
     </section>
