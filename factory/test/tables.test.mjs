@@ -60,3 +60,31 @@ test('one wrong cell fails, and the evidence names the table, row and column', (
   assert.match(e.evidence, /notes 14\.5/);
   assert.doesNotMatch(e.evidence, /tab:budget/);
 });
+
+test('a row missing from the notes fails with both row counts', () => {
+  const r = check(sample([['notes/tables/toy.md', '| Alpha | 12.5 | **80%** |\n', '']]));
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.events[0].evidence, /tab:toy: source has 3 rows with numbers, notes .* have 2/);
+});
+
+for (const [label, file] of [['tab:toy', 'notes/tables/toy.md'], ['fig:curve', 'notes/figures/curve.md']]) {
+  test(`${label} with no note fails, and the evidence names ${label}`, () => {
+    const r = check(sample([[file, `Label: \`${label}\``, 'Label: `none:here`']]));
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    const [e] = r.events;
+    assert.equal(e.result, 'fail');
+    assert.match(e.evidence, new RegExp(`no note for ${label}\\b`));
+  });
+}
+
+test('a table the check cannot parse is INCONCLUSIVE and never recorded as a pass', () => {
+  // A column type defined elsewhere with \newcolumntype: the check cannot know its width.
+  const r = check(sample([['paper.tex', '\\begin{tabular}{lrr}', '\\begin{tabular}{lrQ}']]));
+  assert.equal(r.status, 3, r.stdout + r.stderr);
+  assert.match(r.stdout, /INCONCLUSIVE tab:toy/);
+  const [e] = r.events;
+  assert.equal(e.result, 'fail');
+  assert.equal(e.verdict, 'inconclusive');
+  assert.match(e.evidence, /tab:toy/);
+  assert.doesNotMatch(e.evidence, /tab:budget/);
+});

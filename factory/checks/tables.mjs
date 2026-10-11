@@ -265,15 +265,27 @@ export function runCheck({ tex, notes }) {
   const allNotes = notes.flatMap(markdownFiles).map(parseNote);
   const lines = [];
   const problems = [];
+  const unparsed = [];
   for (const unit of units) {
     const note = allNotes.find((n) => n.labels.some((l) => unit.labels.includes(l)));
-    if (!note) continue;
+    if (!note) {
+      problems.push(`no note for ${unit.id} (${unit.env}, line ${unit.line})`);
+      lines.push(`FAIL ${unit.id}: no note`);
+      continue;
+    }
+    const errors = unit.tabulars.filter((t) => t.error).map((t) => `${unit.id} (line ${t.line}): ${t.error}`);
+    if (errors.length) {
+      unparsed.push(...errors);
+      lines.push(`INCONCLUSIVE ${unit.id}: ${errors.join('; ')}`);
+      continue;
+    }
     const p = compare(unit, note);
     problems.push(...p);
     lines.push(`${p.length ? 'FAIL' : 'PASS'} ${unit.id}`);
   }
-  const verdict = problems.length ? 'fail' : 'pass';
-  return { verdict, lines, problems };
+  // INCONCLUSIVE is never a pass: it is reported only when nothing failed outright.
+  const verdict = problems.length ? 'fail' : unparsed.length ? 'inconclusive' : 'pass';
+  return { verdict, lines, problems, unparsed };
 }
 
 // ---------- CLI ----------
@@ -301,9 +313,16 @@ if (isMain) {
     const opts = parseArgs(process.argv.slice(2));
     const r = runCheck(opts);
     for (const l of [...r.lines, ...r.problems]) process.stdout.write(l + '\n');
-    const evidence = r.verdict === 'pass' ? opts.notes.join(',') : r.problems.join('; ');
-    writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields: { name: 'tables', result: r.verdict, evidence } });
-    process.exit(r.verdict === 'pass' ? 0 : 1);
+    process.stdout.write(`tables: ${r.verdict.toUpperCase()}\n`);
+    const evidence = {
+      pass: opts.notes.join(','),
+      fail: r.problems.join('; '),
+      inconclusive: `INCONCLUSIVE, check by hand: ${r.unparsed.join('; ')}`,
+    }[r.verdict];
+    // The event schema allows only pass or fail, so INCONCLUSIVE is recorded as fail plus a verdict field.
+    const result = r.verdict === 'pass' ? 'pass' : 'fail';
+    writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields: { name: 'tables', result, evidence, verdict: r.verdict } });
+    process.exit({ pass: 0, fail: 1, inconclusive: 3 }[r.verdict]);
   } catch (err) {
     process.stderr.write(`tables.mjs: ${err.message}\n`);
     process.exit(2);
