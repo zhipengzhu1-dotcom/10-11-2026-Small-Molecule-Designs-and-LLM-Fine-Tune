@@ -10,7 +10,9 @@
     "ci": "node scripts/ci.mjs",
     "fetch-page": "node factory/fetch-page.mjs",
     "fetch:s1": "node scripts/fetch-s1.mjs",
-    "check:tables": "node factory/checks/tables.mjs --tex research/s1/raw/arxiv/latex/main.tex --notes research/s1/tables --notes research/s1/figures",
-    "hooks:install": "git config core.hooksPath .githooks"
+    "hooks:install": "git config core.hooksPath .githooks",
+    "catalog:refs": "node scripts/catalog-refs.mjs",
+    "check:references": "node factory/checks/references.mjs",
+    "check:tables": "node factory/checks/tables.mjs --tex research/s1/raw/arxiv/latex/main.tex --notes research/s1/tables --notes research/s1/figures"
   }
 }
