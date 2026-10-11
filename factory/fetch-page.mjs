@@ -28,6 +28,7 @@ export function createFetchPage({ root = defaultRoot() } = {}) {
     if (req.method === 'POST' && url.pathname === '/drop') {
       const ref = url.searchParams.get('ref');
       const failure = openFailures(root).get(ref);
+      if (!failure) return send(res, 404, 'text/plain', `no open fetch.failed event for ref ${ref}`);
       const name = url.searchParams.get('name');
       const body = Buffer.concat(await Array.fromAsync(req));
       const rel = `research/refs/${ref}/raw/${name}`;

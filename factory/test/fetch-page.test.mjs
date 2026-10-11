@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readStream } from '../read.mjs';
 import { startFetchPage, tempRoot, write } from './helpers.mjs';
@@ -37,4 +37,21 @@ test('dropping a file for an open fetch.failed ref saves it in that ref\'s raw f
   assert.equal(artifacts[0].path, 'research/refs/qwen2025/raw/qwen.pdf');
   assert.equal(artifacts[0].kind, 'ref');
   assert.equal(artifacts[0].ref, 'qwen2025');
+});
+
+test('a drop for a ref with no open fetch.failed event is rejected and writes nothing', async () => {
+  const root = tempRoot();
+  failed(root, 'qwen2025');
+  await withPage(root, async (url) => {
+    for (const ref of ['nobody2024', '../../factory', '']) {
+      const res = await drop(url, ref, 'x.pdf', 'data');
+      assert.equal(res.status, 404, `ref ${ref}`);
+    }
+    // closed once its file has been dropped
+    assert.equal((await drop(url, 'qwen2025', 'a.pdf', 'one')).status, 201);
+    assert.equal((await drop(url, 'qwen2025', 'b.pdf', 'two')).status, 404);
+  });
+  assert.equal(existsSync(join(root, 'research', 'refs', 'nobody2024')), false);
+  assert.equal(existsSync(join(root, 'research', 'refs', 'qwen2025', 'raw', 'b.pdf')), false);
+  assert.deepEqual(readStream(root).filter((e) => e.type === 'artifact').map((e) => e.path), ['research/refs/qwen2025/raw/a.pdf']);
 });
