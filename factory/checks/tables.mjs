@@ -180,8 +180,12 @@ function extract(texRaw) {
     const end = tex.indexOf(endTag, m.index);
     if (end < 0) continue;
     const body = tex.slice(m.index, end);
-    const labels = [...body.matchAll(/\\label\s*\{([^}]+)\}/g)].map((x) => x[1].trim());
-    floats.push({ env: m[1], start: m.index, end, line: lineOf(tex, m.index), labels, id: labels.at(-1) || `line ${lineOf(tex, m.index)}`, tabulars: [] });
+    const found = [...body.matchAll(/\\label\s*\{([^}]+)\}/g)];
+    const labels = found.map((x) => x[1].trim());
+    // The float's own label is the first one after \caption; subfigure labels come before it.
+    const caption = body.search(/\\caption\b/);
+    const own = found.find((x) => caption >= 0 && x.index > caption)?.[1].trim() || labels.at(-1);
+    floats.push({ env: m[1], start: m.index, end, line: lineOf(tex, m.index), labels, id: own || `line ${lineOf(tex, m.index)}`, tabulars: [] });
   }
   const orphans = [];
   const tab = /\\begin\{(tabular)\}/g;

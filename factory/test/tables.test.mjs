@@ -77,6 +77,13 @@ for (const [label, file] of [['tab:toy', 'notes/tables/toy.md'], ['fig:curve', '
   });
 }
 
+test('a float is named by the label after its caption, not by labels in subfigures or body text', () => {
+  const fig = '\\begin{figure}\n\\subfigure[Left\\label{fig:left}]{x}\n\\caption{Whole.}\n\\label{fig:whole}\nSee \\label{eq:inner}.\n\\end{figure}\n';
+  const r = check(sample([['paper.tex', '\\end{document}', `${fig}\\end{document}`]]));
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.events[0].evidence, /no note for fig:whole\b/);
+});
+
 test('a table the check cannot parse is INCONCLUSIVE and never recorded as a pass', () => {
   // A column type defined elsewhere with \newcolumntype: the check cannot know its width.
   const r = check(sample([['paper.tex', '\\begin{tabular}{lrr}', '\\begin{tabular}{lrQ}']]));
