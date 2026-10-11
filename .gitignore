@@ -3,3 +3,9 @@
 node_modules/
 research/s1/raw/code/s1/
 research/s1/raw/arxiv/
+# Reference downloads (untrusted data) are ignored by default. A file is re-included below only
+# when its license is CC BY, CC BY-SA or CC0; see the license column of research/refs/catalog.tsv.
+research/refs/*/raw/*
+!research/refs/gao2024omnimathuniversalolympiadlevel/raw/2410.07985.pdf
+!research/refs/rein2023gpqagraduatelevelgoogleproofqa/raw/2311.12022.pdf
+!research/refs/wu2024inference/raw/2408.00724.pdf
