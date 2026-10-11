@@ -136,6 +136,25 @@ test('GET / serves the viewer page', async () => {
   });
 });
 
+test('the page\'s scripts are served from factory/viewer as JavaScript', async () => {
+  await withViewer(seed(), async (url) => {
+    for (const name of ['app.js', 'ui.js', 'layout.js', 'swimlane.js', 'graph.js']) {
+      const res = await fetch(`${url}/assets/${name}`);
+      assert.equal(res.status, 200, name);
+      assert.match(res.headers.get('content-type'), /text\/javascript/, name);
+    }
+  });
+});
+
+test('only the page\'s own scripts are served: other files and path tricks get 404', async () => {
+  await withViewer(seed(), async (url) => {
+    for (const path of ['/assets/nope.js', '/assets/page.html', '/assets/..%2Fviewer.mjs', '/assets/%2e%2e/viewer.mjs', '/viewer.mjs', '/assets/']) {
+      const res = await fetch(url + path);
+      assert.equal(res.status, 404, path);
+    }
+  });
+});
+
 test('the viewer is read-only: anything but GET is refused and the logs are untouched', async () => {
   await withViewer(seed(), async (url) => {
     for (const path of ['/', '/state']) {

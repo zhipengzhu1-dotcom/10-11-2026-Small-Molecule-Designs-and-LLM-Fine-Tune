@@ -22,7 +22,8 @@ Replicating s1 (arXiv 2501.19393) at small scale. Spec: GitHub issue #1.
 
 ## Viewer
 
-- **Viewer**: `npm run viewer` (`node factory/viewer.mjs [--root <repo>] [--port 4175]`), served on `127.0.0.1` only, read-only (anything but `GET` gets 405). A quick stand-in for the dashboard (piece C): the page polls `GET /state?run=<run>` every 2 seconds and shows the run's agents, the latest result of each check, the decision tree and a timeline.
+- **Viewer**: `npm run viewer` (`node factory/viewer.mjs [--root <repo>] [--port 4175]`), served on `127.0.0.1` only, read-only (anything but `GET` gets 405). A quick stand-in for the dashboard (piece C): the page polls `GET /state?run=<run>` every 2 seconds and shows a swimlane timeline of the run's agents, a graph of the decision tree, the latest result of each check, the agents table and the event list. Black, white and grey only; status is told by fill (solid PASS, grey ISSUES, outline BLOCKED or unknown, pulse running).
+- **Viewer files**: `factory/viewer/` holds `page.html` and the scripts `app.js`, `ui.js`, `layout.js`, `swimlane.js`, `graph.js`, served by name only at `/assets/<name>`. `layout.js` has no DOM and no three.js (graph, force layout, swimlane geometry), so `node:test` covers it. The diagrams load three.js `0.170.0` from jsDelivr through an import map; when it can't load, they show a note and the decision tree falls back to a plain list.
 - **State**: `summarize(events, run)`. `run` defaults to the newest run. An agent with no `agent.stop` is `running`. Decisions have no run, so a run's timeline takes the decisions made between its first and last event; the newest run takes every later one too. The tree covers the whole decision log. If `readStream()` throws, `/state` returns 200 with the message in `error` and the page shows it as a banner.
 
 ## Run id and agent id
