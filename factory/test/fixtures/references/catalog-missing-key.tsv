@@ -1,0 +1,6 @@
+key	title	year	link	why	tier1	status
+kaplan2020	Scaling Laws for Neural Language Models	2020	https://arxiv.org/abs/2001.08361	scaling background	no	arxiv
+hoffmann2022	Training Compute-Optimal Large Language Models	2022	https://arxiv.org/abs/2203.15556	scaling background	no	arxiv
+snell2024	Scaling LLM Test-Time Compute Optimally	2024	https://arxiv.org/abs/2408.03314	test-time scaling	no	oa
+o1	Learning to Reason with LLMs	2024	https://openai.com/index/learning-to-reason-with-llms/	baseline model	no	closed
+qwen2024	Qwen2.5 Technical Report	2024	https://arxiv.org/abs/2412.15115	base model	yes	fetched
