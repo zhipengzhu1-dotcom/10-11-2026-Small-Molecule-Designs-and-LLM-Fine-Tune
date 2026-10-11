@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readStream } from '../read.mjs';
 import { REPO, hook, shell, tempRoot } from './helpers.mjs';
@@ -158,14 +158,23 @@ test('SubagentStart tells the subagent its ids and a writer command that writes 
   ]);
 });
 
-test('the hook commands registered in .claude/settings.json record start and stop when run by a POSIX shell', () => {
+// Claude Code runs shell-form hooks with Git Bash on Windows and sh elsewhere. Git Bash's sh is not
+// on PATH under PowerShell, so it is found from git's own install folder.
+function posixShell() {
+  if (!spawnSync('sh', ['-c', 'exit 0']).error) return 'sh';
+  const gitCore = spawnSync('git', ['--exec-path'], { encoding: 'utf8' }).stdout?.trim();
+  const gitBashSh = gitCore && join(gitCore, '..', '..', '..', 'bin', 'sh.exe');
+  return gitBashSh && existsSync(gitBashSh) ? gitBashSh : null;
+}
+const SH = posixShell();
+
+test('the hook commands registered in .claude/settings.json record start and stop when run by a POSIX shell', { skip: !SH && 'no POSIX shell found' }, () => {
   const settings = JSON.parse(readFileSync(join(REPO, '.claude', 'settings.json'), 'utf8'));
   const root = tempRoot();
   for (const [event, payload] of [['SubagentStart', start()], ['SubagentStop', stop()]]) {
     const [group] = settings.hooks[event];
     assert.equal(group.matcher ?? '', '', `${event} must match every agent type`);
-    // Claude Code runs shell-form hooks with Git Bash on Windows and sh elsewhere.
-    const r = spawnSync('sh', ['-c', group.hooks[0].command], {
+    const r = spawnSync(SH, ['-c', group.hooks[0].command], {
       input: JSON.stringify(payload), cwd: tempRoot(), encoding: 'utf8',
       env: { ...process.env, CLAUDE_PROJECT_DIR: REPO, FACTORY_ROOT: root },
     });
