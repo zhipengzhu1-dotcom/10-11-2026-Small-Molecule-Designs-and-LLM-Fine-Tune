@@ -22,6 +22,33 @@ export function openFailures(root) {
   return open;
 }
 
+// The ref becomes a folder name, so it must be one on every OS: no separators, no ':', no '..'.
+const SAFE_REF = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/;
+
+// Reduces whatever name the browser sent to a plain file name: last path segment only, no
+// leading or trailing dots, a safe character set, never a Windows device name.
+export function safeName(raw) {
+  let name = String(raw ?? '').split(/[\\/]/).pop();
+  name = name.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+|\.+$/g, '').slice(0, 150);
+  if (/^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(name)) name = `_${name}`;
+  return name || 'file';
+}
+
+// Writes without ever replacing a file: p.pdf, then p-1.pdf, p-2.pdf, ...
+function saveNew(dir, name, body) {
+  const dot = name.lastIndexOf('.');
+  const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ''];
+  for (let i = 0; ; i++) {
+    const candidate = i === 0 ? name : `${stem}-${i}${ext}`;
+    try {
+      writeFileSync(join(dir, candidate), body, { flag: 'wx' });
+      return candidate;
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+    }
+  }
+}
+
 export function createFetchPage({ root = defaultRoot() } = {}) {
   return createServer(async (req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
@@ -29,11 +56,11 @@ export function createFetchPage({ root = defaultRoot() } = {}) {
       const ref = url.searchParams.get('ref');
       const failure = openFailures(root).get(ref);
       if (!failure) return send(res, 404, 'text/plain', `no open fetch.failed event for ref ${ref}`);
-      const name = url.searchParams.get('name');
+      if (!SAFE_REF.test(ref)) return send(res, 400, 'text/plain', `ref ${ref} is not a plain folder name`);
       const body = Buffer.concat(await Array.fromAsync(req));
-      const rel = `research/refs/${ref}/raw/${name}`;
-      mkdirSync(join(root, 'research', 'refs', ref, 'raw'), { recursive: true });
-      writeFileSync(join(root, rel), body);
+      const dir = `research/refs/${ref}/raw`;
+      mkdirSync(join(root, dir), { recursive: true });
+      const rel = `${dir}/${saveNew(join(root, dir), safeName(url.searchParams.get('name')), body)}`;
       writeEvent({ root, run: failure.run, agent: AGENT, type: 'artifact', fields: { path: rel, kind: 'ref', ref } });
       return send(res, 201, 'application/json', JSON.stringify({ path: rel }));
     }

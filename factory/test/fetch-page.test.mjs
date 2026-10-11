@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readStream } from '../read.mjs';
 import { startFetchPage, tempRoot, write } from './helpers.mjs';
@@ -54,4 +54,55 @@ test('a drop for a ref with no open fetch.failed event is rejected and writes no
   assert.equal(existsSync(join(root, 'research', 'refs', 'nobody2024')), false);
   assert.equal(existsSync(join(root, 'research', 'refs', 'qwen2025', 'raw', 'b.pdf')), false);
   assert.deepEqual(readStream(root).filter((e) => e.type === 'artifact').map((e) => e.path), ['research/refs/qwen2025/raw/a.pdf']);
+});
+
+const artifactPaths = (root) => readStream(root).filter((e) => e.type === 'artifact').map((e) => e.path);
+
+test('a dropped filename that tries to leave the raw folder is reduced to a plain name inside it', async () => {
+  const cases = [
+    ['../../../factory/log.mjs', 'log.mjs'],
+    ['..\\..\\evil.pdf', 'evil.pdf'],
+    ['C:\\Windows\\x.pdf', 'x.pdf'],
+    ['..', 'file'],
+    ['.hidden', 'hidden'],
+    ['we ird:na*me?.pdf', 'we_ird_na_me_.pdf'],
+  ];
+  for (const [name, saved] of cases) {
+    const root = tempRoot();
+    failed(root, 'qwen2025');
+    await withPage(root, async (url) => {
+      const res = await drop(url, 'qwen2025', name, 'data');
+      assert.equal(res.status, 201, name);
+    });
+    assert.deepEqual(readdirSync(join(root, 'research', 'refs', 'qwen2025', 'raw')), [saved], name);
+    assert.deepEqual(artifactPaths(root), [`research/refs/qwen2025/raw/${saved}`], name);
+    assert.equal(readdirSync(join(root, 'factory')).sort().join(), 'agents', name);
+  }
+});
+
+test('a fetch.failed ref that is not a plain folder name cannot be used as a drop target', async () => {
+  const root = tempRoot();
+  failed(root, '../escape');
+  failed(root, 'Wei:2022');
+  await withPage(root, async (url) => {
+    for (const ref of ['../escape', 'Wei:2022']) {
+      const res = await drop(url, ref, 'x.pdf', 'data');
+      assert.equal(res.status, 400, ref);
+    }
+  });
+  assert.equal(existsSync(join(root, 'research')), false);
+  assert.equal(existsSync(join(root, 'escape')), false);
+  assert.deepEqual(artifactPaths(root), []);
+});
+
+test('a second file with the same name is saved beside the first, never over it', async () => {
+  const root = tempRoot();
+  failed(root, 'qwen2025');
+  await withPage(root, async (url) => assert.equal((await drop(url, 'qwen2025', 'p.pdf', 'first')).status, 201));
+  failed(root, 'qwen2025'); // the fetcher reopened it, e.g. the first file was the wrong paper
+  await withPage(root, async (url) => assert.equal((await drop(url, 'qwen2025', 'p.pdf', 'second')).status, 201));
+  const raw = join(root, 'research', 'refs', 'qwen2025', 'raw');
+  assert.equal(readFileSync(join(raw, 'p.pdf'), 'utf8'), 'first');
+  assert.equal(readFileSync(join(raw, 'p-1.pdf'), 'utf8'), 'second');
+  assert.deepEqual(artifactPaths(root), ['research/refs/qwen2025/raw/p.pdf', 'research/refs/qwen2025/raw/p-1.pdf']);
 });
