@@ -3,3 +3,6 @@
 node_modules/
 research/s1/raw/code/s1/
 research/s1/raw/arxiv/
+# Reference downloads (untrusted data) are ignored by default. A file is re-included below only
+# when its license allows redistribution; see the license column of research/refs/catalog.tsv.
+research/refs/*/raw/*
