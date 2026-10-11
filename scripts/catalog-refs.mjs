@@ -396,7 +396,7 @@ async function main() {
         for (const c of ['status', 'oa_url', 'license', 'file', 'sha256', 'note']) row[c] = before[c];
       } else if (dl?.ok) {
         Object.assign(row, { status: 'fetched', oa_url: dl.url, license: dl.license, file: `research/refs/${key}/raw/${dl.name}`, sha256: dl.sha256 });
-        row.note = [row.note, REDISTRIBUTABLE.test(dl.license) ? 'file committed' : 'file gitignored: license does not allow redistribution'].filter(Boolean).join('; ');
+        row.note = [row.note, REDISTRIBUTABLE.test(dl.license) ? 'file committed' : 'file gitignored: only CC BY, CC BY-SA or CC0 files are committed'].filter(Boolean).join('; ');
       } else if (dl) {
         row.status = 'fetch-pending';
         row.note = [row.note, `download failed: ${dl.reason}`].filter(Boolean).join('; ');
