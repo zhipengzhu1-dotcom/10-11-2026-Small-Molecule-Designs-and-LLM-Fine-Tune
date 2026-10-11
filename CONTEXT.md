@@ -20,6 +20,11 @@ Replicating s1 (arXiv 2501.19393) at small scale. Spec: GitHub issue #1.
 - **Title**: the `fetch.failed` event's optional `title` field, else the `title` column of `research/refs/catalog.tsv` (keyed by a `bibkey`, `key` or `ref` column), else none.
 - **Drop**: `POST /drop?ref=<ref>&name=<file>` with the file as the body. Saved to `research/refs/<ref>/raw/<sanitized name>` (never overwriting), then an `artifact` event (`kind: ref`, `ref`) is written as agent `fetch-page` in the run of the `fetch.failed` event it closes. Refused: a ref with no open failure, a ref that isn't a plain folder name, a foreign `Host`, a cross-site `Origin`.
 
+## Viewer
+
+- **Viewer**: `npm run viewer` (`node factory/viewer.mjs [--root <repo>] [--port 4175]`), served on `127.0.0.1` only, read-only (anything but `GET` gets 405). A quick stand-in for the dashboard (piece C): the page polls `GET /state?run=<run>` every 2 seconds and shows the run's agents, the latest result of each check, the decision tree and a timeline.
+- **State**: `summarize(events, run)`. `run` defaults to the newest run. An agent with no `agent.stop` is `running`. Decisions have no run, so a run's timeline takes the decisions made between its first and last event; the newest run takes every later one too. The tree covers the whole decision log. If `readStream()` throws, `/state` returns 200 with the message in `error` and the page shows it as a banner.
+
 ## Run id and agent id
 
 - **Run id**: the orchestrator's Claude Code session id. Hooks take it from the payload's `session_id`. The orchestrator passes its own with `FACTORY_RUN` or `--run`.
