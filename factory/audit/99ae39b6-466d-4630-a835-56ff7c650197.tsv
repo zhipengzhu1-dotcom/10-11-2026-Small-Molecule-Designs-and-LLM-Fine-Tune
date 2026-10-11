@@ -72,3 +72,5 @@ line	ts	verdict	superseded_by	pointers	note
 72	2026-10-11T23:01:51Z	ok		commit:ea743d8; file:skills/orchestrator-lessons/SKILL.md; file:skills/fetch-paper-sources/SKILL.md; file:~/.claude/CLAUDE.md; file:~/.claude/skills/orchestrator-lessons/SKILL.md	Both skills are committed and reachable through the junctions.
 73	2026-10-11T23:01:52Z	ok		issue:13; issue:22; issue:1	gh lists #13 to #22 as sub-issues of #1.
 74	2026-10-11T23:01:52Z	ok		transcript:99ae39b6-466d-4630-a835-56ff7c650197@2026-10-11T22:52:52	git worktree list shows only the main checkout; the tag points at fc72f4c.
+75	2026-10-11T23:08:09Z	ok		commit:9d5ea1d; transcript:99ae39b6-466d-4630-a835-56ff7c650197@2026-10-11T23:07:00	The user said to push 9d5ea1d; origin moved 271c5ba..9d5ea1d after CI passed.
+76	2026-10-11T23:08:10Z	ok		transcript:99ae39b6-466d-4630-a835-56ff7c650197@2026-10-11T23:07:00; url:https://github.com/zhipengzhu1-dotcom/10-11-2026-Small-Molecule-Designs-and-LLM-Fine-Tune/pull/23	PR #23 is open from intake/s1 to main.
