@@ -1,0 +1,49 @@
+% Hand-made fixture for the tables check. Invented numbers; not taken from any paper.
+\documentclass{article}
+\newcommand{\toy}{\textbf{Toy-7B}}
+\begin{document}
+
+Body text mentions 42 and 3.14, which belong to no table.
+
+\begin{figure}
+\includegraphics{figures/curve.pdf}
+\caption{Accuracy against steps.}
+\label{fig:curve}
+\end{figure}
+
+\begin{table}[t]
+\caption{Toy results. Scores in \%.}
+\begin{tabular}{lrr}
+\toprule
+Model & \makecell{Score\\A} & Score B \\
+\midrule
+\multicolumn{3}{c}{\textbf{Baselines}} \\
+\midrule
+Alpha & 12.5 & \textbf{80\%} \\
+% Ghost & 99.9 & 99.9 \\
+Beta-2 & \multirow{2}{*}{41.5} & N.A. \\
+continued & & \\
+\toy{} & $\gg$3K & \scriptsize{[-1.5\%, 2.0\%]} \\
+\bottomrule
+\label{tab:toy}
+\end{tabular}
+\end{table}
+
+% \begin{table}
+% \begin{tabular}{ll}
+% Old & 1 \\
+% \end{tabular}
+% \label{tab:old}
+% \end{table}
+
+\begin{table}
+\caption{Budgets.}
+\begin{tabular}{p{3cm}|cc}
+Budget ($\rightarrow$) & 1024 & 2048 \\
+\hline
+Tokens used & 900 & 1,800 \\
+\end{tabular}
+\label{tab:budget}
+\end{table}
+
+\end{document}
