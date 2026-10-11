@@ -1,0 +1,13 @@
+{
+  "name": "s1-factory",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test \"factory/**/*.test.mjs\"",
+    "ci": "node scripts/ci.mjs",
+    "hooks:install": "git config core.hooksPath .githooks"
+  }
+}
