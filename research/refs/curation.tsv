@@ -1,91 +1,91 @@
-key	tier1	why
-kaplan2020scalinglawsneurallanguage	no	§1 L170: train-time scaling through pretraining (background)
-hoffmann2022trainingcomputeoptimallargelanguage	no	§1 L170: train-time scaling through pretraining (background)
-snell2024scalingllmtesttimecompute	no	§1 L170, §3.1 L230, §6.2 L637: prior test-time scaling work; parallel vs sequential split
-welleck2024decodingmetagenerationinferencetimealgorithms	no	§1 L170: prior test-time scaling work
-o1	no	§1 L170, §4: OpenAI o1, the model s1 sets out to match; comparison row in the results tables
-gao2024interpretablecontrastivemontecarlo	no	§1 L170: o1 replication attempt using MCTS
-zhang2024o1codero1replicationcoding	no	§1 L170: o1 replication attempt using MCTS
-qin2024o1replicationjourneystrategic	no	§1 L170: o1 replication attempt using multiple agents
-wang2024drto1optimizeddeepreasoning	no	§1 L170: other o1 replication attempt
-huang2024o1replicationjourney	no	§1 L170: other o1 replication attempt
-huang2025o1replicationjourney	no	§1 L170: other o1 replication attempt
-r1	yes	§1 L170, §4, App. A L686: DeepSeek r1, a comparison model and the source of the s1K-1.1 reasoning traces
-geminithinking	yes	§1 L172, §2: Gemini Thinking Experimental, the model that wrote the s1K reasoning traces and answers
-zhou2023lima	no	§1 L174: LIMA, prior finding that careful selection of a small dataset suffices
-numina_math_datasets	yes	§2.1 L198, Table 7: NuminaMATH, the largest source of the 59K pool (30,660 questions)
-huang2024olympicarenabenchmarkingmultidisciplinecognitive	yes	§2.1 L198, Table 7: OlympicArena, source of 4,250 olympiad questions in the 59K pool
-gao2024omnimathuniversalolympiadlevel	yes	§2.1 L198, Table 7: OmniMath, source of 4,238 competition math questions in the 59K pool
-zhong2023agievalhumancentricbenchmarkevaluating	yes	§2.1 L198, Table 7: AGIEval, source of 2,385 SAT, LSAT and exam questions in the 59K pool
-qwen2024qwen25technicalreport	yes	§2.2 L211, App. D L931: Qwen2.5, the base model (32B-Instruct) and the difficulty filter models (7B and 32B-Instruct)
-brown2024largelanguagemonkeysscaling	no	§3.1 L230, §6.2 L637: parallel scaling by repeated sampling and Best-of-N
-aime	yes	§4.1 L269: AIME24, one of the three evaluation benchmarks (30 problems)
-hendrycks2021measuringmathematicalproblemsolving	yes	§4.1 L269, Table 7: MATH, parent of the MATH500 evaluation set and a 59K pool source
-lightman2023letsverifystepstep	yes	§4.1 L269: defines the 500-problem MATH500 subset s1 evaluates on; also a process reward model reference
-rein2023gpqagraduatelevelgoogleproofqa	yes	§4.1 L269, Table 7: GPQA, whose Diamond subset (198 questions) is an evaluation benchmark
-eval-harness	no	§4.1 L269: lm-evaluation-harness, the evaluation framework s1 builds on (software, not a paper)
-biderman2024lessons	no	§4.1 L269: lessons from the lm-evaluation-harness work
-qwq-32b-preview	no	§4.1 L271: QwQ-32B-Preview, a comparison model
-sky_t1	no	§4.1 L271, §6.1 L631: Sky-T1-32B-Preview, a comparison model distilled from QwQ
-bespoke_stratos	no	§4.1 L271, §6.1 L631: Bespoke-32B, a comparison model distilled from r1
-k1.5	no	§6.1 L631: Kimi k1.5, concurrent RL-trained reasoning model
-xu2025redstardoesscalinglongcot	no	§6.1 L631: RedStar, concurrent SFT reasoning model on distilled data
-he2024olympiadbenchchallengingbenchmarkpromoting	no	§6.1 L633, Table 7: OlympiadBench, related benchmark and a 59K pool source (896 questions)
-jain2024livecodebenchholisticcontaminationfree	no	§6.1 L633, Table 7: LiveCodeBench, related benchmark and a 59K pool source (151 questions)
-srivastava2023imitation	no	§6.1 L633: related reasoning benchmark
-glazer2024frontiermathbenchmarkevaluatingadvanced	no	§6.1 L633: FrontierMath, related reasoning benchmark
-su2024brightrealisticchallengingbenchmark	no	§6.1 L633: BRIGHT, related reasoning-intensive retrieval benchmark
-kim2024llmasaninterviewerstatictestingdynamic	no	§6.1 L633: related evaluation method
-phan2025humanity	no	§6.1 L633: Humanity's Last Exam, related benchmark
-azerbayev2023llemma	no	§6.1 L633: continued pretraining on math corpora
-yang2024syntheticcontinuedpretraining	no	§6.1 L633: continued pretraining on synthetic data
-yu2023metamath	no	§6.1 L633: synthetic math training data
-zelikman2022starbootstrappingreasoningreasoning	no	§6.1 L633: reasoning-focused training method (STaR)
-zelikman2024quietstarlanguagemodelsteach	no	§6.1 L633: reasoning-focused training method (Quiet-STaR)
-luo2025wizardmathempoweringmathematicalreasoning	no	§6.1 L633: reasoning-focused training method (WizardMath)
-yuan2025agentrtraininglanguagemodel	no	§6.1 L633: reasoning-focused training method (Agent-R)
-wu2024thinkingllmsgeneralinstruction	no	§6.1 L633: reasoning-focused training method (thinking LLMs)
-wei2023chainofthoughtpromptingelicitsreasoning	no	§6.1 L633: chain-of-thought prompting
-yao2024tree	no	§6.1 L633: prompting method (tree of thoughts)
-yao2023reactsynergizingreasoningacting	no	§6.1 L633: prompting method (ReAct)
-bi2024program	no	§6.1 L633: prompting method (program of thoughts)
-fu2022complexity	no	§6.1 L633: prompting method (complexity-based)
-zhang2023cumulative	no	§6.1 L633: prompting method (cumulative reasoning)
-xiang20252reasoningllmslearning	no	§6.1 L633: prompting and reasoning method (meta chain-of-thought)
-hu2024visual	no	§6.1 L633: prompting method (visual sketchpad)
-diao2024activepromptingchainofthoughtlarge	no	§6.1 L633: prompting method (active prompting)
-irvine2023rewardingchatbotsrealworldengagement	no	§6.2 L637: Best-of-N with an external reward
-levi2024simplemodelinferencescaling	no	§6.2 L637: Best-of-N inference scaling
-hou2025advancinglanguagemodelreasoning	no	§6.2 L637: sequential scaling by refining attempts
-lee2025evolvingdeeperllmthinking	no	§6.2 L637: sequential scaling by refining attempts
-gandhi2024streamsearchsoslearning	no	§6.2 L637: tree-based search (stream of search)
-wu2024inference	yes	§6.2 L637, L649: REBASE, the tree-search baseline s1 adds on top of budget forcing in Figure 7
-liu2024dontthrowawayvalue	no	§6.2 L637: MCTS for decoding
-zhang2023planninglargelanguagemodels	no	§6.2 L637: MCTS for code generation
-zhou2024languageagenttreesearch	no	§6.2 L637: MCTS for language agents
-choi2023kcts	no	§6.2 L637: MCTS for decoding (KCTS)
-xie2024self	no	§6.2 L637: guided beam search
-wang-etal-2024-math	no	§6.2 L637: process reward model (Math-Shepherd)
-wang2024helpsteer2opensourcedatasettraining	no	§6.2 L637: reward model data (HelpSteer2)
-xin2024deepseekproveradvancingtheoremproving	no	§6.2 L637: outcome reward model example
-ankner2024critiqueoutloudrewardmodels	no	§6.2 L637: outcome reward model example
-cesista2024multimodalstructuredgenerationcvprs	no	L651: \nocite only; listed in the bibliography without an in-text citation
-curator	no	Acknowledgements L659: Bespoke Curator, the tool that generated the r1 traces for s1.1
-kapfer_2025_14751899	no	Acknowledgements L659: the Stanford Marlowe GPU cluster
-o3	no	App. A L686: OpenAI o3, a comparison row for s1.1
-ye2025limoreasoning	no	App. A L686: LIMO, concurrent small-data reasoning model, a comparison row for s1.1
-ye2025aimepreview	no	App. A L690: source of the AIME 2025 numbers in the s1.1 table
-kwon2023efficientmemorymanagementlarge	no	App. B L729: vLLM, the inference engine s1 evaluates with
-ling2017programinductionrationalegeneration	no	App. C.2 Table 7 L807: AQuA-RAT, part of the AGIEval pool source
-liu2020logiqachallengedatasetmachine	no	App. C.2 Table 7 L807: LogiQA, part of the AGIEval pool source
-zhong2019jecqalegaldomainquestionanswering	no	App. C.2 Table 7 L807: JEC-QA, part of the AGIEval pool source
-wang2021lsatprogresschallengescomplex	no	App. C.2 Table 7 L807: LSAT, part of the AGIEval pool source
-chen2023theoremqatheoremdrivenquestionanswering	no	App. C.2 Table 7 L811: TheoremQA, a 59K pool source (747 questions)
-shi2024languagemodelssolveolympiad	no	App. C.2 Table 7 L812: USACO, a 59K pool source (519 questions)
-arora2023llmsadvancedenoughchallenging	no	App. C.2 Table 7 L813: JEEBench, a 59K pool source (515 questions)
-sun2024scievalmultilevellargelanguage	no	App. C.2 Table 7 L815: SciEval, a 59K pool source (227 questions)
-dubey2024llama3herdmodels	no	App. D L931: Llama 3, other open model Qwen2.5 is compared with
-groeneveld2024olmo	no	App. D L931: OLMo, other open model Qwen2.5 is compared with
-muennighoff2024olmoeopenmixtureofexpertslanguage	no	App. D L931: OLMoE, other open model Qwen2.5 is compared with
-loshchilov2019decoupled	no	App. D L931: AdamW, the optimizer s1 trains with
-zhang_o1_inference_scaling_laws	no	App. E.1 L2610: evidence that o1-mini cannot follow token-count instructions (token-conditional baseline)
+key	tier1	why	license	hold	status	oa_source	oa_url	file	sha256	note
+kaplan2020scalinglawsneurallanguage	no	§1 L170: train-time scaling through pretraining (background)								
+hoffmann2022trainingcomputeoptimallargelanguage	no	§1 L170: train-time scaling through pretraining (background)								
+snell2024scalingllmtesttimecompute	no	§1 L170, §3.1 L230, §6.2 L637: prior test-time scaling work; parallel vs sequential split								
+welleck2024decodingmetagenerationinferencetimealgorithms	no	§1 L170: prior test-time scaling work								
+o1	no	§1 L170, §4: OpenAI o1, the model s1 sets out to match; comparison row in the results tables								
+gao2024interpretablecontrastivemontecarlo	no	§1 L170: o1 replication attempt using MCTS								
+zhang2024o1codero1replicationcoding	no	§1 L170: o1 replication attempt using MCTS								
+qin2024o1replicationjourneystrategic	no	§1 L170: o1 replication attempt using multiple agents								
+wang2024drto1optimizeddeepreasoning	no	§1 L170: other o1 replication attempt								
+huang2024o1replicationjourney	no	§1 L170: other o1 replication attempt								
+huang2025o1replicationjourney	no	§1 L170: other o1 replication attempt								
+r1	yes	§1 L170, §4, App. A L686: DeepSeek r1, a comparison model and the source of the s1K-1.1 reasoning traces								
+geminithinking	yes	§1 L172, §2: Gemini Thinking Experimental, the model that wrote the s1K reasoning traces and answers	unknown (archived Google Cloud docs page)	cited page changed: the live URL and later snapshots describe gemini-2.0-flash-thinking-exp-01-21, so never re-download it	fetched	Wayback Machine snapshot, saved by hand via Chrome (#7)	https://web.archive.org/web/20250119031210/https://cloud.google.com/vertex-ai/generative-ai/docs/thinking-mode	research/refs/geminithinking/raw/thinking-mode-wayback-20250119.html	03a19d42867e077393a4286fe7fde33ba56a5016056e50b08205461ff0fcc590	Wayback snapshot of 2025-01-19, the last one naming gemini-2.0-flash-thinking-exp-1219 (#7); file gitignored: license unknown
+zhou2023lima	no	§1 L174: LIMA, prior finding that careful selection of a small dataset suffices								
+numina_math_datasets	yes	§2.1 L198, Table 7: NuminaMATH, the largest source of the 59K pool (30,660 questions)	Apache-2.0 (license of the source repo project-numina/aimo-progress-prize)							
+huang2024olympicarenabenchmarkingmultidisciplinecognitive	yes	§2.1 L198, Table 7: OlympicArena, source of 4,250 olympiad questions in the 59K pool								
+gao2024omnimathuniversalolympiadlevel	yes	§2.1 L198, Table 7: OmniMath, source of 4,238 competition math questions in the 59K pool								
+zhong2023agievalhumancentricbenchmarkevaluating	yes	§2.1 L198, Table 7: AGIEval, source of 2,385 SAT, LSAT and exam questions in the 59K pool								
+qwen2024qwen25technicalreport	yes	§2.2 L211, App. D L931: Qwen2.5, the base model (32B-Instruct) and the difficulty filter models (7B and 32B-Instruct)								
+brown2024largelanguagemonkeysscaling	no	§3.1 L230, §6.2 L637: parallel scaling by repeated sampling and Best-of-N								
+aime	yes	§4.1 L269: AIME24, one of the three evaluation benchmarks (30 problems)	unknown (AoPS Wiki page)	direct download gets HTTP 403; the page was saved by hand from a Chrome tab (#7)	fetched	bib URL, saved by hand from Chrome (#7)	https://artofproblemsolving.com/wiki/index.php/AIME_Problems_and_Solutions/	research/refs/aime/raw/aime-problems-and-solutions.md	b28e0ca334c546f56fc18b69f9d9825d1a720ff326bc93629f7530c5e7693d7c	AoPS Wiki AIME index saved from a Chrome tab (#7); a direct download gets HTTP 403; file gitignored: license unknown
+hendrycks2021measuringmathematicalproblemsolving	yes	§4.1 L269, Table 7: MATH, parent of the MATH500 evaluation set and a 59K pool source								
+lightman2023letsverifystepstep	yes	§4.1 L269: defines the 500-problem MATH500 subset s1 evaluates on; also a process reward model reference								
+rein2023gpqagraduatelevelgoogleproofqa	yes	§4.1 L269, Table 7: GPQA, whose Diamond subset (198 questions) is an evaluation benchmark								
+eval-harness	no	§4.1 L269: lm-evaluation-harness, the evaluation framework s1 builds on (software, not a paper)								
+biderman2024lessons	no	§4.1 L269: lessons from the lm-evaluation-harness work								
+qwq-32b-preview	no	§4.1 L271: QwQ-32B-Preview, a comparison model								
+sky_t1	no	§4.1 L271, §6.1 L631: Sky-T1-32B-Preview, a comparison model distilled from QwQ								
+bespoke_stratos	no	§4.1 L271, §6.1 L631: Bespoke-32B, a comparison model distilled from r1								
+k1.5	no	§6.1 L631: Kimi k1.5, concurrent RL-trained reasoning model								
+xu2025redstardoesscalinglongcot	no	§6.1 L631: RedStar, concurrent SFT reasoning model on distilled data								
+he2024olympiadbenchchallengingbenchmarkpromoting	no	§6.1 L633, Table 7: OlympiadBench, related benchmark and a 59K pool source (896 questions)								
+jain2024livecodebenchholisticcontaminationfree	no	§6.1 L633, Table 7: LiveCodeBench, related benchmark and a 59K pool source (151 questions)								
+srivastava2023imitation	no	§6.1 L633: related reasoning benchmark								
+glazer2024frontiermathbenchmarkevaluatingadvanced	no	§6.1 L633: FrontierMath, related reasoning benchmark								
+su2024brightrealisticchallengingbenchmark	no	§6.1 L633: BRIGHT, related reasoning-intensive retrieval benchmark								
+kim2024llmasaninterviewerstatictestingdynamic	no	§6.1 L633: related evaluation method								
+phan2025humanity	no	§6.1 L633: Humanity's Last Exam, related benchmark								
+azerbayev2023llemma	no	§6.1 L633: continued pretraining on math corpora								
+yang2024syntheticcontinuedpretraining	no	§6.1 L633: continued pretraining on synthetic data								
+yu2023metamath	no	§6.1 L633: synthetic math training data								
+zelikman2022starbootstrappingreasoningreasoning	no	§6.1 L633: reasoning-focused training method (STaR)								
+zelikman2024quietstarlanguagemodelsteach	no	§6.1 L633: reasoning-focused training method (Quiet-STaR)								
+luo2025wizardmathempoweringmathematicalreasoning	no	§6.1 L633: reasoning-focused training method (WizardMath)								
+yuan2025agentrtraininglanguagemodel	no	§6.1 L633: reasoning-focused training method (Agent-R)								
+wu2024thinkingllmsgeneralinstruction	no	§6.1 L633: reasoning-focused training method (thinking LLMs)								
+wei2023chainofthoughtpromptingelicitsreasoning	no	§6.1 L633: chain-of-thought prompting								
+yao2024tree	no	§6.1 L633: prompting method (tree of thoughts)								
+yao2023reactsynergizingreasoningacting	no	§6.1 L633: prompting method (ReAct)								
+bi2024program	no	§6.1 L633: prompting method (program of thoughts)								
+fu2022complexity	no	§6.1 L633: prompting method (complexity-based)								
+zhang2023cumulative	no	§6.1 L633: prompting method (cumulative reasoning)								
+xiang20252reasoningllmslearning	no	§6.1 L633: prompting and reasoning method (meta chain-of-thought)								
+hu2024visual	no	§6.1 L633: prompting method (visual sketchpad)								
+diao2024activepromptingchainofthoughtlarge	no	§6.1 L633: prompting method (active prompting)								
+irvine2023rewardingchatbotsrealworldengagement	no	§6.2 L637: Best-of-N with an external reward								
+levi2024simplemodelinferencescaling	no	§6.2 L637: Best-of-N inference scaling								
+hou2025advancinglanguagemodelreasoning	no	§6.2 L637: sequential scaling by refining attempts								
+lee2025evolvingdeeperllmthinking	no	§6.2 L637: sequential scaling by refining attempts								
+gandhi2024streamsearchsoslearning	no	§6.2 L637: tree-based search (stream of search)								
+wu2024inference	yes	§6.2 L637, L649: REBASE, the tree-search baseline s1 adds on top of budget forcing in Figure 7								
+liu2024dontthrowawayvalue	no	§6.2 L637: MCTS for decoding								
+zhang2023planninglargelanguagemodels	no	§6.2 L637: MCTS for code generation								
+zhou2024languageagenttreesearch	no	§6.2 L637: MCTS for language agents								
+choi2023kcts	no	§6.2 L637: MCTS for decoding (KCTS)								
+xie2024self	no	§6.2 L637: guided beam search								
+wang-etal-2024-math	no	§6.2 L637: process reward model (Math-Shepherd)								
+wang2024helpsteer2opensourcedatasettraining	no	§6.2 L637: reward model data (HelpSteer2)								
+xin2024deepseekproveradvancingtheoremproving	no	§6.2 L637: outcome reward model example								
+ankner2024critiqueoutloudrewardmodels	no	§6.2 L637: outcome reward model example								
+cesista2024multimodalstructuredgenerationcvprs	no	L651: \nocite only; listed in the bibliography without an in-text citation								
+curator	no	Acknowledgements L659: Bespoke Curator, the tool that generated the r1 traces for s1.1								
+kapfer_2025_14751899	no	Acknowledgements L659: the Stanford Marlowe GPU cluster								
+o3	no	App. A L686: OpenAI o3, a comparison row for s1.1								
+ye2025limoreasoning	no	App. A L686: LIMO, concurrent small-data reasoning model, a comparison row for s1.1								
+ye2025aimepreview	no	App. A L690: source of the AIME 2025 numbers in the s1.1 table								
+kwon2023efficientmemorymanagementlarge	no	App. B L729: vLLM, the inference engine s1 evaluates with								
+ling2017programinductionrationalegeneration	no	App. C.2 Table 7 L807: AQuA-RAT, part of the AGIEval pool source								
+liu2020logiqachallengedatasetmachine	no	App. C.2 Table 7 L807: LogiQA, part of the AGIEval pool source								
+zhong2019jecqalegaldomainquestionanswering	no	App. C.2 Table 7 L807: JEC-QA, part of the AGIEval pool source								
+wang2021lsatprogresschallengescomplex	no	App. C.2 Table 7 L807: LSAT, part of the AGIEval pool source								
+chen2023theoremqatheoremdrivenquestionanswering	no	App. C.2 Table 7 L811: TheoremQA, a 59K pool source (747 questions)								
+shi2024languagemodelssolveolympiad	no	App. C.2 Table 7 L812: USACO, a 59K pool source (519 questions)								
+arora2023llmsadvancedenoughchallenging	no	App. C.2 Table 7 L813: JEEBench, a 59K pool source (515 questions)								
+sun2024scievalmultilevellargelanguage	no	App. C.2 Table 7 L815: SciEval, a 59K pool source (227 questions)								
+dubey2024llama3herdmodels	no	App. D L931: Llama 3, other open model Qwen2.5 is compared with								
+groeneveld2024olmo	no	App. D L931: OLMo, other open model Qwen2.5 is compared with								
+muennighoff2024olmoeopenmixtureofexpertslanguage	no	App. D L931: OLMoE, other open model Qwen2.5 is compared with								
+loshchilov2019decoupled	no	App. D L931: AdamW, the optimizer s1 trains with								
+zhang_o1_inference_scaling_laws	no	App. E.1 L2610: evidence that o1-mini cannot follow token-count instructions (token-conditional baseline)								
