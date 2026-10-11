@@ -8,6 +8,7 @@
   "scripts": {
     "test": "node --test \"factory/**/*.test.mjs\"",
     "ci": "node scripts/ci.mjs",
+    "fetch-page": "node factory/fetch-page.mjs",
     "hooks:install": "git config core.hooksPath .githooks"
   }
 }

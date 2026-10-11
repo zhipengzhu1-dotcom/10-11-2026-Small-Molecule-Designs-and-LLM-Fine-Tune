@@ -41,6 +41,24 @@ export function hook(payload, extraEnv = {}, cwd = tempRoot()) {
   return spawnSync(process.execPath, [HOOK], { env: env(extraEnv), input, cwd, encoding: 'utf8' });
 }
 
+// Starts the fetch page CLI on a free port, the way a user would, and resolves once it prints
+// its URL. Call stop() when done.
+export const FETCH_PAGE = join(FACTORY, 'fetch-page.mjs');
+export function startFetchPage(args = [], extraEnv = {}) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(process.execPath, [FETCH_PAGE, '--port', '0', ...args], { env: env(extraEnv) });
+    let out = '';
+    let err = '';
+    p.stderr.on('data', (d) => (err += d));
+    p.stdout.on('data', (d) => {
+      out += d;
+      const m = /(http:\/\/127\.0\.0\.1:\d+)\//.exec(out);
+      if (m) resolve({ url: m[1], stop: () => new Promise((r) => { p.on('close', r); p.kill(); }) });
+    });
+    p.on('close', (status) => reject(new Error(`fetch page exited ${status}: ${err}`)));
+  });
+}
+
 // Runs a command line through the platform shell, as an agent's Bash tool would.
 export function shell(command, cwd = tempRoot()) {
   return spawnSync(command, { shell: true, env: env({}), cwd, encoding: 'utf8' });
