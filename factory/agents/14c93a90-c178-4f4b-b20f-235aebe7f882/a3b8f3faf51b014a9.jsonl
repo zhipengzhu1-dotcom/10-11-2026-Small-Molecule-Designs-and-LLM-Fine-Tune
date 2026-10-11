@@ -1,1 +1,2 @@
 {"ts":"2026-10-11T21:54:49.730Z","run":"14c93a90-c178-4f4b-b20f-235aebe7f882","agent":"a3b8f3faf51b014a9","type":"agent.start","role":"general-purpose","parent":"orchestrator"}
+{"ts":"2026-10-11T21:57:35.935Z","run":"14c93a90-c178-4f4b-b20f-235aebe7f882","agent":"a3b8f3faf51b014a9","type":"check","name":"write-summary-numina_math_datasets","result":"fail","evidence":"Write tool refused research/refs/numina_math_datasets/summary.md: subagents may not write report files; content returned in handback"}
