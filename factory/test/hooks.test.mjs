@@ -83,6 +83,31 @@ test('the status is the first PASS, ISSUES or BLOCKED in the final message', () 
   assert.equal(readStream(root)[0].status, 'ISSUES');
 });
 
+// Real subagents report through a SubagentHandback tool call, so last_assistant_message
+// carries no status word (seen on the first real spawn, agent a8ac4f829492d7dc9).
+const FIXTURES = join(REPO, 'factory', 'test', 'fixtures');
+for (const [file, message, expected] of [
+  ['transcript-handback.jsonl', '', 'PASS'],
+  ['transcript-handback.jsonl', 'Report delivered.', 'PASS'],
+  ['transcript-text.jsonl', '', 'ISSUES'],
+  ['transcript-no-status.jsonl', '', 'unknown'],
+  ['does-not-exist.jsonl', '', 'unknown'],
+]) {
+  test(`with no status in last_assistant_message, the status comes from the subagent transcript (${file}: ${expected})`, () => {
+    const root = tempRoot();
+    const r = hook(stop({ last_assistant_message: message, agent_transcript_path: join(FIXTURES, file) }), { CLAUDE_PROJECT_DIR: root });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(readStream(root)[0].status, expected);
+  });
+}
+
+test('a status in last_assistant_message wins over the transcript', () => {
+  const root = tempRoot();
+  const r = hook(stop({ last_assistant_message: 'BLOCKED: login wall', agent_transcript_path: join(FIXTURES, 'transcript-handback.jsonl') }), { CLAUDE_PROJECT_DIR: root });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readStream(root)[0].status, 'BLOCKED');
+});
+
 test('a payload missing the agent id or session id still records the event, as unknown', () => {
   const root = tempRoot();
   const { agent_id: _a, session_id: _s, ...bare } = start();

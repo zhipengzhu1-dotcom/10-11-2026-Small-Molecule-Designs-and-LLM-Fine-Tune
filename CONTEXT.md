@@ -14,6 +14,6 @@ Replicating s1 (arXiv 2501.19393) at small scale. Spec: GitHub issue #1.
 
 - **Run id**: the orchestrator's Claude Code session id. Hooks take it from the payload's `session_id`. The orchestrator passes its own with `FACTORY_RUN` or `--run`.
 - **Agent id**: Claude Code's `agent_id` from the hook payload. The orchestrator's is `orchestrator`. Hooks record `parent: "orchestrator"` because the payload has no parent field.
-- **Lifecycle hooks**: `.claude/settings.json` runs `factory/hooks/subagent.mjs` on `SubagentStart` and `SubagentStop` (they fire in the orchestrator session). It writes `agent.start` / `agent.stop`; a field the payload lacks becomes `unknown`. The stop `status` is the first `PASS`, `ISSUES` or `BLOCKED` in the subagent's final message.
+- **Lifecycle hooks**: `.claude/settings.json` runs `factory/hooks/subagent.mjs` on `SubagentStart` and `SubagentStop` (they fire in the orchestrator session). It writes `agent.start` / `agent.stop`; a field the payload lacks becomes `unknown`. The stop `status` is the first `PASS`, `ISSUES` or `BLOCKED` in `last_assistant_message`. When that has none, the hook reads `agent_transcript_path` and uses the last `SubagentHandback` report, then the last assistant text block. If neither has one, the status is `unknown`.
 - **Writer command**: on `SubagentStart` the hook injects `additionalContext` telling the subagent its agent id, run id and the exact command for its own events:
   `node "<main>/factory/log.mjs" --root "<main>" --run <run-id> --agent <agent-id> <type> key=value ...`
