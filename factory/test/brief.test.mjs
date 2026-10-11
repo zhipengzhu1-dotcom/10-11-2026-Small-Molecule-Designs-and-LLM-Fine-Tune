@@ -17,6 +17,15 @@ function check(brief) {
   return { ...r, events };
 }
 
+test('with no --run and no FACTORY_RUN, the check files its event under run "manual"', () => {
+  const root = tempRoot();
+  const env = { ...process.env };
+  for (const k of ['FACTORY_ROOT', 'FACTORY_RUN', 'FACTORY_AGENT', 'CLAUDE_PROJECT_DIR']) delete env[k];
+  const r = spawnSync(process.execPath, [CHECK, '--root', root, '--brief', join(FIXTURES, 'good.md')], { env, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.deepEqual(readStream(root).map((e) => [e.run, e.agent, e.result]), [['manual', 'orchestrator', 'pass']]);
+});
+
 test('a brief whose every parameter row is backed passes and logs a pass check event', () => {
   const r = check('good.md');
   assert.equal(r.status, 0, r.stderr + r.stdout);

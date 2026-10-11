@@ -5,6 +5,9 @@
 //   node factory/checks/tables.mjs --tex <main.tex> --notes <dir> [--notes <dir> ...]
 //                                  [--root <repo>] [--run <run-id>] [--agent <agent-id>]
 //
+// Run and agent default to FACTORY_RUN and FACTORY_AGENT, else run "manual" and agent
+// "orchestrator".
+//
 // A note claims a float with a line like  Label: `tab:perf`  and holds the values as a Markdown
 // table. Rows are matched in order, counting only rows with at least one numeric cell; columns
 // are matched by position after \multicolumn is expanded. Text cells are ignored, so row labels
@@ -270,6 +273,7 @@ export function runCheck({ tex, notes }) {
   const lines = [];
   const problems = [];
   const unparsed = [];
+  let compared = 0;
   for (const unit of units) {
     const note = allNotes.find((n) => n.labels.some((l) => unit.labels.includes(l)));
     if (!note) {
@@ -286,6 +290,7 @@ export function runCheck({ tex, notes }) {
     const p = compare(unit, note);
     problems.push(...p);
     const rows = dataRows(unit.tabulars.flatMap((t) => t.rows)).length;
+    compared += rows;
     const basis = unit.tabulars.length === 0 ? 'note found; no tabular'
       : rows === 0 ? 'note found; tabular has no numeric cells'
       : `${rows} rows with numbers compared`;
@@ -293,13 +298,13 @@ export function runCheck({ tex, notes }) {
   }
   // INCONCLUSIVE is never a pass: it is reported only when nothing failed outright.
   const verdict = problems.length ? 'fail' : unparsed.length ? 'inconclusive' : 'pass';
-  return { verdict, lines, problems, unparsed };
+  return { verdict, lines, problems, unparsed, units: units.length, compared };
 }
 
 // ---------- CLI ----------
 
 function parseArgs(argv, env = process.env) {
-  const opts = { tex: null, notes: [], root: defaultRoot(env), run: env.FACTORY_RUN, agent: env.FACTORY_AGENT || 'orchestrator' };
+  const opts = { tex: null, notes: [], root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = argv[i + 1];
@@ -323,7 +328,7 @@ if (isMain) {
     for (const l of [...r.lines, ...r.problems]) process.stdout.write(l + '\n');
     process.stdout.write(`tables: ${r.verdict.toUpperCase()}\n`);
     const evidence = {
-      pass: opts.notes.join(','),
+      pass: `${opts.notes.join(',')}: ${r.units} tables and figures checked, ${r.compared} rows with numbers compared`,
       fail: r.problems.join('; '),
       inconclusive: `INCONCLUSIVE, check by hand: ${r.unparsed.join('; ')}`,
     }[r.verdict];

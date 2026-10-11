@@ -7,7 +7,7 @@
 //
 // --tex defaults to <root>/research/s1/raw/arxiv/latex/main.tex and --catalog to
 // <root>/research/refs/catalog.tsv. Run and agent default to FACTORY_RUN and FACTORY_AGENT,
-// else agent "orchestrator".
+// else run "manual" and agent "orchestrator".
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,7 @@ import { defaultRoot, writeEvent } from '../log.mjs';
 export const STATUSES = ['arxiv', 'oa', 'closed', 'fetch-pending', 'fetched'];
 
 function parseArgs(argv, env = process.env) {
-  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN, agent: env.FACTORY_AGENT || 'orchestrator' };
+  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator' };
   for (let i = 0; i < argv.length; i++) {
     const name = argv[i].replace(/^--/, '');
     if (!['root', 'run', 'agent', 'tex', 'catalog'].includes(name) || i + 1 >= argv.length) {

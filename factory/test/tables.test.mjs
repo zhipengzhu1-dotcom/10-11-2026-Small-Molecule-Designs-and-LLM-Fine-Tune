@@ -49,6 +49,19 @@ test('a matching set of notes passes and records a pass check event', () => {
   // The report says what each PASS rests on, so a note-only pass is not mistaken for a compared table.
   assert.match(r.stdout, /PASS tab:toy \(3 rows with numbers compared\)/);
   assert.match(r.stdout, /PASS fig:curve \(note found; no tabular\)/);
+  // The event carries the same counts, so a pass in the stream says how much was compared.
+  assert.match(e.evidence, /3 tables and figures checked, 5 rows with numbers compared/);
+});
+
+test('with no --run and no FACTORY_RUN, the check files its event under run "manual"', () => {
+  const dir = sample();
+  const root = tempRoot();
+  const env = { ...process.env };
+  for (const k of ['FACTORY_ROOT', 'FACTORY_RUN', 'FACTORY_AGENT', 'CLAUDE_PROJECT_DIR']) delete env[k];
+  const r = spawnSync(process.execPath, [CHECK, '--tex', join(dir, 'paper.tex'), '--notes', join(dir, 'notes'), '--root', root],
+    { env, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.deepEqual(readStream(root).map((e) => [e.run, e.agent, e.result]), [['manual', 'orchestrator', 'pass']]);
 });
 
 test('one wrong cell fails, and the evidence names the table, row and column', () => {

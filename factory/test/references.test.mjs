@@ -17,6 +17,16 @@ function check(catalog, tex = 'main.tex') {
   return { ...r, events };
 }
 
+test('with no --run and no FACTORY_RUN, the check files its event under run "manual"', () => {
+  const root = tempRoot();
+  const env = { ...process.env };
+  for (const k of ['FACTORY_ROOT', 'FACTORY_RUN', 'FACTORY_AGENT', 'CLAUDE_PROJECT_DIR']) delete env[k];
+  const r = spawnSync(process.execPath, [CHECK, '--root', root, '--tex', join(FIXTURES, 'main.tex'),
+    '--catalog', join(FIXTURES, 'catalog-complete.tsv')], { env, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.deepEqual(readStream(root).map((e) => [e.run, e.agent, e.result]), [['manual', 'orchestrator', 'pass']]);
+});
+
 test('a catalog with every cited key and valid statuses passes and logs a pass check event', () => {
   const r = check('catalog-complete.tsv');
   assert.equal(r.status, 0, r.stderr + r.stdout);

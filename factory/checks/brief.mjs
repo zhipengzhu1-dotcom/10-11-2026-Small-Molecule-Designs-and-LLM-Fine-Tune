@@ -5,7 +5,7 @@
 //   node factory/checks/brief.mjs [--root <repo>] [--run <id>] [--agent <id>] [--brief <brief.md>]
 //
 // --brief defaults to <root>/research/s1/brief.md. Run and agent default to FACTORY_RUN and
-// FACTORY_AGENT, else agent "orchestrator".
+// FACTORY_AGENT, else run "manual" and agent "orchestrator".
 //
 // A parameter table is a Markdown table whose first header cell is "ID". It must also have the
 // columns paper location, verdict and assumption (matched by name, case-insensitive; other columns
@@ -26,7 +26,7 @@ export const VERDICTS = ['VERIFIED', 'NOT VERIFIED', 'INCONCLUSIVE'];
 const PLACEHOLDER = /^(\?+|tbd|[-–—]+)$/i;
 
 function parseArgs(argv, env = process.env) {
-  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN, agent: env.FACTORY_AGENT || 'orchestrator' };
+  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator' };
   for (let i = 0; i < argv.length; i++) {
     const name = argv[i].replace(/^--/, '');
     if (!['root', 'run', 'agent', 'brief'].includes(name) || i + 1 >= argv.length) {

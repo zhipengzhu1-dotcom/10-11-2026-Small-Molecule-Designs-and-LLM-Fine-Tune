@@ -6,7 +6,8 @@ import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const IMAGE = 'node:24.15.0-alpine';
+// The full Debian image, not alpine: it ships git, which the trail check's tests need.
+const IMAGE = 'node:24.15.0';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const args = ['run', '--rm', '--network', 'none', '-v', `${repo}:/app:ro`, '-w', '/app', IMAGE, 'npm', 'test'];

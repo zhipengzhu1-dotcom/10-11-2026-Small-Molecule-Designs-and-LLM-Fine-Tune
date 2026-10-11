@@ -9,7 +9,7 @@ import { FACTORY, tempRoot } from './helpers.mjs';
 const CHECK = join(FACTORY, 'checks', 'trail.mjs');
 const AUDIT_RUN = 'audit-run';
 
-// The trail check reads git history, so its tests need git. The Docker CI image has none.
+// The trail check reads git history, so its tests need git (the Docker CI image has it).
 const hasGit = spawnSync('git', ['--version']).status === 0;
 const t = (name, fn) => test(name, { skip: !hasGit && 'git is not installed' }, fn);
 
@@ -71,6 +71,16 @@ t('a fully audited, append-only trail with a named reviewer passes and logs a pa
   assert.equal(r.events[0].result, 'pass');
   assert.match(r.events[0].evidence, /2 decision rows audited \(2 ok, 0 superseded\)/);
   assert.match(r.events[0].evidence, /reviewed by qwen3\.5:9b/);
+});
+
+t('with no --run and no FACTORY_RUN, the check files its event under run "manual"', () => {
+  const f = fixture();
+  const env = { ...process.env };
+  for (const k of ['FACTORY_ROOT', 'FACTORY_RUN', 'FACTORY_AGENT', 'CLAUDE_PROJECT_DIR']) delete env[k];
+  const r = spawnSync(process.execPath, [CHECK, '--root', f.root, '--transcripts', f.transcripts], { env, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  const checks = readStream(f.root).filter((e) => e.type === 'check');
+  assert.deepEqual(checks.map((e) => [e.run, e.agent, e.result]), [['manual', 'orchestrator', 'pass']]);
 });
 
 t('a decision row with no audit verdict fails and the evidence names its line', () => {
@@ -160,6 +170,24 @@ t('a review by a Claude model fails because it is not cross-family', () => {
   const r = check(fixture({ review: 'reviewed by claude-opus-5-5\n\n- No flags.\n' }));
   assert.equal(r.status, 1, r.stderr + r.stdout);
   assert.match(r.events[0].evidence, /reviewed by claude-opus-5-5, the same family as the orchestrator/);
+});
+
+t('a row whose phase is not a clean slash path on the log\'s one tree, or that has an empty cell, fails', () => {
+  const bad = [
+    row('2026-10-11T10:10:00Z', 'Project/Big step', 'x', 'y', 'notes/source.md', 'done'),
+    row('2026-10-11T10:11:00Z', 'other/b', 'x', 'y', 'notes/source.md', 'done'),
+    row('2026-10-11T10:12:00Z', 'project/b', 'x', '', 'notes/source.md', 'done'),
+    row('2026-10-11T10:13:00Z', 'start', 'run 2 starts', 'marks its rows', 'session 2', 'open'),
+  ];
+  const audit = AUDIT_HEADER + GOOD_AUDIT.join('')
+    + bad.map((r, i) => row(String(i + 4), r.split('\t')[0], 'ok', '', 'file:notes/source.md', 'x')).join('');
+  const r = check(fixture({ history: [HEADER + ROWS.join('') + bad.join('')], audit }));
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  const ev = r.events[0].evidence;
+  assert.match(ev, /line 4 \(2026-10-11T10:10:00Z\): phase "Project\/Big step" is not a lowercase slash path/);
+  assert.match(ev, /line 5 \(2026-10-11T10:11:00Z\): phase "other\/b" is not under project\//);
+  assert.match(ev, /line 6 \(2026-10-11T10:12:00Z\): empty why/);
+  assert.doesNotMatch(ev, /line 7 /);
 });
 
 t('a log that only grew across its commits passes and says how many versions it compared', () => {
