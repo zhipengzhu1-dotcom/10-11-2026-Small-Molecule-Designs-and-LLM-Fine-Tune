@@ -285,7 +285,11 @@ export function runCheck({ tex, notes }) {
     }
     const p = compare(unit, note);
     problems.push(...p);
-    lines.push(`${p.length ? 'FAIL' : 'PASS'} ${unit.id}`);
+    const rows = dataRows(unit.tabulars.flatMap((t) => t.rows)).length;
+    const basis = unit.tabulars.length === 0 ? 'note found; no tabular'
+      : rows === 0 ? 'note found; tabular has no numeric cells'
+      : `${rows} rows with numbers compared`;
+    lines.push(`${p.length ? 'FAIL' : 'PASS'} ${unit.id} (${basis})`);
   }
   // INCONCLUSIVE is never a pass: it is reported only when nothing failed outright.
   const verdict = problems.length ? 'fail' : unparsed.length ? 'inconclusive' : 'pass';

@@ -46,6 +46,9 @@ test('a matching set of notes passes and records a pass check event', () => {
   assert.equal(e.result, 'pass');
   assert.equal(e.agent, 'checker');
   assert.equal(e.run, 'run-1');
+  // The report says what each PASS rests on, so a note-only pass is not mistaken for a compared table.
+  assert.match(r.stdout, /PASS tab:toy \(3 rows with numbers compared\)/);
+  assert.match(r.stdout, /PASS fig:curve \(note found; no tabular\)/);
 });
 
 test('one wrong cell fails, and the evidence names the table, row and column', () => {
