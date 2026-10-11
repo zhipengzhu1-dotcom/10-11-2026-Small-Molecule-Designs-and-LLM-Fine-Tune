@@ -71,6 +71,25 @@ test('a hook payload missing the agent type records role unknown instead of drop
   assert.deepEqual(events.map((e) => [e.type, e.role]), [['agent.start', 'unknown'], ['agent.stop', 'unknown']]);
 });
 
+// Claude Code's internal side agents (prompt suggestions, /btw) fire SubagentStop with an empty
+// agent_type and never fire SubagentStart. They are not factory agents.
+for (const [label, over] of [['empty', { agent_type: '' }], ['missing', { agent_type: undefined }]]) {
+  test(`a SubagentStop with ${label} agent type for an agent that never started writes nothing`, () => {
+    const root = tempRoot();
+    const r = hook(stop({ ...over, agent_id: 'side1234', last_assistant_message: '', agent_transcript_path: 'C:\\nope\\agent-side1234.jsonl' }), { CLAUDE_PROJECT_DIR: root });
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(readStream(root), []);
+  });
+}
+
+test('a SubagentStop with no agent type still records the stop of an agent that did start', () => {
+  const root = tempRoot();
+  const env = { CLAUDE_PROJECT_DIR: root };
+  assert.equal(hook(start(), env).status, 0);
+  assert.equal(hook(stop({ agent_type: '' }), env).status, 0);
+  assert.deepEqual(readStream(root).map((e) => [e.type, e.role]), [['agent.start', 'general-purpose'], ['agent.stop', 'unknown']]);
+});
+
 test('a final message with no PASS, ISSUES or BLOCKED records status unknown', () => {
   const root = tempRoot();
   assert.equal(hook(stop({ last_assistant_message: 'Done, see the notes.' }), { CLAUDE_PROJECT_DIR: root }).status, 0);

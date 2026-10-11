@@ -4,10 +4,10 @@
 //   factory/agents/<session_id>/<agent_id>.jsonl under CLAUDE_PROJECT_DIR (the main checkout).
 // The run id is the orchestrator's session_id. A field the payload lacks is recorded as "unknown".
 // On SubagentStart it also tells the subagent its ids and the command to write its own events.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { UNKNOWN, defaultRoot, writeEvent } from '../log.mjs';
+import { UNKNOWN, activityFile, defaultRoot, writeEvent } from '../log.mjs';
 
 const ROLE_PARENT = 'orchestrator'; // subagents are spawned by the orchestrator session
 
@@ -101,6 +101,9 @@ function main() {
       break;
     }
     case 'SubagentStop': {
+      // Claude Code's internal side agents (prompt suggestions, /btw) stop with an empty
+      // agent_type and never start. Skip them unless the agent already has an activity file.
+      if (!role && !existsSync(activityFile(root, run, agent))) break;
       const fields = { role, status: stopStatus(payload) };
       if (payload.agent_transcript_path) fields.transcript = payload.agent_transcript_path;
       writeEvent({ root, run, agent, type: 'agent.stop', fields, fillUnknown: true });
