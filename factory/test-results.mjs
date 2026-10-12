@@ -31,7 +31,7 @@ const RESULT_LINE = /^\s*(not ok|ok) \d+ - (.*)$/;
 const DIRECTIVE = /^((?:[^\\#]|\\.)*?)(?: # (SKIP|TODO)\b.*)?$/i;
 
 // Each test in a TAP report, as { name, result }.
-export function parseTap(tap) {
+function parseTap(tap) {
   const tests = [];
   for (const line of tap.split(/\r?\n/)) {
     const m = RESULT_LINE.exec(line);
