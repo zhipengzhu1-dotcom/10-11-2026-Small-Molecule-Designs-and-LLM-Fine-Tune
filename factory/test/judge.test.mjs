@@ -47,6 +47,18 @@ test('the prompt names no relation between the rows', async () => {
   assert.doesNotMatch(requests[0].body.messages[0].content, /\b(supersedes|withdraws|corrects)\b/);
 });
 
+// The merge read (issue #69) asks about a worker's hand-back report rather than a new row.
+test('a later text of kind report is put to the judge as a hand-back report against the standing decision', async () => {
+  const { fetch, requests } = fakeOllama('{"verdict":"contradicts","why":"the report used Claude"}');
+  const report = { text: 'PASS. Graded the disagreements with Claude.', kind: 'report' };
+  assert.deepEqual(await createJudge({ fetch })(EARLIER, report), { verdict: 'contradicts', why: 'the report used Claude' });
+  const prompt = requests[0].body.messages[0].content;
+  assert.match(prompt, /hand-back report/);
+  assert.doesNotMatch(prompt, /NEW decision/);
+  for (const s of [EARLIER.text, EARLIER.why, report.text]) assert.ok(prompt.includes(s), s);
+  assert.ok(prompt.indexOf(EARLIER.text) < prompt.indexOf(report.text), 'the standing decision comes first');
+});
+
 test('an answer that is not a verdict reads as unclear, never as consistent', async () => {
   for (const content of ['maybe', '{"verdict":"replaces"}', '']) {
     const { fetch } = fakeOllama(content);

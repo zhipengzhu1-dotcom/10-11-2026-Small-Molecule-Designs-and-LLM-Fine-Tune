@@ -28,12 +28,16 @@
 //   graph.overdue(now, { run? })  running agents past their role's usual time (graph/sojourn.mjs)
 //   graph.clock(id), .happensBefore(a, b), .unacted(spec?), .lifecycle(spec?)
 //                                 the causal-order overlay (graph/causal.mjs)
+//   graph.writtenTwice(paths?)    files two agents' artifact events wrote: [{ path, agents, writes }]
+//   graph.staleChecks(paths?)     checks that ran before their file's last write:
+//                                 [{ check, name, result, path, write }] (both graph/provenance.mjs)
 //
 // Overlays (argumentation here, the others in graph/) live here or in sibling files, without
 // changing the interface.
 import { claimState, parseRelations } from './claim.mjs';
 import { causalOrder } from './graph/causal.mjs';
 import { ticketsNamed } from './graph/names.mjs';
+import { provenanceOverlay } from './graph/provenance.mjs';
 import { overdue } from './graph/sojourn.mjs';
 import { textOverlay } from './graph/text.mjs';
 import { workflow } from './graph/workflow.mjs';
@@ -113,6 +117,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   graph.completion = () => replay().completion;
   graph.overdue = (now, opts) => overdue(events, now, opts);
   Object.assign(graph, causalOrder(stream));
+  Object.assign(graph, provenanceOverlay(graph));
   return graph;
 }
 
