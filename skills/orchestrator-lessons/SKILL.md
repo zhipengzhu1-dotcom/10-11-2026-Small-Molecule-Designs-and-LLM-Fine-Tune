@@ -30,6 +30,8 @@ Notes and gitignored source data go somewhere stable: the main checkout's ignore
 
 Every push ask carries a recommendation and its risks. Ask about a one-off push and a standing push policy as two separate questions. A yes covers only the one asked.
 
+A push or PR gets no decision row: its commit would land after the push and strand. Git and GitHub hold the record, and the trail check rejects such rows.
+
 ## Fan-out (steps 4 and 6)
 
 **Smoke-test** each new kind of deliverable. Run one agent, confirm its write reached disk, then launch the rest. Claude Code refuses subagent writes to report-like files: `summary.md` was refused, while `notes.md`, `scout.md` and `review-a.md` went through. When a write is refused, rename the deliverable for the whole batch. If renaming fails, have one writer subagent take the bodies, so they stay out of the orchestrator's context.

@@ -29,6 +29,8 @@
 //   - a row has an empty cell, or a phase other than `start` that is not a lowercase slash path
 //     under the log's one root (the first segment of its first such phase), so the phases form
 //     one tree
+//   - a row from 2026-10-12 on records a push or PR (phase ending /push or /pr): git and GitHub
+//     hold that record, and the row would land in a commit after the push
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -158,6 +160,12 @@ function verdictProblems(v, row, log, opts) {
 const COLUMNS = ['ts', 'phase', 'decision', 'why', 'evidence', 'result'];
 const PHASE = /^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)*$/;
 
+// A row recording a push or PR is committed after the push, so it always misses it and strands
+// a commit (e75baac needed its own PR, #39). Git and GitHub already hold that record. The rows
+// logged before this rule (lines 21, 71, 75, 76 of the s1 log) stay, since the log is append-only.
+const REMOTE = /\/(push|pr)$/;
+const REMOTE_RULE_FROM = '2026-10-12';
+
 // What is wrong with a row's own cells. `start` rows mark where a run's rows begin
 // (show-me-your-work) and sit outside the tree.
 function rowProblems(row, treeRoot) {
@@ -166,6 +174,9 @@ function rowProblems(row, treeRoot) {
   if (!phase || phase === 'start') return problems;
   if (!PHASE.test(phase)) problems.push(`phase "${phase}" is not a lowercase slash path`);
   else if (phase.split('/')[0] !== treeRoot) problems.push(`phase "${phase}" is not under ${treeRoot}/`);
+  if (REMOTE.test(phase) && row.ts >= REMOTE_RULE_FROM) {
+    problems.push(`phase "${phase}" records a push or PR; git and GitHub hold that record, so log no decision row for it`);
+  }
   return problems;
 }
 

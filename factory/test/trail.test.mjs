@@ -220,6 +220,24 @@ t('a row whose phase is not a clean slash path on the log\'s one tree, or that h
   assert.doesNotMatch(ev, /line 7 /);
 });
 
+t('a push or PR row fails, since its commit always lands after the push it records; rows from before the rule stay', () => {
+  const rows = [
+    row('2026-10-11T23:08:09Z', 'project/implement/push', 'pushed', 'asked', 'commit abc', 'pushed'),
+    row('2026-10-12T05:00:00Z', 'project/implement/push', 'pushed', 'asked', 'commit abc', 'pushed'),
+    row('2026-10-12T05:01:00Z', 'project/implement/pr', 'opened PR #9', 'asked', 'PR #9', 'open'),
+    row('2026-10-12T05:02:00Z', 'project/implement/pushback', 'kept 3 epochs', 'paper', 'notes/source.md', 'kept'),
+  ];
+  const audit = AUDIT_HEADER + GOOD_AUDIT.join('')
+    + rows.map((r, i) => row(String(i + 4), r.split('\t')[0], 'ok', '', 'file:notes/source.md', 'x')).join('');
+  const r = check(fixture({ history: [HEADER + ROWS.join('') + rows.join('')], audit }));
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  const ev = r.events[0].evidence;
+  assert.match(ev, /line 5 \(2026-10-12T05:00:00Z\): phase "project\/implement\/push" records a push or PR; git and GitHub hold that record, so log no decision row for it/);
+  assert.match(ev, /line 6 \(2026-10-12T05:01:00Z\): phase "project\/implement\/pr" records a push or PR/);
+  assert.doesNotMatch(ev, /line 4 /);
+  assert.doesNotMatch(ev, /line 7 /);
+});
+
 t('a log that only grew across its commits passes and says how many versions it compared', () => {
   const r = check(fixture({ history: [HEADER + ROWS[0], HEADER + ROWS.join('')] }));
   assert.equal(r.status, 0, r.stderr + r.stdout);
