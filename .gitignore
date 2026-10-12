@@ -9,3 +9,5 @@ research/refs/*/raw/*
 !research/refs/gao2024omnimathuniversalolympiadlevel/raw/2410.07985.pdf
 !research/refs/rein2023gpqagraduatelevelgoogleproofqa/raw/2311.12022.pdf
 !research/refs/wu2024inference/raw/2408.00724.pdf
+# Run marker: local state of the active orchestrated run (factory/run-marker.mjs).
+factory/run.json

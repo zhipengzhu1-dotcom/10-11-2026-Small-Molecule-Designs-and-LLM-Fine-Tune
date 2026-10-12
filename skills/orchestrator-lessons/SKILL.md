@@ -26,6 +26,8 @@ Keep every binding constraint in one shared **brief**, in the user's exact words
 
 Agent worktrees branch from the orchestrator's checkout (`worktree.baseRef: head` in `.claude/settings.json`), so keep the main checkout on the integration branch while agents run. `.worktreeinclude` copies gitignored source data into each new worktree, so agents use repo-relative paths. Data an agent needs that the file doesn't list gets a line there before the fan-out. Notes go in a fixed folder outside the session scratchpad, linked from the status note.
 
+The lifecycle hooks log only the run the marker names. Before the fan-out, run `node factory/run-marker.mjs start --run <session-id> --branch <integration branch>` in the main checkout, and run `node factory/run-marker.mjs stop` at close-out.
+
 ## Push asks (step 3)
 
 Every push ask carries a recommendation and its risks. Ask about a one-off push and a standing push policy as two separate questions. A yes covers only the one asked.

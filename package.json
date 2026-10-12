@@ -19,6 +19,7 @@
     "check:references": "node factory/checks/references.mjs",
     "check:brief": "node factory/checks/brief.mjs",
     "check:trail": "node factory/checks/trail.mjs",
+    "check:ticket": "node factory/checks/ticket.mjs",
     "check:tables": "node factory/checks/tables.mjs --tex research/s1/raw/arxiv/latex/main.tex --notes research/s1/tables --notes research/s1/figures"
   }
 }
