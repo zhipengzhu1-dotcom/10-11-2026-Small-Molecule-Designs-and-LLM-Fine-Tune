@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { frontier, repoOf } from '../frontier.mjs';
-import { FACTORY } from './helpers.mjs';
+import { readStream } from '../read.mjs';
+import { FACTORY, marker, tempRoot } from './helpers.mjs';
 
 const RESPONSE = readFileSync(join(FACTORY, 'test', 'fixtures', 'frontier', 'response.json'), 'utf8');
 const REMOTE = 'https://github.com/zhipengzhu1-dotcom/10-11-2026-Small-Molecule-Designs-and-LLM-Fine-Tune.git';
@@ -29,6 +30,33 @@ test('frontier sorts each child of the map by state, labels, assignee and open b
     [44, 'ready', []],
   ]);
   assert.deepEqual(ready, [44]);
+});
+
+test('in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its state and open blockers', () => {
+  const root = tempRoot();
+  assert.equal(marker(['start', '--root', root, '--run', 'run-1', '--branch', 'integ']).status, 0);
+  frontier({ number: 1, remote: REMOTE, gh: () => RESPONSE, root });
+
+  const events = readStream(root);
+  assert.equal(events.length, 1);
+  const [e] = events;
+  assert.deepEqual({ run: e.run, agent: e.agent, type: e.type, spec: e.spec }, { run: 'run-1', agent: 'orchestrator', type: 'ticket.graph', spec: 1 });
+  assert.deepEqual(e.tickets, [
+    { number: 2, state: 'CLOSED', status: 'closed', blockers: [] },
+    { number: 14, state: 'OPEN', status: 'blocked', blockers: [44] },
+    { number: 18, state: 'OPEN', status: 'human', blockers: [] },
+    { number: 26, state: 'OPEN', status: 'spec', blockers: [] },
+    { number: 30, state: 'OPEN', status: 'assigned', blockers: [] },
+    { number: 31, state: 'OPEN', status: 'not-ready', blockers: [] },
+    { number: 44, state: 'OPEN', status: 'ready', blockers: [] },
+  ]);
+});
+
+test('with no run marked, the frontier writes nothing', () => {
+  const root = tempRoot();
+  const { ready } = frontier({ number: 1, remote: REMOTE, gh: () => RESPONSE, root });
+  assert.deepEqual(ready, [44]);
+  assert.deepEqual(readStream(root), []);
 });
 
 test('repoOf reads owner and repo from an https or ssh GitHub remote', () => {

@@ -9,10 +9,10 @@ import { FACTORY, tempRoot } from './helpers.mjs';
 const CHECK = join(FACTORY, 'checks', 'brief.mjs');
 const FIXTURES = join(FACTORY, 'test', 'fixtures', 'brief');
 
-function check(brief) {
+function check(brief, extra = []) {
   const root = tempRoot();
   const r = spawnSync(process.execPath, [CHECK, '--root', root, '--run', 'run-1', '--agent', 'briefer',
-    '--brief', join(FIXTURES, brief)], { encoding: 'utf8' });
+    '--brief', join(FIXTURES, brief), ...extra], { encoding: 'utf8' });
   const events = readStream(root).filter((e) => e.type === 'check');
   return { ...r, lines: r.stdout.replace(/\r?\n$/, '').split(/\r?\n/), events };
 }
@@ -57,4 +57,26 @@ test('a passing check still prints its evidence on one line', () => {
   const r = check('good.md');
   assert.equal(r.status, 0, r.stderr + r.stdout);
   assert.deepEqual(r.lines, [`brief: pass: ${r.events[0].evidence}`]);
+});
+
+test('a check run for a ticket records the ticket number on its event', () => {
+  for (const ticket of ['59', '#59']) {
+    const r = check('good.md', ['--ticket', ticket]);
+    assert.equal(r.status, 0, r.stderr + r.stdout);
+    assert.equal(r.events.length, 1);
+    assert.equal(r.events[0].ticket, 59);
+  }
+});
+
+test('a check run with no ticket records none', () => {
+  const r = check('good.md');
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.equal('ticket' in r.events[0], false);
+});
+
+test('a ticket that is not an issue number is a usage error, and no event is written', () => {
+  const r = check('good.md', ['--ticket', 'next']);
+  assert.equal(r.status, 2, r.stderr + r.stdout);
+  assert.match(r.stderr, /ticket/);
+  assert.deepEqual(r.events, []);
 });
