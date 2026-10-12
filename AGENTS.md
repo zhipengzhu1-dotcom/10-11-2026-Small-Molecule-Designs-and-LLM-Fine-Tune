@@ -17,6 +17,7 @@ CI runs in a Docker container on this machine (Docker Desktop), never on GitHub 
 | Agent worktrees start at the orchestrator's branch, with the source data | `worktree.baseRef` in `.claude/settings.json`, `.worktreeinclude` |
 | Long text goes through the Write tool and `--body-file`, not a heredoc | PreToolUse hook `factory/hooks/long-heredoc.mjs` |
 | A ticket names its deliverables so subagent writes pass (`notes.md`, never a summary or report file) | `npm run check:ticket -- --body <file>` (or stdin); CI runs it on `docs/agents/ticket-template.md` |
+| Subagents don't write shared git config: `git config` writes need `--worktree`; anything else is reported for approval | PreToolUse hook `factory/hooks/git-config.mjs` (Bash and PowerShell) |
 
 ## Agent skills
 
