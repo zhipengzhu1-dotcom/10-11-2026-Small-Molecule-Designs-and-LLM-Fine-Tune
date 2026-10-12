@@ -19,7 +19,7 @@ import { join } from 'node:path';
 import { checkCli, shown } from './check.mjs';
 
 // Claim verdicts from issue #1, written exactly as here.
-export const VERDICTS = ['VERIFIED', 'NOT VERIFIED', 'INCONCLUSIVE'];
+const VERDICTS = ['VERIFIED', 'NOT VERIFIED', 'INCONCLUSIVE'];
 
 // A location that stands in for one not yet found: ?, TBD, or a lone dash of any kind.
 const PLACEHOLDER = /^(\?+|tbd|[-–—]+)$/i;
@@ -38,7 +38,7 @@ const COLUMNS = { location: 'paper location', verdict: 'verdict', assumption: 'a
 
 // Reads every table whose first header cell is "ID". Returns its rows as
 // { id, location, verdict, assumption, line } and a problem for each such table missing a column.
-export function parseBrief(text) {
+function parseBrief(text) {
   const lines = text.split(/\r?\n/);
   const rows = [];
   const problems = [];
@@ -76,7 +76,7 @@ function rowProblems(row) {
   return problems;
 }
 
-export function runCheck(opts) {
+function runCheck(opts) {
   const brief = opts.brief ?? join(opts.root, 'research', 's1', 'brief.md');
   const { rows, problems } = parseBrief(readFileSync(brief, 'utf8'));
   if (rows.length === 0 && problems.length === 0) problems.push('no parameter rows found');

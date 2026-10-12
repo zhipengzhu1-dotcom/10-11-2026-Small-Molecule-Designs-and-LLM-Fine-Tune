@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
 
-export function markerFile(root) {
+function markerFile(root) {
   return join(root, 'factory', 'run.json');
 }
 

@@ -17,7 +17,13 @@ import { cli } from '../cli.mjs';
 import { defaultRoot, writeEvent } from '../log.mjs';
 import { defaultRun } from '../run-marker.mjs';
 
-const EXIT = { pass: 0, fail: 1, inconclusive: 3 };
+// Every verdict a check can reach, with the `result` its event records and its exit code. The
+// event schema allows only pass or fail, so inconclusive is recorded as a fail.
+const VERDICTS = {
+  pass: { result: 'pass', exit: 0 },
+  fail: { result: 'fail', exit: 1 },
+  inconclusive: { result: 'fail', exit: 3 },
+};
 
 export function checkCli(url, { name, usage, options = {} }, run) {
   const all = { ...options, root: 'string', run: 'string', agent: 'string' };
@@ -33,12 +39,14 @@ export function checkCli(url, { name, usage, options = {} }, run) {
 // and the exit code.
 function report(name, opts, { evidence, problems = [], unchecked = [], lines = [] }) {
   const verdict = problems.length ? 'fail' : unchecked.length ? 'inconclusive' : 'pass';
-  const fields = { name, result: verdict === 'pass' ? 'pass' : 'fail', evidence };
-  if (verdict === 'inconclusive') fields.verdict = verdict;
+  const { result, exit } = VERDICTS[verdict];
+  const fields = { name, result, evidence };
+  // The event's result can't tell an inconclusive check from a failed one, so it names its verdict.
+  if (verdict !== result) fields.verdict = verdict;
   writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields });
   for (const line of lines) process.stdout.write(line + '\n');
   process.stdout.write(`${name}: ${verdict}: ${evidence}\n`);
-  return EXIT[verdict];
+  return exit;
 }
 
 // A path inside the repo is shown relative to it; anything else (a test fixture) in full.

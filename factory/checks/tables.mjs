@@ -31,7 +31,7 @@ function numbers(text) {
 
 // ---------- LaTeX ----------
 
-export class ParseError extends Error {}
+class ParseError extends Error {}
 
 function lineOf(text, index) {
   return text.slice(0, index).split('\n').length;
@@ -267,7 +267,7 @@ function compare(unit, note) {
   return problems;
 }
 
-export function runCheck({ tex, notes }) {
+function runCheck({ tex, notes }) {
   const units = extract(readFileSync(tex, 'utf8'));
   const allNotes = notes.flatMap(markdownFiles).map(parseNote);
   const lines = [];

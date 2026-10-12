@@ -3,10 +3,10 @@
 // per line. Audit agents, the context meter and `npm run decide` read them through this module
 // instead of each writing its own parser.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cli, UsageError } from './cli.mjs';
 
 // Claude Code keeps a project's transcripts in ~/.claude/projects/<slug>, where the slug is the
 // checkout's path with every character other than a letter or digit turned into "-".
@@ -20,17 +20,6 @@ export function projectTranscripts(root, home = homedir()) {
   const common = spawnSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' });
   const main = common.status === 0 ? dirname(common.stdout.trim()) : root;
   return transcriptsDir(resolve(main), home);
-}
-
-// The id of the most recently written session transcript in `dir`, or null. Subagent transcripts
-// sit in <session>/subagents/ and are not sessions.
-export function latestSession(dir) {
-  if (!existsSync(dir)) return null;
-  const sessions = readdirSync(dir, { withFileTypes: true })
-    .filter((d) => d.isFile() && d.name.endsWith('.jsonl'))
-    .map((d) => ({ id: d.name.slice(0, -6), mtime: statSync(join(dir, d.name)).mtimeMs }))
-    .sort((a, b) => b.mtime - a.mtime);
-  return sessions[0]?.id ?? null;
 }
 
 // Every entry of a transcript, in file order. A line that is not JSON (the last line while
@@ -80,20 +69,15 @@ export function digest(file) {
   return lines;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  const args = process.argv.slice(2);
-  const usage = args.includes('--usage');
-  const target = args.find((a) => a !== '--usage');
-  if (!target) {
-    process.stderr.write('usage: node factory/transcript.mjs <session-id | transcript.jsonl> [--usage]\n');
-    process.exit(2);
-  }
+cli(import.meta.url, {
+  usage: 'node factory/transcript.mjs <session-id | transcript.jsonl> [--usage]',
+  options: { usage: 'flag' },
+  positionals: true,
+}, ({ positionals: [target, ...extra], usage }) => {
+  if (!target) throw new UsageError('missing session id or transcript file');
+  if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
   // A bare session id is looked up in this project's transcripts folder.
   const file = target.endsWith('.jsonl') ? target : join(projectTranscripts(process.cwd()), `${target}.jsonl`);
-  if (!existsSync(file)) {
-    process.stderr.write(`transcript.mjs: no transcript at ${file}\n`);
-    process.exit(2);
-  }
+  if (!existsSync(file)) throw new UsageError(`no transcript at ${file}`);
   process.stdout.write(usage ? `${JSON.stringify(latestUsage(file))}\n` : digest(file).map((l) => `${l}\n`).join(''));
-}
+});

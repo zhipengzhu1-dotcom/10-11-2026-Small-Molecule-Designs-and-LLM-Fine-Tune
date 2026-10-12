@@ -1,10 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { digest, latestSession, latestUsage, transcriptsDir } from '../transcript.mjs';
-import { FACTORY, tempRoot } from './helpers.mjs';
+import { digest, latestUsage, transcriptsDir } from '../transcript.mjs';
+import { FACTORY } from './helpers.mjs';
 
 const SESSION = join(FACTORY, 'test', 'fixtures', 'transcript-session.jsonl');
 
@@ -26,19 +25,6 @@ test('transcriptsDir is the project folder Claude Code names after the checkout 
   );
 });
 
-test('latestSession is the most recently written session transcript, ignoring subagent folders', () => {
-  const dir = tempRoot();
-  const old = join(dir, 'aaaa.jsonl');
-  const recent = join(dir, 'bbbb.jsonl');
-  writeFileSync(old, '{}\n');
-  writeFileSync(recent, '{}\n');
-  mkdirSync(join(dir, 'bbbb', 'subagents'), { recursive: true });
-  writeFileSync(join(dir, 'bbbb', 'subagents', 'agent-x.jsonl'), '{}\n');
-  utimesSync(old, new Date('2026-10-12T05:00:00Z'), new Date('2026-10-12T05:00:00Z'));
-  utimesSync(recent, new Date('2026-10-12T04:00:00Z'), new Date('2026-10-12T04:00:00Z'));
-  assert.equal(latestSession(dir), 'aaaa');
-  assert.equal(latestSession(join(dir, 'missing')), null);
-});
 
 test('the CLI prints the digest of a transcript file, or its latest usage with --usage', () => {
   const run = (...args) => spawnSync(process.execPath, [join(FACTORY, 'transcript.mjs'), ...args], { encoding: 'utf8' });

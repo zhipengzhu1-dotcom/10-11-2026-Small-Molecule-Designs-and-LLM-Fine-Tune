@@ -25,7 +25,7 @@ export function liveDataUses(text) {
   return text.split(/\r?\n/).map((t, i) => ({ line: i + 1, text: t.trim() })).filter((l) => LIVE_DATA.some((re) => re.test(l.text)));
 }
 
-export function breaches(root) {
+function breaches(root) {
   const out = [];
   if (existsSync(join(root, '.github', 'workflows'))) {
     out.push('.github/workflows/ exists: CI runs in Docker on this machine (npm run ci), never on a hosted runner; delete it');
