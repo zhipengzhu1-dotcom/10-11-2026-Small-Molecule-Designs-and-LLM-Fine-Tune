@@ -1,0 +1,99 @@
+#!/usr/bin/env node
+// Claude Code session transcripts (~/.claude/projects/<slug>/<session-id>.jsonl): one JSON entry
+// per line. Audit agents, the context meter and `npm run decide` read them through this module
+// instead of each writing its own parser.
+import { spawnSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Claude Code keeps a project's transcripts in ~/.claude/projects/<slug>, where the slug is the
+// checkout's path with every character other than a letter or digit turned into "-".
+export function transcriptsDir(checkout, home = homedir()) {
+  return join(home, '.claude', 'projects', checkout.replace(/[^A-Za-z0-9]/g, '-'));
+}
+
+// The transcripts folder of the main checkout that holds `root`. Sessions run in the main checkout,
+// so from a git worktree this is the folder of the checkout holding the shared .git directory.
+export function projectTranscripts(root, home = homedir()) {
+  const common = spawnSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' });
+  const main = common.status === 0 ? dirname(common.stdout.trim()) : root;
+  return transcriptsDir(resolve(main), home);
+}
+
+// The id of the most recently written session transcript in `dir`, or null. Subagent transcripts
+// sit in <session>/subagents/ and are not sessions.
+export function latestSession(dir) {
+  if (!existsSync(dir)) return null;
+  const sessions = readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isFile() && d.name.endsWith('.jsonl'))
+    .map((d) => ({ id: d.name.slice(0, -6), mtime: statSync(join(dir, d.name)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime);
+  return sessions[0]?.id ?? null;
+}
+
+// Every entry of a transcript, in file order. A line that is not JSON (the last line while
+// Claude Code is still writing it) is skipped.
+export function readTranscript(file) {
+  const entries = [];
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    try {
+      entries.push(JSON.parse(line));
+    } catch {
+      // half-written or blank line
+    }
+  }
+  return entries;
+}
+
+// A model reply, not an API error or other placeholder Claude Code writes in its place.
+const isReply = (e) => e?.type === 'assistant' && e.message?.usage && !e.isApiErrorMessage && e.message.model !== '<synthetic>';
+
+// The token usage of the session's latest assistant message ({ input_tokens,
+// cache_creation_input_tokens, cache_read_input_tokens, output_tokens }), or null if none.
+export function latestUsage(file) {
+  return readTranscript(file).findLast(isReply)?.message.usage ?? null;
+}
+
+const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();
+
+// What a tool call did, in one line: a shell command as typed, any other input as JSON.
+function toolInput(input = {}) {
+  return oneLine(typeof input.command === 'string' ? input.command : JSON.stringify(input));
+}
+
+// The session as text, one "<timestamp> <who>: <text>" line per user message, assistant text block
+// and tool call. Tool results are left out. Audit agents read this, and the timestamps are what a
+// transcript:<session>@<time> pointer cites.
+export function digest(file) {
+  const lines = [];
+  for (const e of readTranscript(file)) {
+    if (e?.type !== 'user' && e?.type !== 'assistant') continue;
+    const content = e.message?.content;
+    const blocks = typeof content === 'string' ? [{ type: 'text', text: content }] : Array.isArray(content) ? content : [];
+    for (const b of blocks) {
+      if (b?.type === 'text' && oneLine(b.text)) lines.push(`${e.timestamp} ${e.type}: ${oneLine(b.text)}`);
+      else if (b?.type === 'tool_use') lines.push(`${e.timestamp} tool ${b.name}: ${toolInput(b.input)}`);
+    }
+  }
+  return lines;
+}
+
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  const args = process.argv.slice(2);
+  const usage = args.includes('--usage');
+  const target = args.find((a) => a !== '--usage');
+  if (!target) {
+    process.stderr.write('usage: node factory/transcript.mjs <session-id | transcript.jsonl> [--usage]\n');
+    process.exit(2);
+  }
+  // A bare session id is looked up in this project's transcripts folder.
+  const file = target.endsWith('.jsonl') ? target : join(projectTranscripts(process.cwd()), `${target}.jsonl`);
+  if (!existsSync(file)) {
+    process.stderr.write(`transcript.mjs: no transcript at ${file}\n`);
+    process.exit(2);
+  }
+  process.stdout.write(usage ? `${JSON.stringify(latestUsage(file))}\n` : digest(file).map((l) => `${l}\n`).join(''));
+}
