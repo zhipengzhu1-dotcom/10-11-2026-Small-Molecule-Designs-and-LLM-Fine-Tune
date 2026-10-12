@@ -15,6 +15,8 @@ import { defaultRun } from './run-marker.mjs';
 
 // The API contract from issue #1. Dashboards depend on it. Its deliberate departures (parent,
 // decision run, legacy transcript) are listed under "Event contract choices" in CONTEXT.md.
+// Optional fields pass through as given: the lifecycle hook adds `report` and `report_truncated`
+// to agent.stop (spec #52, CONTEXT.md).
 const SCHEMA = {
   'agent.start': { required: ['role', 'parent'] },
   'agent.stop': { required: ['role', 'status'], enums: { status: ['PASS', 'ISSUES', 'BLOCKED'] } },
