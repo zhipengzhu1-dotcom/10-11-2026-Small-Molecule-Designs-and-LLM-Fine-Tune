@@ -137,3 +137,48 @@ test('a check event written with ticket=#59 records ticket 59; a ticket that is 
   assert.match(bad.stderr, /ticket must be an issue number/);
   assert.equal(readStream(root).length, 1);
 });
+
+// A challenge is a doubt the orchestrator raises against a row or event (issue #58).
+const challenge = (root, ...pairs) =>
+  write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge', ...pairs]);
+
+test('a well-formed challenge is written with its kind, rebut by default, and its ticket as a number', () => {
+  const root = tempRoot();
+  const a = challenge(root, 'id=c1', 'target=row:21', 'why=L71 withdrew it in prose only');
+  assert.equal(a.status, 0, a.stderr);
+  const b = challenge(root, 'id=c2', 'target=event:run-1/worker-a:3', 'kind=undercut', 'why=the check ran before the edit', 'ticket=#58');
+  assert.equal(b.status, 0, b.stderr);
+  const c = challenge(root, 'id=c3', 'target=file:factory/log.mjs:10-12', 'kind=undermine', 'why=the cited lines moved');
+  assert.equal(c.status, 0, c.stderr);
+  assert.deepEqual(readStream(root).map(({ ts: _, ...e }) => e), [
+    { run: 'run-1', agent: 'orchestrator', type: 'challenge', id: 'c1', target: 'row:21', kind: 'rebut', why: 'L71 withdrew it in prose only' },
+    { run: 'run-1', agent: 'orchestrator', type: 'challenge', id: 'c2', target: 'event:run-1/worker-a:3', kind: 'undercut', why: 'the check ran before the edit', ticket: 58 },
+    { run: 'run-1', agent: 'orchestrator', type: 'challenge', id: 'c3', target: 'file:factory/log.mjs:10-12', kind: 'undermine', why: 'the cited lines moved' },
+  ]);
+});
+
+test('a challenge whose target does not parse, or is prose, is refused and nothing is written', () => {
+  const root = tempRoot();
+  for (const [target, error] of [
+    ['row:L21', /target row:L21 is not a decision row; write row:<line number>/],
+    ['event:run-1:3', /target event:run-1:3 is not an event; write event:<run>\/<agent>:<line>/],
+    ['doc:x', /target unknown pointer doc:x/],
+    ['line 21', /target line 21 is not a pointer, row or event/],
+  ]) {
+    const r = challenge(root, 'id=c1', `target=${target}`, 'why=w');
+    assert.equal(r.status, 2, target);
+    assert.match(r.stderr, error);
+  }
+  assert.deepEqual(readStream(root), []);
+});
+
+test('a challenge of an unknown kind, or with an id that is not a plain name, is refused', () => {
+  const root = tempRoot();
+  const a = challenge(root, 'id=c1', 'target=row:21', 'kind=attack', 'why=w');
+  assert.equal(a.status, 2);
+  assert.match(a.stderr, /field kind must be one of rebut, undermine, undercut; got attack/);
+  const b = challenge(root, 'id=c 1', 'target=row:21', 'why=w');
+  assert.equal(b.status, 2);
+  assert.match(b.stderr, /challenge: id c 1 is not a plain name/);
+  assert.deepEqual(readStream(root), []);
+});
