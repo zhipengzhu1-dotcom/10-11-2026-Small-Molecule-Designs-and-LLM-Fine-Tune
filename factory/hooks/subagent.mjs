@@ -11,7 +11,9 @@ import { fileURLToPath } from 'node:url';
 import { UNKNOWN, activityFile, defaultRoot, writeEvent } from '../log.mjs';
 import { readMarker } from '../run-marker.mjs';
 
-const PARENT = 'orchestrator'; // every subagent's parent: the orchestrator session spawns them all
+// The payload has no parent field. Claude Code fires these hooks only for agents the orchestrator
+// session spawns, never for one a subagent spawns, so every agent recorded here is its child.
+const PARENT = 'orchestrator';
 
 // An id safe as a file name: characters outside [A-Za-z0-9._-] become _, leading punctuation goes,
 // and a missing or emptied id is "unknown".
@@ -113,9 +115,8 @@ function main() {
       // Claude Code's internal side agents (prompt suggestions, /btw) stop with an empty
       // agent_type and never start. Skip them unless the agent already has an activity file.
       if (!role && !existsSync(activityFile(root, run, agent))) break;
-      const fields = { role, status: stopStatus(payload) };
-      if (payload.agent_transcript_path) fields.transcript = payload.agent_transcript_path;
-      writeEvent({ root, run, agent, type: 'agent.stop', fields, fillUnknown: true });
+      // No transcript field: the contract doesn't list one, and the path follows from run and agent.
+      writeEvent({ root, run, agent, type: 'agent.stop', fields: { role, status: stopStatus(payload) }, fillUnknown: true });
       break;
     }
     default:

@@ -81,6 +81,9 @@ test('after the orchestrator clears the run marker, the hooks write nothing', ()
   assert.deepEqual(readStream(root).map((e) => e.type), ['agent.start']);
 });
 
+// The events carry the contract's fields and nothing else (issue #1). The parent is always the
+// orchestrator: Claude Code fires SubagentStart and SubagentStop only for agents the orchestrator
+// session spawns, never for an agent a subagent spawns (issue #21).
 test('SubagentStart then SubagentStop record agent.start and agent.stop for that agent in the stream', () => {
   const root = runRoot();
   const env = { CLAUDE_PROJECT_DIR: root };
@@ -90,10 +93,7 @@ test('SubagentStart then SubagentStop record agent.start and agent.stop for that
   const events = readStream(root);
   assert.deepEqual(events.map(strip), [
     { run: SESSION, agent: 'a1b2c3d4e5f6', type: 'agent.start', role: 'general-purpose', parent: 'orchestrator' },
-    {
-      run: SESSION, agent: 'a1b2c3d4e5f6', type: 'agent.stop', role: 'general-purpose', status: 'PASS',
-      transcript: stop().agent_transcript_path,
-    },
+    { run: SESSION, agent: 'a1b2c3d4e5f6', type: 'agent.stop', role: 'general-purpose', status: 'PASS' },
   ]);
 });
 
