@@ -16,6 +16,7 @@ CI runs in a Docker container on this machine (Docker Desktop), never on GitHub 
 | No decision row for a push or PR | `npm run check:trail` |
 | Agent worktrees start at the orchestrator's branch, with the source data | `worktree.baseRef` in `.claude/settings.json`, `.worktreeinclude` |
 | Long text goes through the Write tool and `--body-file`, not a heredoc | PreToolUse hook `factory/hooks/long-heredoc.mjs` |
+| Subagents don't write shared git config: `git config` writes need `--worktree`; anything else is reported for approval | PreToolUse hook `factory/hooks/git-config.mjs` (Bash and PowerShell) |
 
 ## Agent skills
 
