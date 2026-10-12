@@ -22,11 +22,11 @@ import { readCatalog } from './references.mjs';
 // "Apache-2.0 (license of the source repo ...)". CC BY-NC, CC BY-ND and the rest do not match.
 const ALLOWED = [/^CC[- ]BY(?:-SA)?(?:[- ]v?\d+(?:\.\d+)?)?$/i, /^CC0(?:[- ]v?1\.0)?$/i, /^Apache[- ]2\.0$/i, /^MIT$/i];
 
-export function licenseId(cell) {
+function licenseId(cell) {
   return cell.replace(/\s*\(.*$/, '').trim();
 }
 
-export function allowed(cell) {
+function allowed(cell) {
   const id = licenseId(cell);
   return ALLOWED.some((re) => re.test(id));
 }
@@ -57,7 +57,7 @@ function committedRaw(root) {
 // is exempt, so a third-party README beside it is still checked.
 const OWN_WORK = 'own work';
 
-export function runCheck(opts) {
+function runCheck(opts) {
   const catalog = opts.catalog ?? join(opts.root, 'research', 'refs', 'catalog.tsv');
   const list = opts.licenses ?? join(opts.root, 'research', 'licenses.tsv');
   const listed = existsSync(list) ? readCatalog(readFileSync(list, 'utf8')) : [];
