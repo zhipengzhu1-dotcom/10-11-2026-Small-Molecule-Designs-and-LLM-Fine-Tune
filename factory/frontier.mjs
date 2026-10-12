@@ -15,6 +15,7 @@
 // The frontier is the ready children, in map order. Needs `gh` logged in.
 import { spawnSync } from 'node:child_process';
 import { cli, UsageError } from './cli.mjs';
+import { git } from './git.mjs';
 
 const QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
@@ -69,9 +70,9 @@ export function frontier({ number, remote, gh }) {
   return { children, ready: children.filter((c) => c.status === 'ready').map((c) => c.number) };
 }
 
-function run(cmd, args) {
-  const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 16 << 20 });
-  if (r.error || r.status !== 0) throw new Error(`${cmd} ${args[0]} failed: ${r.error?.message ?? r.stderr.trim()}`);
+function gh(args) {
+  const r = spawnSync('gh', args, { encoding: 'utf8', maxBuffer: 16 << 20 });
+  if (r.error || r.status !== 0) throw new Error(`gh ${args[0]} failed: ${r.error?.message ?? r.stderr.trim()}`);
   return r.stdout;
 }
 
@@ -82,8 +83,8 @@ cli(import.meta.url, {
 }, ({ positionals: [number, ...extra], json }) => {
   if (!/^[1-9]\d*$/.test(number ?? '')) throw new UsageError(number ? `not an issue number: ${number}` : 'missing map issue number');
   if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
-  const remote = run('git', ['remote', 'get-url', 'origin']);
-  const result = frontier({ number: Number(number), remote, gh: (a) => run('gh', a) });
+  const remote = git('.', 'remote', 'get-url', 'origin');
+  const result = frontier({ number: Number(number), remote, gh });
   if (json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;

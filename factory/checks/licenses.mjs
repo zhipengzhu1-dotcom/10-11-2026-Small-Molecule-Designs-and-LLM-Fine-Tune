@@ -11,9 +11,9 @@
 // paper's citations, so raw files that are not cited references (dataset cards, the repo's own
 // provenance notes) are listed by hand in research/licenses.tsv; there, "own work" marks a file
 // the repo wrote itself and exempts that exact path.
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, join, posix } from 'node:path';
+import { git } from '../git.mjs';
 import { checkCli, shown } from './check.mjs';
 import { readCatalog } from './references.mjs';
 
@@ -48,9 +48,7 @@ function textOf(root, path) {
 
 // Files git tracks under any research/**/raw/ folder, as repo-relative paths.
 function committedRaw(root) {
-  const r = spawnSync('git', ['-C', root, 'ls-files', '-z', '--', 'research'], { encoding: 'utf8' });
-  if (r.status !== 0) throw new Error(`git ls-files failed in ${root}: ${r.stderr.trim()}`);
-  return r.stdout.split('\0').filter((p) => /^research\/(?:.+\/)?raw\//.test(p));
+  return git(root, 'ls-files', '-z', '--', 'research').split('\0').filter((p) => /^research\/(?:.+\/)?raw\//.test(p));
 }
 
 // The hand-kept list's license for a file the repo wrote itself. Only an exact path listed with it

@@ -2,11 +2,11 @@
 // Claude Code session transcripts (~/.claude/projects/<slug>/<session-id>.jsonl): one JSON entry
 // per line. Audit agents, the context meter and `npm run decide` read them through this module
 // instead of each writing its own parser.
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
+import { gitRun } from './git.mjs';
 
 // Claude Code keeps a project's transcripts in ~/.claude/projects/<slug>, where the slug is the
 // checkout's path with every character other than a letter or digit turned into "-".
@@ -17,7 +17,7 @@ export function transcriptsDir(checkout, home = homedir()) {
 // The transcripts folder of the main checkout that holds `root`. Sessions run in the main checkout,
 // so from a git worktree this is the folder of the checkout holding the shared .git directory.
 export function projectTranscripts(root, home = homedir()) {
-  const common = spawnSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' });
+  const common = gitRun(root, 'rev-parse', '--path-format=absolute', '--git-common-dir');
   const main = common.status === 0 ? dirname(common.stdout.trim()) : root;
   return transcriptsDir(resolve(main), home);
 }

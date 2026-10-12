@@ -14,11 +14,11 @@
 //
 // The run and the integration branch come from the run marker (factory/run-marker.mjs).
 // Root: --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else the repo this script lives in.
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
+import { git, gitRun } from './git.mjs';
 import { defaultRoot } from './log.mjs';
 import { readMarker } from './run-marker.mjs';
 
@@ -27,12 +27,6 @@ const DECISIONS = 'factory/decisions.tsv';
 // The paths the factory writes, repo-relative: every run's activity folder, not only the marked
 // run's, so a merge leaves none of them behind uncommitted.
 const FACTORY_PATHS = ['factory/agents', DECISIONS];
-
-function git(root, ...args) {
-  const r = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
-  if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed:\n${(r.stderr || r.stdout).trim()}`);
-  return r.stdout.trim();
-}
 
 // Runs git with `-F <file>` holding the message, so no newline goes through argv.
 function gitWithMessage(root, message, args, rest) {
@@ -53,7 +47,7 @@ function commitFactory(root, run, coAuthors) {
   const paths = FACTORY_PATHS.filter((p) => existsSync(join(root, p)));
   if (!paths.length) return false;
   git(root, 'add', '-A', '--', ...paths);
-  const staged = spawnSync('git', ['-C', root, 'diff', '--cached', '--quiet', '--', ...paths]);
+  const staged = gitRun(root, 'diff', '--cached', '--quiet', '--', ...paths);
   if (staged.status === 0) return false;
   const subject = `Record factory activity for run ${run}`;
   const message = coAuthors.length ? `${subject}\n\n${coAuthors.join('\n')}` : subject;

@@ -33,10 +33,10 @@
 //     one tree
 //   - a row from 2026-10-12 on records a push or PR (phase ending /push or /pr): git and GitHub
 //     hold that record, and the row would land in a commit after the push
-import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { gitRun as git } from '../git.mjs';
 import { projectTranscripts } from '../transcript.mjs';
 import { checkCli } from './check.mjs';
 
@@ -48,8 +48,6 @@ function readLog(text) {
     .map((line, i) => ({ line: i + 1, ts: line.split('\t')[0], cells: line.split('\t'), text: line }))
     .filter((r) => r.line > 1 && r.text !== '');
 }
-
-const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
 
 // Transcripts run to megabytes and many pointers name the same one, so each is read once.
 const transcripts = new Map();

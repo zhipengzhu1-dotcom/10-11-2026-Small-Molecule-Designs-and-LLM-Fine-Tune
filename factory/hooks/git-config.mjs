@@ -9,11 +9,11 @@
 // agent_id; the main session's does not (code.claude.com/docs/en/hooks.md, common input fields).
 // Exit 2 blocks the call and shows stderr to the agent; exit 0 lets it run. Anything it can't
 // read passes.
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gitRun } from '../git.mjs';
 
 const READ_FLAGS = new Set(['--get', '--get-all', '--get-regexp', '--get-urlmatch', '--get-color',
   '--get-colorbool', '-l', '--list']);
@@ -153,7 +153,7 @@ const same = (a, b) => (process.platform === 'win32' ? resolve(a).toLowerCase() 
 function commonDir(dir) {
   let d = resolve(dir);
   while (!existsSync(d) && dirname(d) !== d) d = dirname(d);
-  const r = spawnSync('git', ['-C', d, 'rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' });
+  const r = gitRun(d, 'rev-parse', '--path-format=absolute', '--git-common-dir');
   return r.status === 0 ? resolve(r.stdout.trim()) : null;
 }
 
