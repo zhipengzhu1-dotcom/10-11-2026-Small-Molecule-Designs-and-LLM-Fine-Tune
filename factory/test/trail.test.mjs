@@ -106,6 +106,36 @@ t('an ok verdict whose pointers do not resolve fails and the evidence names the 
   assert.match(ev, /line 3 \(2026-10-11T10:05:00Z\): unknown pointer doc:whatever/);
 });
 
+t('a file pointer to a gitignored path fails even though the file exists, since only one checkout has it', () => {
+  const f = fixture();
+  put(f.root, '.gitignore', 'notes/raw/\n');
+  put(f.root, 'notes/raw/page.md', 'downloaded\n');
+  put(f.root, `factory/audit/${AUDIT_RUN}.tsv`, AUDIT_HEADER
+    + row('2', '2026-10-11T10:00:00Z', 'ok', '', 'file:notes/raw/page.md; file:notes/source.md', 'x')
+    + GOOD_AUDIT[1]);
+  const r = check(f);
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  assert.match(r.events[0].evidence, /line 2 \(2026-10-11T10:00:00Z\): file:notes\/raw\/page\.md is gitignored; cite a tracked file, commit or transcript instead/);
+  assert.doesNotMatch(r.events[0].evidence, /source\.md is gitignored/);
+});
+
+t('run from a git worktree with no --transcripts, the check reads the main checkout\'s transcripts folder', () => {
+  const f = fixture();
+  put(f.root, `factory/audit/${AUDIT_RUN}.review.md`, GOOD_REVIEW);
+  git(f.root, 'add', '-A');
+  git(f.root, 'commit', '-q', '-m', 'audit');
+  const tree = join(tempRoot(), 'wt');
+  git(f.root, 'worktree', 'add', '-q', '--detach', tree);
+  // Claude Code names a project's transcripts folder after the main checkout's path.
+  const home = tempRoot();
+  const slug = git(f.root, 'rev-parse', '--show-toplevel').replace(/[^A-Za-z0-9]/g, '-');
+  put(home, `.claude/projects/${slug}/sess-1.jsonl`, '{"type":"user","timestamp":"2026-10-11T10:00:00.123Z"}\n');
+  const env = { ...process.env, HOME: home, USERPROFILE: home };
+  for (const k of ['FACTORY_ROOT', 'FACTORY_RUN', 'FACTORY_AGENT', 'CLAUDE_PROJECT_DIR']) delete env[k];
+  const r = spawnSync(process.execPath, [CHECK, '--root', tree], { env, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+});
+
 t('pointers to a real commit and a line range resolve; an ok verdict with no pointers fails', () => {
   const f = fixture();
   const sha = git(f.root, 'rev-parse', '--short', 'HEAD');
