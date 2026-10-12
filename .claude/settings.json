@@ -49,6 +49,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Agent|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/dispatch.mjs\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [
