@@ -1,0 +1,5 @@
+{"ts":"2026-10-12T05:58:30.239Z","run":"a52ce0ba-2c32-4437-97c2-3fc66317e832","agent":"a995a5c405902bb65","type":"agent.start","role":"general-purpose","parent":"orchestrator"}
+{"ts":"2026-10-12T06:06:00.179Z","run":"a52ce0ba-2c32-4437-97c2-3fc66317e832","agent":"a995a5c405902bb65","type":"artifact","path":"factory/audit/d9d911bf-8e17-4f83-bf37-b6bbf15f08aa.tsv","kind":"table"}
+{"ts":"2026-10-12T06:06:00.249Z","run":"a52ce0ba-2c32-4437-97c2-3fc66317e832","agent":"a995a5c405902bb65","type":"artifact","path":"factory/audit/d9d911bf-8e17-4f83-bf37-b6bbf15f08aa.review.md","kind":"report"}
+{"ts":"2026-10-12T06:06:00.523Z","run":"a52ce0ba-2c32-4437-97c2-3fc66317e832","agent":"a995a5c405902bb65","type":"check","name":"trail","result":"pass","evidence":"factory/audit/d9d911bf-8e17-4f83-bf37-b6bbf15f08aa.tsv"}
+{"ts":"2026-10-12T06:06:08.811Z","run":"a52ce0ba-2c32-4437-97c2-3fc66317e832","agent":"a995a5c405902bb65","type":"agent.stop","role":"general-purpose","status":"PASS"}

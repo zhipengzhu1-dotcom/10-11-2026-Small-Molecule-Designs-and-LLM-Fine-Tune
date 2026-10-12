@@ -1,0 +1,17 @@
+{
+  "archived": false,
+  "default_branch": "master",
+  "description": "Header-only C++/python library for fast approximate nearest neighbors",
+  "forks_count": 853,
+  "full_name": "nmslib/hnswlib",
+  "html_url": "https://github.com/nmslib/hnswlib",
+  "license": {
+    "key": "apache-2.0",
+    "name": "Apache License 2.0",
+    "node_id": "MDc6TGljZW5zZTI=",
+    "spdx_id": "Apache-2.0",
+    "url": "https://api.github.com/licenses/apache-2.0"
+  },
+  "pushed_at": "2026-09-15T11:56:10Z",
+  "stargazers_count": 5348
+}
