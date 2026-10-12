@@ -4,6 +4,7 @@
 //   euclidean(points)                      -> n x n distance matrix
 //   neighbourhoods(full, view, ks?)        -> { T: { k: score }, C: { k: score } }
 //   eigenmap(n, links, d?)                 -> n points in R^d (Laplacian eigenmaps)
+//   jacobi(a)                              -> { values, vectors } of a symmetric matrix (a is overwritten)
 //
 // Trustworthiness T(k) and continuity C(k) are Venna and Kaski's M1 and M2 (WSOM 2005, section 2.1,
 // eqs. 1-2), read from research/projections:research/orchestration/projections.md. Low T means the
@@ -82,7 +83,7 @@ export function eigenmap(n, links, d = 16) {
 
 // Cyclic Jacobi for a symmetric matrix: eigenvalues and eigenvectors (as columns). Exact enough for
 // the few hundred nodes the factory has (about 70 ms at n = 150, per the graph-embeddings research).
-function jacobi(a) {
+export function jacobi(a) {
   const n = a.length;
   const v = Array.from({ length: n }, (_, i) => Float64Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
   for (let sweep = 0; sweep < 100; sweep++) {

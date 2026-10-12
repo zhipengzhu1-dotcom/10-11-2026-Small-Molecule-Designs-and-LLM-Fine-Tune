@@ -9,8 +9,9 @@ let agentFilter = null;  // agent whose events the timeline shows; null shows al
 let last = null;
 let state;
 const open = new Set();  // tree paths opened in the fallback list
-let lanes = null, graph = null, crew = null;
+let lanes = null, graph = null, crew = null, scatter = null;
 let allRuns = true;      // the agent network shows every run, or only the picked one
+let umap = false;        // the text scatter is PCA unless the user turns UMAP on
 
 function selectAgent(agent) {
   agentFilter = agent && agent !== agentFilter ? agent : null;
@@ -30,6 +31,7 @@ function applyTheme() {
   lanes?.recolor();
   graph?.recolor();
   crew?.recolor();
+  scatter?.recolor();
 }
 $('theme').addEventListener('click', () => {
   theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
@@ -44,6 +46,7 @@ $('run').addEventListener('change', (e) => {
   if (!allRuns) crew?.refit();
   poll();
 });
+$('umap').addEventListener('change', (e) => { umap = e.target.checked; last = null; scatter?.refit(); poll(); });
 $('all-runs').addEventListener('change', (e) => { allRuns = e.target.checked; crew?.refit(); if (state) render(state); });
 
 // Full screen for a diagram's panel; the stage grows to fill it.
@@ -52,12 +55,15 @@ for (const b of document.querySelectorAll('[data-full]')) {
 }
 document.addEventListener('fullscreenchange', () => {
   for (const b of document.querySelectorAll('[data-full]')) b.textContent = document.fullscreenElement?.id === b.dataset.full ? 'exit full screen' : 'full screen';
-  requestAnimationFrame(() => { graph?.fit(); crew?.fit(); }); // after the stage has its new size
+  requestAnimationFrame(() => { graph?.fit(); crew?.fit(); scatter?.fit(); }); // after the stage has its new size
 });
 
 async function poll() {
   try {
-    const res = await fetch('/state' + (picked ? '?run=' + encodeURIComponent(picked) : ''), { cache: 'no-store' });
+    const query = new URLSearchParams();
+    if (picked) query.set('run', picked);
+    if (umap) query.set('scatter', 'umap');
+    const res = await fetch('/state' + (query.size ? '?' + query : ''), { cache: 'no-store' });
     const text = await res.text();
     if (!res.ok) throw new Error(text);
     $('updated').textContent = 'updated ' + clock(new Date().toISOString());
@@ -79,12 +85,17 @@ function render(s) {
   $('checks').replaceChildren(...s.checks.map((c) => h('span', { class: 'chip ' + c.result, title: c.evidence }, c.name)));
   $('dcount').textContent = '(' + s.tree.count + ': ' + s.labels.in + ' in, ' + s.labels.out + ' out, ' + s.labels.undec + ' undec)';
   $('dscore').replaceChildren(...scores(s.disk));
+  $('scount').textContent = '(' + s.scatter.n + ' rows, ' + s.scatter.method.toUpperCase() + ')';
+  $('sscore').replaceChildren(...scatterScores(s.scatter));
+  $('swarn').textContent = s.scatter.warning ?? '';
+  renderStories(s.stories);
   const members = allRuns ? s.crew : s.crew.filter((c) => c.run === s.run);
   $('ccount').textContent = count(members);
   renderAgents();
   renderTimeline();
   if (lanes) { lanes.update(s); lanes.setSelected(agentFilter); }
   crew?.update(members);
+  scatter?.update({ scatter: s.scatter, tree: s.tree });
   if (graph) graph.update(s.tree);
   else $('tree').replaceChildren(...s.tree.children.map((n) => branch(n, true)));
 }
@@ -95,6 +106,24 @@ function scores(d) {
   const f = (v) => (v == null ? '–' : v.toFixed(2));
   return [h('b', null, [5, 10].map((k) => 'T(' + k + ') ' + f(d.T[k]) + ' C(' + k + ') ' + f(d.C[k])).join(' · ')),
     ' against ' + d.against.method + ' (d = ' + d.against.d + ') of the full graph, ' + d.n + ' nodes · 1 is faithful, about 0.5 is random · every edge is ' + d.tau.toFixed(2) + ' long, so one hop from the centre is near the rim'];
+}
+
+// The same for the text scatter, against the full TF-IDF space.
+function scatterScores(d) {
+  const f = (v) => (v == null ? '–' : v.toFixed(2));
+  return [h('b', null, [5, 10].map((k) => 'T(' + k + ') ' + f(d.T[k]) + ' C(' + k + ') ' + f(d.C[k])).join(' · ')),
+    ' of ' + d.method.toUpperCase() + ' against the ' + d.against.metric + ' distances of the full ' + d.against.space + ' vectors, ' + d.n + ' rows · 1 is faithful, about 0.5 is random'];
+}
+
+// Each story of the spec as a node: filled when supported, grey when unrun or with no evidence,
+// an outline when failing or undeveloped, with its count of residual doubts; the title lists them.
+const STORY = { supported: 'sw dot', unrun: 'sw dot grey', none: 'sw dot grey', failing: 'sw dot ring', undeveloped: 'sw dot ring' };
+function renderStories(st) {
+  $('no-stories').hidden = Boolean(st);
+  $('stcount').textContent = st ? '(spec #' + st.spec + ': ' + st.goals.length + ' stories, residual doubt ' + st.residual + ')' : '';
+  $('stories').replaceChildren(...(st?.goals ?? []).map((g) => h('span', {
+    class: 'story', title: 'story ' + g.story + ' · ' + g.status + (g.doubts.length ? '\n' + g.doubts.join('\n') : ''),
+  }, h('i', { class: STORY[g.status] }), String(g.story), h('span', { class: 'd' }, g.doubts.length ? 'doubt ' + g.doubts.length : ''))));
 }
 
 // "15 agents · 3 running · 12 stopped (9 PASS, 2 ISSUES, 1 BLOCKED / unknown)"
@@ -171,9 +200,16 @@ function renderTimeline() {
 
 async function loadDiagrams() {
   try {
-    const [{ createSwimlane }, { createGraph }, { createCrew }] = await Promise.all([import('./swimlane.js'), import('./graph.js'), import('./crew.js')]);
+    const [{ createSwimlane }, { createGraph }, { createCrew }, { createScatter }, { linkViews }] = await Promise.all([
+      import('./swimlane.js'), import('./graph.js'), import('./crew.js'), import('./scatter.js'), import('./layout.js')]);
     lanes = createSwimlane({ labels: $('lane-labels'), plot: $('lane-plot'), axis: $('axis'), tip: $('lane-tip') }, { onSelect: selectAgent, roleOf });
-    graph = createGraph({ stage: $('graph'), tip: $('graph-tip'), card: $('card') });
+    // the disk and the scatter light the same row: a click in one highlights it in the other
+    const link = linkViews();
+    let diskSide, scatterSide;
+    graph = createGraph({ stage: $('graph'), tip: $('graph-tip'), card: $('card') }, { picked: (i) => link.pick(diskSide, i) });
+    scatter = createScatter({ stage: $('scatter'), tip: $('scatter-tip'), card: $('scatter-card') }, { picked: (i) => link.pick(scatterSide, i) });
+    diskSide = link.join({ graph: graph.graph, highlight: graph.highlight });
+    scatterSide = link.join({ graph: scatter.graph, highlight: scatter.highlight });
     crew = createCrew({ stage: $('crew'), tip: $('crew-tip'), card: $('crew-card') });
     for (const box of document.querySelectorAll('#layers input')) box.addEventListener('change', () => graph.setLayer(box.dataset.kind, box.checked));
     for (const box of document.querySelectorAll('#crew-layers input[data-kind]')) box.addEventListener('change', () => crew.setLayer(box.dataset.kind, box.checked));
@@ -183,6 +219,7 @@ async function loadDiagrams() {
     $('lanes').replaceChildren(h('p', { class: 'nodraw' }, note));
     $('graph').replaceWith(h('p', { class: 'nodraw' }, note));
     $('crew').replaceWith(h('p', { class: 'nodraw' }, note));
+    $('scatter').replaceWith(h('p', { class: 'nodraw' }, note));
     $('layers').hidden = true;
     $('crew-layers').hidden = true;
     $('tree').hidden = false;

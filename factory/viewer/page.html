@@ -93,6 +93,11 @@ main { display: grid; gap: 16px; padding: 16px; }
 .nodraw { color: var(--muted); padding: 24px 0; }
 .score { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
 .score b { color: var(--fg); font-weight: 600; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+.warn { margin: 0 0 8px; padding: 6px 10px; border: 1px dashed var(--fg); border-radius: 6px; font-size: 12px; }
+.warn:empty { display: none; }
+#stories { display: flex; flex-wrap: wrap; gap: 6px; }
+.story { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 99px; padding: 1px 9px 1px 6px; font-size: 12px; cursor: default; }
+.story .d { color: var(--muted); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
 
 table { width: 100%; border-collapse: collapse; }
 td, th { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: top; }
@@ -144,7 +149,7 @@ summary .n { color: var(--muted); font-size: 12px; }
     <div class="stage big" id="crew"><div class="tip" id="crew-tip" hidden></div><div class="card" id="crew-card" hidden></div></div>
   </section>
   <section class="panel" id="graph-panel">
-    <h2>Phase disk <span class="muted" id="dcount"></span> <span class="hint">click a node to bring it to the centre and open its card · double-click to go back to the root</span> <button class="full" data-full="graph-panel">full screen</button></h2>
+    <h2>Phase disk <span class="muted" id="dcount"></span> <span class="hint">click a node to bring it to the centre, open its card and light its row in the text scatter · double-click to go back to the root</span> <button class="full" data-full="graph-panel">full screen</button></h2>
     <div class="legend layers" id="layers" style="margin-bottom:8px">
       <span><i class="sw dot"></i>in</span><span><i class="sw dot grey"></i>undec</span><span><i class="sw dot ring"></i>out</span>
       <label><input type="checkbox" data-kind="tree" checked><i class="ln tree"></i>phase tree</label>
@@ -157,6 +162,22 @@ summary .n { color: var(--muted); font-size: 12px; }
     <p class="score" id="dscore"></p>
     <div class="stage big" id="graph"><div class="tip" id="graph-tip" hidden></div><div class="card" id="card" hidden></div></div>
     <div id="tree" hidden></div>
+  </section>
+  <section class="panel" id="scatter-panel">
+    <h2>Text scatter <span class="muted" id="scount"></span> <span class="hint">the decision text's TF-IDF vectors in 2-D · click a row to light it here and on the disk · scroll to zoom · drag to pan · double-click to fit</span> <button class="full" data-full="scatter-panel">full screen</button></h2>
+    <div class="legend layers" id="scatter-layers" style="margin-bottom:8px">
+      <span><i class="sw dot"></i>in</span><span><i class="sw dot grey"></i>undec</span><span><i class="sw dot ring"></i>out</span>
+      <label title="UMAP can show structure that is not there; PCA is the default"><input type="checkbox" id="umap">UMAP instead of PCA</label>
+    </div>
+    <p class="score" id="sscore"></p>
+    <p class="warn" id="swarn" role="note"></p>
+    <div class="stage big" id="scatter"><div class="tip" id="scatter-tip" hidden></div><div class="card" id="scatter-card" hidden></div></div>
+  </section>
+  <section class="panel">
+    <h2>Stories <span class="muted" id="stcount"></span> <span class="hint">each user story of the spec with its residual doubt, as the done read counts it · hover for the doubts</span></h2>
+    <div class="legend" style="margin-bottom:8px"><span><i class="sw dot"></i>supported</span><span><i class="sw dot grey"></i>unrun / no evidence</span><span><i class="sw dot ring"></i>failing / undeveloped</span></div>
+    <div id="stories"></div>
+    <p class="muted" id="no-stories" hidden>No ticket-graph snapshot yet, so no spec and no stories (npm run frontier -- &lt;spec&gt; logs one).</p>
   </section>
   <section class="panel"><h2>Agents in this run</h2><table><thead><tr><th>Agent</th><th>Status</th><th>Time</th><th>Events</th></tr></thead><tbody id="agents"></tbody></table><p class="muted" id="no-agents" hidden>No agents in this run.</p></section>
   <section class="panel"><h2>Timeline <span id="filter"></span></h2><ul id="timeline"></ul></section>

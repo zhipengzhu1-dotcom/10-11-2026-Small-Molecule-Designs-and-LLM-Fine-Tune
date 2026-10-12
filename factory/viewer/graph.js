@@ -90,8 +90,10 @@ function diskSpace() {
   };
 }
 
-export function createGraph(parts) {
+// `picked(i)` hears each click, for the scatter it is linked to (see linkViews in layout.js).
+export function createGraph(parts, { picked } = {}) {
   return createPlane(parts, {
+    picked,
     build,
     kinds: ['tree', ...ROWS, 'mentions', 'evidence'],
     shown: { tree: true, supersedes: true, withdraws: true, corrects: true, mentions: true, evidence: false },
