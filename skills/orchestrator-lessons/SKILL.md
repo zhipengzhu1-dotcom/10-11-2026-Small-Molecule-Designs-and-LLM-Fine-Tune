@@ -16,7 +16,7 @@ When a merger reports ISSUES, the ticket stays open and the fix goes to the orig
 
 ## Context budget (after step 6)
 
-At every frontier step, check context use against the spec's budget, estimating from the conversation's length when no meter shows it. Once it's over budget, finish the merges in flight, post the status note and hand off.
+At every frontier step, check context use against the spec's budget. While the run marker names your session, the context meter (`factory/hooks/context-meter.mjs`) adds a `Context meter: N tokens in context` line after each prompt and tool call: use that N. Estimate from the conversation's length only when no meter line shows. Once it's over budget, finish the merges in flight, post the status note and hand off.
 
 ## Binding constraints
 

@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cli, UsageError } from './cli.mjs';
 
 // Claude Code keeps a project's transcripts in ~/.claude/projects/<slug>, where the slug is the
 // checkout's path with every character other than a letter or digit turned into "-".
@@ -36,13 +36,23 @@ export function readTranscript(file) {
   return entries;
 }
 
-// A model reply, not an API error or other placeholder Claude Code writes in its place.
-const isReply = (e) => e?.type === 'assistant' && e.message?.usage && !e.isApiErrorMessage && e.message.model !== '<synthetic>';
+// A main-thread model reply: not an API error or other placeholder Claude Code writes in its
+// place, and not a subagent's (sidechain) reply.
+const isReply = (e) =>
+  e?.type === 'assistant' && e.message?.usage && !e.isApiErrorMessage && e.message.model !== '<synthetic>' && !e.isSidechain;
 
-// The token usage of the session's latest assistant message ({ input_tokens,
+// The token usage of the session's latest main-thread assistant message ({ input_tokens,
 // cache_creation_input_tokens, cache_read_input_tokens, output_tokens }), or null if none.
 export function latestUsage(file) {
   return readTranscript(file).findLast(isReply)?.message.usage ?? null;
+}
+
+// The session's context size in tokens: everything the latest main-thread reply read as input
+// (uncached, cache read and cache creation). Null when no reply carries usage.
+export function contextTokens(file) {
+  const u = latestUsage(file);
+  if (!u) return null;
+  return (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
 }
 
 const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();
@@ -69,20 +79,15 @@ export function digest(file) {
   return lines;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  const args = process.argv.slice(2);
-  const usage = args.includes('--usage');
-  const target = args.find((a) => a !== '--usage');
-  if (!target) {
-    process.stderr.write('usage: node factory/transcript.mjs <session-id | transcript.jsonl> [--usage]\n');
-    process.exit(2);
-  }
+cli(import.meta.url, {
+  usage: 'node factory/transcript.mjs <session-id | transcript.jsonl> [--usage]',
+  options: { usage: 'flag' },
+  positionals: true,
+}, ({ positionals: [target, ...extra], usage }) => {
+  if (!target) throw new UsageError('missing session id or transcript file');
+  if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
   // A bare session id is looked up in this project's transcripts folder.
   const file = target.endsWith('.jsonl') ? target : join(projectTranscripts(process.cwd()), `${target}.jsonl`);
-  if (!existsSync(file)) {
-    process.stderr.write(`transcript.mjs: no transcript at ${file}\n`);
-    process.exit(2);
-  }
+  if (!existsSync(file)) throw new UsageError(`no transcript at ${file}`);
   process.stdout.write(usage ? `${JSON.stringify(latestUsage(file))}\n` : digest(file).map((l) => `${l}\n`).join(''));
-}
+});

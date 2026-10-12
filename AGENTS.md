@@ -14,6 +14,7 @@ CI runs in a Docker container on this machine (Docker Desktop), never on GitHub 
 | The decision log is append-only and every row is audited | `npm run check:trail` |
 | Audit evidence is tracked: no gitignored `file:` pointer | `npm run check:trail` |
 | No decision row for a push or PR | `npm run check:trail` |
+| A committed file under `research/**/raw/` has a row in `research/refs/catalog.tsv` or `research/licenses.tsv` with CC BY, CC BY-SA, CC0, MIT, or Apache-2.0 plus its license text in the same folder; the repo's own files are listed by path as `own work` in `research/licenses.tsv` | `npm run check:licenses` |
 | Agent worktrees start at the orchestrator's branch, with the source data | `worktree.baseRef` in `.claude/settings.json`, `.worktreeinclude` |
 | Long text goes through the Write tool and `--body-file`, not a heredoc | PreToolUse hook `factory/hooks/long-heredoc.mjs` |
 | A ticket names its deliverables so subagent writes pass (`notes.md`, never a summary or report file) | `npm run check:ticket -- --body <file>` (or stdin); CI runs it on `docs/agents/ticket-template.md` |

@@ -22,7 +22,7 @@ const GIT_TAKES_VALUE = new Set(['-C', '-c', '--git-dir', '--work-tree', '--name
 // Splits a shell command line into simple commands, each a list of words with quotes removed.
 // Separators (newline ; & && | ||) count only outside quotes; redirections and their targets are
 // dropped; heredoc bodies are skipped. Text inside quotes is never a command of its own.
-export function commands(text) {
+function commands(text) {
   const out = [];
   let cmd = [];
   let word = null;
@@ -119,7 +119,7 @@ function readOrWorktree(args) {
 
 // The commands in a shell command line that write the git config every checkout shares: a
 // `git config` write without --worktree, or the npm script that sets core.hooksPath.
-export function sharedConfigWrites(command) {
+function sharedConfigWrites(command) {
   return commands(command).filter((w) => {
     if (w[0] === 'npm' && (w[1] === 'run' || w[1] === 'run-script') && w[2] === 'hooks:install') return true;
     const args = configArgs(w);

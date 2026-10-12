@@ -13,9 +13,11 @@ import { readMarker } from '../run-marker.mjs';
 
 // The payload has no parent field. Claude Code fires these hooks only for agents the orchestrator
 // session spawns, never for one a subagent spawns, so every agent recorded here is its child.
-const ROLE_PARENT = 'orchestrator';
+const PARENT = 'orchestrator';
 
-const id = (v) => (v ? String(v).replace(/[^A-Za-z0-9._-]/g, '_').replace(/^[._-]+/, '') || UNKNOWN : UNKNOWN);
+// An id safe as a file name: characters outside [A-Za-z0-9._-] become _, leading punctuation goes,
+// and a missing or emptied id is "unknown".
+const safeId = (v) => (v ? String(v).replace(/[^A-Za-z0-9._-]/g, '_').replace(/^[._-]+/, '') || UNKNOWN : UNKNOWN);
 const slash = (p) => p.replace(/\\/g, '/');
 
 function statusOf(message) {
@@ -67,7 +69,7 @@ function stopStatus(payload) {
 // The writer is the log.mjs next to this hook, i.e. the main checkout's copy, never a worktree's.
 const WRITER = slash(fileURLToPath(new URL('../log.mjs', import.meta.url)));
 
-export function writerCommand(root, run, agent) {
+function writerCommand(root, run, agent) {
   return `node "${WRITER}" --root "${slash(root)}" --run ${run} --agent ${agent}`;
 }
 
@@ -92,18 +94,18 @@ function contextFor(root, run, agent) {
 function main() {
   const payload = JSON.parse(readFileSync(0, 'utf8'));
   const root = defaultRoot();
-  const run = id(payload.session_id);
-  const agent = id(payload.agent_id);
+  const run = safeId(payload.session_id);
+  const agent = safeId(payload.agent_id);
   const role = payload.agent_type || undefined;
   // Only the orchestrated run the marker names is logged (factory/run-marker.mjs). Other sessions
   // in this repo, such as reflect or review, write nothing. A payload with no session id can't be
   // told apart, so it is recorded under run "unknown" while any run is marked.
   const marker = readMarker(root);
-  if (!marker || (payload.session_id && run !== id(marker.run))) return;
+  if (!marker || (payload.session_id && run !== safeId(marker.run))) return;
 
   switch (payload.hook_event_name) {
     case 'SubagentStart': {
-      writeEvent({ root, run, agent, type: 'agent.start', fields: { role, parent: ROLE_PARENT }, fillUnknown: true });
+      writeEvent({ root, run, agent, type: 'agent.start', fields: { role, parent: PARENT }, fillUnknown: true });
       process.stdout.write(JSON.stringify({
         hookSpecificOutput: { hookEventName: 'SubagentStart', additionalContext: contextFor(root, run, agent) },
       }));

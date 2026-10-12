@@ -7,10 +7,10 @@ import { fileURLToPath } from 'node:url';
 
 export const FACTORY = dirname(dirname(fileURLToPath(import.meta.url)));
 export const REPO = dirname(FACTORY);
-export const WRITER = join(FACTORY, 'log.mjs');
-export const HOOK = join(FACTORY, 'hooks', 'subagent.mjs');
-export const MARKER = join(FACTORY, 'run-marker.mjs');
-export const MERGE = join(FACTORY, 'merge.mjs');
+const WRITER = join(FACTORY, 'log.mjs');
+const HOOK = join(FACTORY, 'hooks', 'subagent.mjs');
+const MARKER = join(FACTORY, 'run-marker.mjs');
+const MERGE = join(FACTORY, 'merge.mjs');
 
 export function tempRoot() {
   return mkdtempSync(join(tmpdir(), 'factory-test-'));
@@ -43,6 +43,12 @@ export function hook(payload, extraEnv = {}, cwd = tempRoot()) {
   return spawnSync(process.execPath, [HOOK], { env: env(extraEnv), input, cwd, encoding: 'utf8' });
 }
 
+// Runs the context meter hook the way Claude Code does: payload JSON on stdin.
+export const METER = join(FACTORY, 'hooks', 'context-meter.mjs');
+export function meter(payload, extraEnv = {}, cwd = tempRoot()) {
+  return spawnSync(process.execPath, [METER], { env: env(extraEnv), input: JSON.stringify(payload), cwd, encoding: 'utf8' });
+}
+
 // Runs the run-marker CLI, as the orchestrator does when a run starts or ends.
 export function marker(args, extraEnv = {}) {
   return spawnSync(process.execPath, [MARKER, ...args], { env: env(extraEnv), encoding: 'utf8' });
@@ -55,7 +61,7 @@ export function merge(args, extraEnv = {}) {
 
 // Starts the fetch page CLI on a free port, the way a user would, and resolves once it prints
 // its URL. Call stop() when done.
-export const FETCH_PAGE = join(FACTORY, 'fetch-page.mjs');
+const FETCH_PAGE = join(FACTORY, 'fetch-page.mjs');
 export function startFetchPage(args = [], extraEnv = {}) {
   return new Promise((resolve, reject) => {
     const p = spawn(process.execPath, [FETCH_PAGE, '--port', '0', ...args], { env: env(extraEnv) });
