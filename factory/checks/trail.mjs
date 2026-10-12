@@ -150,7 +150,7 @@ function reviewOf(auditDir, file) {
 // What is wrong with one audit verdict on decision row `row`, plus notes on pointers that resolved
 // only in history. An ok row needs pointers that resolve; a superseded row needs a later row in
 // the log that replaces it.
-function verdictProblems(v, row, log, opts) {
+export function verdictProblems(v, row, log, opts) {
   const problems = [];
   const notes = [];
   if (v.ts !== row.ts) problems.push(`audit ts ${v.ts} does not match`);
