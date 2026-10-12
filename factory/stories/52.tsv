@@ -1,10 +1,23 @@
 story	kind	name
 1	test	a launch writes one dispatch in the orchestrator's activity file with agent, role, ticket, description and tool-use id
+2	test	in an orchestrated run, a launch whose description breaks the grammar is denied with the grammar shown
+2	test	in an orchestrated run, a description that is missing, empty or lacks a part is denied
+2	test	in an orchestrated run, a launch that follows the grammar goes ahead
+2	test	a subagent's own Agent call is not checked
+2	test	.claude/settings.json runs the description hook before every Agent launch
 3	test	a launch for work with no ticket (#-) writes a dispatch with no ticket
+3	test	#- is accepted for work with no ticket
 4	test	a resume writes a dispatch keyed by resumedAgentId, carrying the role, ticket and description of the agent's launch
 5	test	a message to a running agent writes a message event (a cause edge), not a dispatch
 6	test	a Cause: line in the prompt or message becomes the event's cause
 7	test	on recorded calls, each dispatch's agent is the agent_id of the agent.start it caused
+8	test	a stop that handed back through SubagentHandback logs its full text as report
+8	test	a stop with no report text anywhere writes no report field
+9	test	in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its state and open blockers
+9	test	with no run marked, the frontier writes nothing
+10	test	a check run for a ticket records the ticket number on its event
+10	test	a check event written with ticket=#59 records ticket 59; a ticket that is no issue number is rejected
+10	test	a well-formed challenge is written with its kind, rebut by default, and its ticket as a number
 11	test	a well-formed challenge is written with its kind, rebut by default, and its ticket as a number
 11	test	a challenge whose target does not parse, or is prose, is refused and nothing is written
 11	test	a challenge of an unknown kind, or with an id that is not a plain name, is refused
@@ -27,12 +40,19 @@ story	kind	name
 17	test	decide refuses with exit 2, and writes nothing, when a file: pointer in the evidence does not resolve
 17	test	decide refuses an evidence item of an unknown pointer kind, or a malformed transcript: pointer, and writes nothing
 17	test	decide refuses with exit 2, and writes nothing, when a commit: pointer names no commit of the repo
+17	test	a pointer of an unknown kind, or a known kind with a malformed value, parses to a problem naming it
 18	test	decide calls the installed pstack log.sh on the decision log, with a transcript:<session>@<iso> pointer to the session first in the evidence
 19	test	from the claim-rules cutoff, a row needs a claim state first in result and well-formed relations to earlier rows; rows before it pass as written
 19	check	trail
+20	test	each pointer kind of the grammar parses into its parts
+20	test	a pointer of an unknown kind, or a known kind with a malformed value, parses to a problem naming it
+20	test	text with no `<kind>:` prefix is prose, not a pointer
 21	check	stories
 22	test	a story-map row naming a check that is no check:* script fails, naming the row
 22	test	a story-map row naming a test that no test file declares fails, naming the row
 23	test	a test run writes an artifact listing each test name with its result
 23	test	CI logs its per-test results and a ci check naming the commit, failing on any problem
 24	check	stories
+25	test	SubagentStart then SubagentStop record agent.start and agent.stop for that agent in the stream
+25	test	every event carries ts, run, agent and type, and only decision events have a null run
+25	test	the reader leaves the legacy transcript field out of agent.stop events, and only there
