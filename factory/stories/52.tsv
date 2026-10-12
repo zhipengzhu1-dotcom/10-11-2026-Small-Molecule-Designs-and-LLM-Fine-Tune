@@ -35,3 +35,4 @@ story	kind	name
 22	test	a story-map row naming a test that no test file declares fails, naming the row
 23	test	a test run writes an artifact listing each test name with its result
 23	test	CI logs its per-test results and a ci check naming the commit, failing on any problem
+24	check	stories
