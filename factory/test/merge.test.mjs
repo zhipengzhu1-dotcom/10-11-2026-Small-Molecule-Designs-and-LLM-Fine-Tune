@@ -151,3 +151,55 @@ t('a conflicting merge fails with the factory paths already committed, for the m
   assert.equal(git(root, 'status', '--porcelain', '--', 'factory'), '');
   assert.equal(git(root, 'show', 'HEAD:factory/agents/run-1/a1.jsonl'), '{"type":"agent.stop"}');
 });
+
+const MESSAGE = 'Merge #17: ticket\n\nBody line one.\nBody line two.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>';
+const body = (root, rev) => git(root, 'log', '-1', '--format=%B', rev);
+
+t('a multi-line -m keeps its lines, and the factory commit carries its Co-Authored-By trailer', () => {
+  const root = fixture();
+  hookWrites(root);
+
+  const r = merge(['ticket', '--root', root, '-m', MESSAGE]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(body(root, 'HEAD'), MESSAGE);
+  assert.equal(body(root, 'HEAD^1'),
+    'Record factory activity for run run-1\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>');
+});
+
+t('-F reads the merge message from a file', () => {
+  const root = fixture();
+  hookWrites(root);
+  const file = join(tempRoot(), 'msg.txt');
+  writeFileSync(file, `${MESSAGE}\n`);
+
+  const r = merge(['ticket', '--root', root, '-F', file]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(body(root, 'HEAD'), MESSAGE);
+  assert.match(body(root, 'HEAD^1'), /\n\nCo-Authored-By: Claude Opus 5\.5 <noreply@anthropic\.com>$/);
+});
+
+t('close-out takes -m or -F too, and its factory commit carries the trailer', () => {
+  const root = fixture();
+  hookWrites(root);
+  const r = merge(['--factory-only', '--root', root, '-m', MESSAGE]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(body(root, 'HEAD'),
+    'Record factory activity for run run-1\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>');
+
+  hookWrites(root, 'run-1');
+  appendFileSync(join(root, 'factory/agents/run-1/a1.jsonl'), '{"type":"check"}\n');
+  const file = join(tempRoot(), 'msg.txt');
+  writeFileSync(file, 'x\n\nCo-Authored-By: A <a@a>\nCo-Authored-By: B <b@b>\n');
+  const f = merge(['--factory-only', '--root', root, '-F', file]);
+  assert.equal(f.status, 0, f.stderr);
+  assert.equal(body(root, 'HEAD'), 'Record factory activity for run run-1\n\nCo-Authored-By: A <a@a>\nCo-Authored-By: B <b@b>');
+});
+
+t('-m and -F together are refused', () => {
+  const root = fixture();
+  const file = join(tempRoot(), 'msg.txt');
+  writeFileSync(file, 'x\n');
+  const r = merge(['ticket', '--root', root, '-m', 'x', '-F', file]);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /-m or -F, not both/);
+});

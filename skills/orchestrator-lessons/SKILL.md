@@ -41,8 +41,8 @@ A push or PR gets no decision row: its commit would land after the push and stra
 ## Merges (step 5)
 
 - Run one merger at a time in the main checkout.
-- The merger merges with `npm run merge -- <branch> -m "Merge #<n>: <title>"`. It commits the run's `factory/agents/<run>/` and `factory/decisions.tsv`, then merges into the integration branch the run marker names. Don't tell the merger to commit factory paths first: the script does it. If the merge conflicts, the merger resolves it and commits.
-- At close-out, run `npm run merge -- --factory-only` before `run-marker.mjs stop`. It commits the last merger's `agent.stop` and the final decision rows.
+- The merger writes the merge message (subject `Merge #<n>: <title>`, then the Co-Authored-By trailer) to a file with the Write tool and merges with `npm run merge -- <branch> -F <file>`. A multi-line `-m` loses its newlines through npm on Windows. The factory commit copies the message's Co-Authored-By trailers. It commits the run's `factory/agents/<run>/` and `factory/decisions.tsv`, then merges into the integration branch the run marker names. Don't tell the merger to commit factory paths first: the script does it. If the merge conflicts, the merger resolves it and commits.
+- At close-out, run `npm run merge -- --factory-only -F <file>` (the file holds the trailer) before `run-marker.mjs stop`. It commits the last merger's `agent.stop` and the final decision rows.
 - The merger re-runs every generator the branch touches, twice, and diffs the output. Any difference counts as ISSUES.
 - If the merger finds a bug, the ticket stays open until the fix merges.
 

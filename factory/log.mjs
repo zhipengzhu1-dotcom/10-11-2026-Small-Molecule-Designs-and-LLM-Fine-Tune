@@ -14,7 +14,7 @@ import { cli, UsageError } from './cli.mjs';
 import { defaultRun } from './run-marker.mjs';
 
 // The API contract from issue #1. Dashboards depend on it.
-export const SCHEMA = {
+const SCHEMA = {
   'agent.start': { required: ['role', 'parent'] },
   'agent.stop': { required: ['role', 'status'], enums: { status: ['PASS', 'ISSUES', 'BLOCKED'] } },
   artifact: { required: ['path', 'kind'] },
@@ -26,7 +26,7 @@ export const UNKNOWN = 'unknown';
 const STAMPED = ['ts', 'run', 'agent', 'type'];
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-export class EventError extends Error {}
+class EventError extends Error {}
 
 export function defaultRoot(env = process.env) {
   return env.FACTORY_ROOT || env.CLAUDE_PROJECT_DIR || resolve(dirname(fileURLToPath(import.meta.url)), '..');
