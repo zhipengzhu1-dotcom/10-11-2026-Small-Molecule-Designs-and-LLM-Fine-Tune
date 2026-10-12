@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Merge script: the one step that commits the factory's own writes in the main checkout.
 // During an orchestrated run the hooks write factory/agents/<run>/ and the orchestrator appends
-// factory/decisions.tsv, so the main checkout is never clean. This commits those paths on the
-// integration branch, then merges the ticket branch into it.
+// factory/decisions.tsv, so the main checkout is never clean. This commits factory/agents/ (every
+// run's folder) and the decision log on the integration branch, then merges the ticket branch.
 //
 //   npm run merge -- <branch> [-m <message> | -F <file>] [--root <repo>]   commit factory paths, then merge
 //   npm run merge -- --factory-only [-m <message> | -F <file>] [--root <repo>]   commit them only (close-out)
@@ -24,10 +24,9 @@ import { readMarker } from './run-marker.mjs';
 
 const DECISIONS = 'factory/decisions.tsv';
 
-// The paths the factory writes during a run, repo-relative.
-function factoryPaths(run) {
-  return [`factory/agents/${run}`, DECISIONS];
-}
+// The paths the factory writes, repo-relative: every run's activity folder, not only the marked
+// run's, so a merge leaves none of them behind uncommitted.
+const FACTORY_PATHS = ['factory/agents', DECISIONS];
 
 function git(root, ...args) {
   const r = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
@@ -49,9 +48,9 @@ function gitWithMessage(root, message, args, rest) {
 
 const trailers = (message = '') => message.split(/\r?\n/).filter((l) => /^Co-Authored-By:/i.test(l.trim())).map((l) => l.trim());
 
-// Commits the run's factory paths, and nothing else, when they have changes. Returns whether it committed.
+// Commits the factory paths, and nothing else, when they have changes. Returns whether it committed.
 function commitFactory(root, run, coAuthors) {
-  const paths = factoryPaths(run).filter((p) => existsSync(join(root, p)));
+  const paths = FACTORY_PATHS.filter((p) => existsSync(join(root, p)));
   if (!paths.length) return false;
   git(root, 'add', '-A', '--', ...paths);
   const staged = spawnSync('git', ['-C', root, 'diff', '--cached', '--quiet', '--', ...paths]);

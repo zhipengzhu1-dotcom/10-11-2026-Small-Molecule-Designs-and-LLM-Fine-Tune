@@ -85,6 +85,19 @@ t('events written with no run during the run, by the writer or a check, are comm
   assert.equal(git(root, 'ls-files', 'factory/agents'), 'factory/agents/run-1/merger.jsonl\nfactory/agents/run-1/orchestrator.jsonl');
 });
 
+t('a merge commits activity left by earlier runs and unmarked writes too, leaving no factory path uncommitted', () => {
+  const root = fixture();
+  hookWrites(root);
+  put(root, 'factory/agents/old-run/orchestrator.jsonl', '{"type":"agent.start"}\n');
+  put(root, 'factory/agents/manual/ci.jsonl', '{"type":"check"}\n');
+
+  const r = merge(['ticket', '--root', root]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(status(root), '');
+  assert.equal(git(root, 'ls-files', 'factory/agents'),
+    'factory/agents/manual/ci.jsonl\nfactory/agents/old-run/orchestrator.jsonl\nfactory/agents/run-1/a1.jsonl');
+});
+
 t('only the factory paths go in the factory commit: other changes in the checkout stay as they were', () => {
   const root = fixture();
   hookWrites(root);
