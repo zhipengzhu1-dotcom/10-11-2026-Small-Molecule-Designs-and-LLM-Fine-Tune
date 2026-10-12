@@ -239,7 +239,7 @@ test('the frontier read prints one line when every hand-back was acted on and ev
     o(1, 'dispatch', { to: 'a1', role: 'implementer', ticket: 66, description: 'implementer #66 causal order' }),
     a(2, 'a1', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
     a(3, 'a1', 'agent.stop', { role: 'general-purpose', status: 'PASS', report: 'PASS: done' }),
-  ], [['merged #66', 'worktree-agent-a1']]);
+  ], [['merged #66', 'agent:a1']]);
   const r = digest(dir, 'frontier', '52');
   assert.equal(r.status, 0, r.stderr);
   assert.equal(r.stdout, 'frontier #52: 1 open ticket; no early start, hand-back or stop to flag; zero slack (critical path of 1): #66\n');
@@ -254,7 +254,7 @@ test('the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED
     a(4, 'a2', 'agent.stop', { role: 'general-purpose', status: 'PASS', report: 'PASS\nall rows audited' }),
     a(5, 'a2', 'agent.stop', { role: 'general-purpose', status: 'PASS' }), // a stop from before reports were logged
     a(6, 'a1', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
-    a(7, 'a1', 'agent.stop', { role: 'general-purpose', status: 'ISSUES', report: 'ISSUES: the merge test fails on Windows\nmore' }),
+    a(7, 'a1', 'agent.stop', { role: 'general-purpose', status: 'ISSUES', report: 'ISSUES (2 of 3 boxes): the merge test fails on Windows\nmore' }),
   ]);
   const r = digest(dir, 'frontier', '52');
   assert.equal(r.status, 0, r.stderr);

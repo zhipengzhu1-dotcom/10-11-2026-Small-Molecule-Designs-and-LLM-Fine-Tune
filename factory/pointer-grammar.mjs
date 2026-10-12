@@ -46,7 +46,10 @@ export function parsePointer(text) {
 //   event:<run>/<agent>:<line>      line <line> of factory/agents/<run>/<agent>.jsonl
 //
 // Same return shape as parsePointer; null when `text` is prose.
-const NAME = '[A-Za-z0-9][A-Za-z0-9._-]*';
+//
+// NAME is the run and agent id rule (log.mjs plainName writes ids to it); the causal overlay
+// (graph/causal.mjs) finds citations with it too, so a cited id parses the same everywhere.
+export const NAME = '[A-Za-z0-9][A-Za-z0-9._-]*';
 const EVENT = new RegExp(`^(${NAME})/(${NAME}):([1-9]\\d*)$`);
 
 export function parseTarget(text) {
@@ -59,6 +62,23 @@ export function parseTarget(text) {
     const e = EVENT.exec(m[2]);
     return e ? { kind: 'event', text, run: e[1], agent: e[2], line: Number(e[3]) }
       : { kind: 'event', text, problem: `${text} is not an event; write event:<run>/<agent>:<line>` };
+  }
+  return parsePointer(text);
+}
+
+// The parts of an item of a decision row's evidence (decide.mjs): any pointer, or one of the two
+// that name the factory's own logs, so a row can cite the hand-back it acts on:
+//
+//   event:<run>/<agent>:<line>      as in a challenge's target
+//   agent:<id>                      an agent of the stream, by its id
+//
+// Same return shape as parsePointer; null when `text` is prose.
+export function parseEvidence(text) {
+  const m = KIND.exec(text);
+  if (m?.[1] === 'event') return parseTarget(text);
+  if (m?.[1] === 'agent') {
+    return new RegExp(`^${NAME}$`).test(m[2]) ? { kind: 'agent', text, agent: m[2] }
+      : { kind: 'agent', text, problem: `${text} is not an agent; write agent:<id>` };
   }
   return parsePointer(text);
 }

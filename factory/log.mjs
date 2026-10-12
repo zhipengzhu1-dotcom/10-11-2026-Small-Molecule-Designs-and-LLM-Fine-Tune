@@ -8,14 +8,16 @@
 //        Never the cwd: subagents run in worktrees, but activity files live in the main checkout.
 // Run:   --run, else FACTORY_RUN, else the run marker's run.     Agent: --agent, else FACTORY_AGENT.
 import { appendFileSync, mkdirSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
 import { parseTarget } from './pointer.mjs';
-// read.mjs imports defaultRoot from here; the cycle is safe because neither module uses the
-// other's exports until a function runs.
 import { readStream } from './read.mjs';
+import { defaultRoot } from './root.mjs';
 import { defaultRun } from './run-marker.mjs';
+
+// Every CLI takes the root from here or from root.mjs; read.mjs takes it from root.mjs, so the
+// writer and the reader do not import each other.
+export { defaultRoot };
 
 class EventError extends Error {}
 
@@ -88,10 +90,6 @@ const SCHEMA = {
 export const UNKNOWN = 'unknown';
 const STAMPED = ['ts', 'run', 'agent', 'type'];
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-
-export function defaultRoot(env = process.env) {
-  return env.FACTORY_ROOT || env.CLAUDE_PROJECT_DIR || resolve(dirname(fileURLToPath(import.meta.url)), '..');
-}
 
 // An id from a hook payload made safe as a file name: characters outside [A-Za-z0-9._-] become _,
 // leading punctuation goes, and a missing or emptied id is "unknown".

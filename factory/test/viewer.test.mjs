@@ -200,6 +200,22 @@ test('the latest result of each check in the run is reported', () => {
   assert.deepEqual(s.checks.map((c) => [c.name, c.result, c.evidence]), [['tables', 'pass', 'all rows'], ['brief', 'pass', 'ok']]);
 });
 
+test("the state carries the agent network's T(k) and C(k) at k = 5 and 10, its settled force layout against the crew graph's shortest-path hops", () => {
+  // Two runs of ten agents; in each, agents pass notes along in pairs, so the crew graph has structure.
+  const events = ['r1', 'r2'].flatMap((run, r) => Array.from({ length: 10 }, (_, i) => [
+    ev(String(r * 20 + i).padStart(2, '0'), run, `a${r}${i}`, 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    ev(String(r * 20 + i).padStart(2, '0'), run, `a${r}${i}`, 'artifact', { path: `${run}/notes-${Math.floor(i / 2)}.md`, kind: 'notes' }),
+  ]).flat());
+  const { network } = summarize(events);
+  assert.equal(network.n, 2 + 20); // a hub per run and every agent
+  assert.deepEqual(network.against, { method: 'shortest-path hops' });
+  for (const k of [5, 10]) {
+    const random = 1 - (network.n - 1 - k) ** 2 / ((network.n - 1) * (2 * network.n - 3 * k - 1));
+    for (const m of ['T', 'C']) assert.ok(network[m][k] > random + 0.05 && network[m][k] <= 1, `${m}(${k}) = ${network[m][k]}, random ${random}`);
+  }
+  assert.deepEqual(summarize(events.slice(0, 6)).network, { n: 4, T: { 5: null, 10: null }, C: { 5: null, 10: null }, against: { method: 'shortest-path hops' } });
+});
+
 test('the crew holds every agent of every run, with the files it wrote; only the newest run has live agents', () => {
   const start = { role: 'general-purpose', parent: 'orchestrator' };
   const s = summarize([

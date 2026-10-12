@@ -12,10 +12,7 @@
 // Lines: one when clean or when no standing row is like it; otherwise a head line and, per flagged
 // row, the row and the judge's reason. A judge that throws stops the check, which then lists the
 // rows unjudged.
-const K = 3;
-const WIDTH = 120;
-const cut = (line) => (line.length > WIDTH ? `${line.slice(0, WIDTH - 1)}…` : line);
-const fixed = (s) => s.toFixed(2);
+import { cut, fixed, judgeAt, judged as asJudged, K, plural } from './reads.mjs';
 
 export async function precedentRead({ graph, decision, why, relations = [], judge, k = K }) {
   const found = graph.precedents(`${decision}\n${why ?? ''}`, k);
@@ -24,11 +21,11 @@ export async function precedentRead({ graph, decision, why, relations = [], judg
   const judged = [];
   for (const { row, score } of found) {
     try {
-      judged.push({ row, score, ...(await judge({ line: row.line, text: row.text, why: row.why }, later)) });
+      judged.push({ row, score, ...(await judge(asJudged(row), later)) });
     } catch (err) {
-      const where = [judge.model, judge.host].filter(Boolean).join(' at ');
+      const where = judgeAt(judge);
       return [
-        `precedent: judge unreachable (${where ? `${where}: ` : ''}${err.message}); the ${found.length} nearest standing row${found.length === 1 ? '' : 's'}, unjudged:`,
+        `precedent: judge unreachable (${where ? `${where}: ` : ''}${err.message}); the ${plural(found.length, 'nearest standing row')}, unjudged:`,
         ...found.map((f) => cut(`  row:${f.row.line} ${fixed(f.score)}: ${f.row.text}`)),
       ];
     }
@@ -38,11 +35,11 @@ export async function precedentRead({ graph, decision, why, relations = [], judg
   const n = found.length;
   if (!flagged.length) {
     const list = judged.map((j) => `row:${j.row.line} ${fixed(j.score)}${marked(j.row) ? ` (${marked(j.row)})` : ''}`).join(', ');
-    return [`precedent: no contradiction among the ${n} nearest standing row${n === 1 ? '' : 's'} (${list}; judged by ${judge.model ?? 'the judge'})`];
+    return [`precedent: no contradiction among the ${plural(n, 'nearest standing row')} (${list}; judged by ${judge.model ?? 'the judge'})`];
   }
   const it = flagged.length === 1 ? 'it' : 'each';
   return [
-    `precedent: ${flagged.length} of the ${n} nearest standing row${n === 1 ? '' : 's'} may be replaced or reversed by this row; mark ${it} with --supersedes, --withdraws or --corrects, or let it stand`,
+    `precedent: ${flagged.length} of the ${plural(n, 'nearest standing row')} may be replaced or reversed by this row; mark ${it} with --supersedes, --withdraws or --corrects, or let it stand`,
     ...flagged.flatMap((j) => [cut(`  row:${j.row.line} ${fixed(j.score)} ${j.verdict}: ${j.row.text}`), cut(`    judge: ${j.why}`)]),
   ];
 }

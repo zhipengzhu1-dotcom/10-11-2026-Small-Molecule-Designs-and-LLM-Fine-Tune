@@ -3,9 +3,8 @@
 // stopped one is filled the way it ended: solid PASS, grey ISSUES, outline BLOCKED or unknown.
 import { createPlane, forceSpace } from './plane.js';
 import { buildCrew } from './layout.js';
-import { clock, h, short, span } from './ui.js';
+import { clock, h, short, span, trim } from './ui.js';
 
-const trim = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
 const say = { dispatched: 'dispatched by', ticket: 'same ticket as', files: 'wrote the same file as' };
 
 export function createCrew(parts) {

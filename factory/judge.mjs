@@ -14,11 +14,11 @@
 //
 // The prompt names no relation the new row makes: a `corrects` pair is filtered out after the
 // judge (precedent.mjs), so the judge sees every pair the same way.
-export const JUDGE_MODEL = 'qwen3.5:4b';
+const JUDGE_MODEL = 'qwen3.5:4b';
 const HOST = 'http://127.0.0.1:11434';
 const VERDICTS = ['contradicts', 'consistent'];
 // A pair fits easily. Without it Ollama loads the model's full 262,144-token context: qwen3.5:4b
-// then takes 12.5 GiB (nvidia-smi delta), over the 8 GiB cap; at 2k it takes 3.9 GiB.
+// then takes 12.5 GiB (nvidia-smi delta), over the 8 GiB cap; at this 4k it takes about 4.1 GiB.
 const NUM_CTX = 4096;
 
 // Ollama structured output: the answer must be this JSON object.

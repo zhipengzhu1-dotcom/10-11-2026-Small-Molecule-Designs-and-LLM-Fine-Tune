@@ -92,17 +92,20 @@ test('files written twice and stale checks among the changed files are listed, e
   const graph = fixture([
     ev(12, 'impl', 'artifact', { path: 'factory/a.mjs', kind: 'code' }),
     ev(13, 'orchestrator', 'check', { name: 'tests', result: 'pass', evidence: 'factory/a.mjs 4/4' }),
-    ev(14, 'impl', 'artifact', { path: 'factory/a.mjs', kind: 'code' }),
-    ev(15, 'other', 'artifact', { path: 'factory/b.mjs', kind: 'code' }),
-    ev(16, 'impl', 'artifact', { path: 'factory/b.mjs', kind: 'code' }),
-    ev(17, 'other', 'artifact', { path: 'factory/elsewhere.mjs', kind: 'code' }),
-    ev(18, 'impl', 'artifact', { path: 'factory/elsewhere.mjs', kind: 'code' }),
+    // impl is resumed after the check, so its next write provably comes after it
+    ev(14, 'orchestrator', 'dispatch', { to: 'impl', role: 'implementer', ticket: 17, resume: true }),
+    ev(15, 'impl', 'agent.start', { role: 'general-purpose' }),
+    ev(16, 'impl', 'artifact', { path: 'factory/a.mjs', kind: 'code' }),
+    ev(17, 'other', 'artifact', { path: 'factory/b.mjs', kind: 'code' }),
+    ev(18, 'impl', 'artifact', { path: 'factory/b.mjs', kind: 'code' }),
+    ev(20, 'other', 'artifact', { path: 'factory/elsewhere.mjs', kind: 'code' }),
+    ev(21, 'impl', 'artifact', { path: 'factory/elsewhere.mjs', kind: 'code' }),
   ]);
   const lines = await mergeRead({ graph, branch: 'ticket', paths: ['factory/a.mjs', 'factory/b.mjs'], ticket: 17, judge });
   assert.deepEqual(lines, [
     'merge read ticket: 1 file written twice, 1 stale check',
-    '  written twice: factory/b.mjs, by other and impl (event:r1/other:1, event:r1/impl:4)',
-    '  stale check: tests (pass, event:r1/orchestrator:2) ran before factory/a.mjs last changed (event:r1/impl:3)',
+    '  written twice: factory/b.mjs, by other and impl (event:r1/other:1, event:r1/impl:5)',
+    '  stale check: tests (pass, event:r1/orchestrator:2) ran before factory/a.mjs last changed (event:r1/impl:4)',
   ]);
 });
 

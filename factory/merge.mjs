@@ -33,6 +33,7 @@ import { createJudge } from './judge.mjs';
 import { defaultRoot } from './log.mjs';
 import { mergeRead } from './merge-read.mjs';
 import { readStream } from './read.mjs';
+import { mergedTicket } from './reads.mjs';
 import { readMarker } from './run-marker.mjs';
 
 const DECISIONS = 'factory/decisions.tsv';
@@ -72,7 +73,7 @@ function commitFactory(root, run, coAuthors) {
 async function read({ root, branch, message, all = false, judge = createJudge() }) {
   try {
     const paths = git(root, 'diff', '-z', '--name-only', `HEAD...${branch}`).split('\0').filter(Boolean);
-    const ticket = Number(/^Merge #(\d+)\b/.exec(message ?? '')?.[1]) || undefined;
+    const ticket = mergedTicket(message) ?? undefined;
     const agents = [/^worktree-agent-(.+)$/.exec(branch)?.[1]].filter(Boolean);
     return await mergeRead({ graph: buildGraph(readStream(root)), branch, paths, ticket, agents, judge, all });
   } catch (err) {

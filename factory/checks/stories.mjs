@@ -21,16 +21,24 @@ function checkScripts(root) {
 }
 
 // A test is named by the literal first argument of a test(), it(), describe(), suite() or
-// t.test() call in a test file. A name built at run time (a template with `${…}`) is not stable,
-// so it is never declared here.
+// t.test() call in a test file, or of a call to a wrapper the file defines around one of them
+// (`const t = (name, fn) => test(name, ...)`, or a function that returns `test(name, ...)`). A
+// name built at run time (a template with `${…}`) is not stable, so it is never declared here.
 const DECLARATION = /(?:^|[^\w$])(?:test|it|describe|suite)\s*\(\s*(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\$]|\\.|\$(?!\{))*)`)/g;
+const declaration = (wrappers) => (wrappers.length
+  ? new RegExp(DECLARATION.source.replace('(?:test|it|describe|suite)', `(?:test|it|describe|suite|${wrappers.join('|')})`), 'g')
+  : DECLARATION);
+// `const t = (name, ...) => [{ return] test(name` or `function t(name, ...) { return test(name`.
+const WRAPPER = /(?:(?:const|let|var)\s+([A-Za-z_]\w*)\s*=\s*\(\s*(\w+)[^)]*\)\s*=>\s*\{?\s*(?:return\s+)?|function\s+([A-Za-z_]\w*)\s*\(\s*(\w+)[^)]*\)\s*\{\s*(?:return\s+)?)(?:test|it|describe|suite)\s*\(\s*(\w+)/g;
 const ESCAPES = { n: '\n', t: '\t', r: '\r' };
 const unescape = (s) => s.replace(/\\(.)/gs, (_, c) => ESCAPES[c] ?? c);
 
 function testNames(root) {
   const names = new Set();
   for (const f of globSync(TEST_FILES, { cwd: root })) {
-    for (const m of readFileSync(join(root, f), 'utf8').matchAll(DECLARATION)) names.add(unescape(m[1] ?? m[2] ?? m[3]));
+    const text = readFileSync(join(root, f), 'utf8');
+    const wrappers = [...text.matchAll(WRAPPER)].filter((m) => (m[2] ?? m[4]) === m[5]).map((m) => m[1] ?? m[3]);
+    for (const m of text.matchAll(declaration(wrappers))) names.add(unescape(m[1] ?? m[2] ?? m[3]));
   }
   return names;
 }

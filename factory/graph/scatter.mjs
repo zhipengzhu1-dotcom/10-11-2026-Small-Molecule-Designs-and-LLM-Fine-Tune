@@ -2,7 +2,8 @@
 // (graph/text.mjs) projected to 2-D, scored by how far the picture distorts the full space. Pure,
 // like the graph module: no file, network or model, so tests run it on fixture vectors.
 //
-//   scatterView(vectors, { method = 'pca' }) -> { method, n, points: [{ x, y }], T, C, against }
+//   scatterView(vectors, { method = 'pca' }) -> { method, n, points: [{ x, y }], T, C, against, warning }
+//     warning   UMAP's small-data warning, null for PCA
 //     vectors   sparse vectors, each a Map from term to weight, in the order the points come back
 //     T, C      trustworthiness and continuity at k = 5 and 10 (graph/distortion.mjs) of the 2-D
 //               distances against the Euclidean distances of the full vectors
@@ -50,7 +51,7 @@ function fullDistances(vectors) {
 // PCA from the Gram matrix: double-centre it, take its top d eigenvectors u_c, and place row i at
 // sqrt(lambda_c) u_c(i). Each axis's sign is fixed so its largest entry is positive, so the same
 // vectors always give the same picture.
-export function pca(g, d = 2) {
+function pca(g, d = 2) {
   const n = g.length;
   const row = g.map((r) => r.reduce((s, x) => s + x, 0) / n);
   const all = row.reduce((s, x) => s + x, 0) / n;

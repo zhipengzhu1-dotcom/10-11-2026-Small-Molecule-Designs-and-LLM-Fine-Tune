@@ -4,7 +4,11 @@
 // (research/order-integrity:research/orchestration/order-integrity.md, section 4).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { buildGraph } from '../graph.mjs';
+import { readStream } from '../read.mjs';
+import { tempRoot } from './helpers.mjs';
 
 const ev = (s, run, agent, type, fields = {}) => ({ ts: `2026-10-12T09:${String(s).padStart(2, '0')}:00Z`, run, agent, type, ...fields });
 const row = (line, decision, evidence = 'e', ts = `2026-10-12T09:${String(line).padStart(2, '0')}:30Z`) =>
@@ -25,39 +29,60 @@ test('a hand-back no later decision or dispatch acted on is listed, ISSUES and B
     stop(7, 'r1', 'a2', 'PASS'),
     stop(8, 'r1', 'a3', 'PASS'),
     stop(9, 'r1', 'a1', 'ISSUES', 'ISSUES: the merge test fails on Windows'),
-    row(2, 'merged #65', 'file:factory/agents/r1/a3.jsonl'),
+    row(2, 'merged #65', 'agent:a3'),
   ]);
   const unacted = g.unacted();
   assert.deepEqual(ids(unacted), ['event:r1/a1:2', 'event:r1/a2:2']);
   assert.deepEqual(unacted[0], { id: 'event:r1/a1:2', agent: 'a1', status: 'ISSUES', role: 'implementer', ticket: 63, report: 'ISSUES: the merge test fails on Windows' });
 });
 
-test('a later row or dispatch acts on a hand-back by citing it: its event, agent, branch or log, a file it wrote, a commit it checked, or a resume', () => {
+test('a hand-back is acted on by a row citing its event or agent, a dispatch whose Cause names it, a resume, or its ticket\'s Merge commit', () => {
+  const worker = (n, extra = []) => [dispatch(n, 'r1', `a${n}`, 70 + n), start(n, 'r1', `a${n}`), ...extra, stop(n, 'r1', `a${n}`, 'PASS')];
+  const events = [
+    ...worker(1),
+    ...worker(2),
+    ...worker(3),
+    ...worker(4),
+    ...worker(5),
+    ...worker(6),
+    ...worker(7),
+    row(1, 'accepted the hand-back', 'event:r1/a1:2; agent:a8'), // a8 is not dispatched yet: evidence, not a cause
+    { ...row(2, 'took the report as read'), why: 'agent:a2 found nothing to fix' },
+    ev(40, 'r1', 'orchestrator', 'dispatch', { to: 'a3', role: 'implementer', ticket: 73, resume: true }),
+    ev(41, 'r1', 'orchestrator', 'dispatch', { to: 'a9', role: 'merger', ticket: 74, description: 'merger #74 merge', cause: 'event:r1/a4:2' }),
+    ...worker(8),
+    ev(50, 'r1', 'orchestrator', 'message', { to: 'a9', cause: 'event:r1/a8:2' }), // a message is no decision or dispatch
+  ];
+  const merges = [{ ticket: 75, ts: '2026-10-12T10:00:00Z', commit: 'c0ffee5' }]; // a5 served #75
+  assert.deepEqual(ids(buildGraph(events, { merges }).unacted()), ['event:r1/a6:2', 'event:r1/a7:2', 'event:r1/a8:2']);
+});
+
+test('only those count: an orchestrator check or challenge citing a hand-back, or a row naming its branch, log, file or commit, does not act on it', () => {
   const worker = (n, extra = []) => [dispatch(n, 'r1', `a${n}`, 70 + n), start(n, 'r1', `a${n}`), ...extra, stop(n, 'r1', `a${n}`, 'PASS')];
   const g = buildGraph([
     ...worker(1),
     ...worker(2),
-    ...worker(3),
-    ...worker(4, [ev(4, 'r1', 'a4', 'artifact', { path: 'research/notes/a4.md', kind: 'notes' })]),
-    ...worker(5, [ev(5, 'r1', 'a5', 'check', { name: 'npm-test', result: 'pass', evidence: 'commit:abcdef1234 452 pass' })]),
+    ...worker(3, [ev(3, 'r1', 'a3', 'artifact', { path: 'research/notes/a3.md', kind: 'notes' })]),
+    ...worker(4, [ev(4, 'r1', 'a4', 'check', { name: 'npm-test', result: 'pass', evidence: 'commit:abcdef1234 452 pass' })]),
+    ...worker(5),
     ...worker(6),
-    ...worker(7),
-    // spec #1's rows predate the pointer grammar: a bare path and a bare sha
-    ...worker(10, [ev(10, 'r1', 'a10', 'artifact', { path: 'research/tools/scout.md', kind: 'notes' })]),
-    ...worker(11, [ev(11, 'r1', 'a11', 'check', { name: 'npm-test', result: 'pass', evidence: '58 pass at d4b3bae' })]),
-    ...worker(12, [ev(12, 'r1', 'a12', 'artifact', { path: 'research/s1/tables/', kind: 'table' })]),
-    row(6, 'merged #8', 'research/tools/scout.md; d4b3bae; research/s1/tables/table1.md'),
-    row(1,'accepted the hand-back', 'event:r1/a1:2; agent:a8'), // a8 is not dispatched yet: evidence, not a cause
-    row(2, 'merged its branch', 'worktree-agent-a2'),
-    row(3, 'read its log', 'file:factory/agents/r1/a3.jsonl'),
-    row(4, 'read its notes', 'file:research/notes/a4.md:3-9'),
-    row(5, 'merged at its commit', 'commit:abcdef1'),
-    ev(40, 'r1', 'orchestrator', 'dispatch', { to: 'a6', role: 'implementer', ticket: 76, resume: true }),
-    ev(41, 'r1', 'orchestrator', 'dispatch', { to: 'a9', role: 'merger', ticket: 77, description: 'merger #77 merge', cause: 'event:r1/a7:2' }),
-    ...worker(8),
-    ev(50, 'r1', 'orchestrator', 'message', { to: 'a9', cause: 'event:r1/a8:2' }), // a message is no decision or dispatch
+    ev(30, 'r1', 'orchestrator', 'check', { name: 'trail', result: 'pass', evidence: 'event:r1/a1:2 read' }),
+    ev(31, 'r1', 'orchestrator', 'challenge', { id: 'c1', target: 'event:r1/a2:2', kind: 'undermine', why: 'thin report' }),
+    row(3, 'read its notes', 'file:research/notes/a3.md:3-9'),
+    row(4, 'merged at its commit', 'commit:abcdef1'),
+    row(5, 'merged its branch', 'worktree-agent-a5'),
+    row(6, 'read its log', 'file:factory/agents/r1/a6.jsonl'),
+    row(7, 'went on'), // a decision after them all
   ]);
-  assert.deepEqual(ids(g.unacted()), ['event:r1/a8:2']);
+  assert.deepEqual(ids(g.unacted()), ['event:r1/a1:2', 'event:r1/a2:2', 'event:r1/a3:3', 'event:r1/a4:3', 'event:r1/a5:2', 'event:r1/a6:2']);
+  // They still order: the row that names a3's notes comes after a3's stop.
+  assert.ok(g.happensBefore('event:r1/a3:3', 'row:3'));
+});
+
+test('an agent: or event: citation of a name with a dot still counts, as the pointer grammar allows', () => {
+  const g = buildGraph([dispatch(1, 'r1', 'a.1', 70), start(2, 'r1', 'a.1'), stop(3, 'r1', 'a.1', 'ISSUES'), row(4, 'acted on it', 'agent:a.1.')]);
+  assert.deepEqual(ids(g.unacted()), []);
+  assert.ok(g.happensBefore('event:r1/a.1:2', 'row:4'));
 });
 
 test('an agent resumed across two runs, with 6 starts and 6 stops, replays clean', () => {
@@ -105,6 +130,33 @@ test('happens-before comes from dispatches and citations, never from ts: inverte
   const all = events.map((e) => g.nodes.find((n) => n.event === e).id);
   const again = buildGraph(events.map((e, i) => ({ ...e, ts: events.at(-1 - i).ts }))); // every ts swapped
   for (const a of all) for (const b of all) assert.equal(again.happensBefore(a, b), hb(a, b), `${a} -> ${b}`);
+});
+
+test('through readStream, happens-before ignores ts across agents: each file keeps its own order, and only the orchestrator\'s activity file and decision log interleave by ts', () => {
+  // The workers' clocks are wrong: a1 logged its events with ts running backwards, all before the
+  // dispatch that started it, and a2 started "first of all".
+  const root = tempRoot();
+  const file = (run, agent, events) => {
+    mkdirSync(join(root, 'factory', 'agents', run), { recursive: true });
+    writeFileSync(join(root, 'factory', 'agents', run, `${agent}.jsonl`), events.map((e) => JSON.stringify(e) + '\n').join(''));
+  };
+  file('r1', 'a1', [start(9, 'r1', 'a1'), ev(8, 'r1', 'a1', 'artifact', { path: 'notes/a1.md', kind: 'notes' }), stop(7, 'r1', 'a1', 'PASS')]);
+  file('r1', 'a2', [start(0, 'r1', 'a2')]);
+  file('r1', 'orchestrator', [dispatch(20, 'r1', 'a1', 66), dispatch(40, 'r1', 'a2', 67)]);
+  writeFileSync(join(root, 'factory', 'decisions.tsv'),
+    'ts\tphase\tdecision\twhy\tevidence\tresult\n2026-10-12T09:30:00Z\tproject/x\taccepted a1\tw\tagent:a1\tadopted\n');
+  const events = readStream(root);
+  assert.deepEqual(events.filter((e) => e.agent === 'a1').map((e) => e.type), ['agent.start', 'artifact', 'agent.stop'], 'a file keeps its order');
+  assert.deepEqual(events.filter((e) => e.agent === 'orchestrator').map((e) => e.type), ['dispatch', 'decision', 'dispatch'], 'O interleaves by ts');
+  const g = buildGraph(events);
+  const hb = (a, b) => g.happensBefore(a, b);
+  assert.equal(g.node('event:r1/a1:3').type, 'agent.stop');
+  assert.deepEqual(g.clock('row:2'), { agent: 'orchestrator', o: 2, own: 2 });
+  assert.ok(hb('event:r1/orchestrator:1', 'event:r1/a1:1'), 'the dispatch happens before the start it caused');
+  assert.ok(hb('event:r1/a1:3', 'row:2') && !hb('row:2', 'event:r1/a1:3'), 'the hand-back happens before the row citing it');
+  assert.ok(hb('event:r1/a1:2', 'event:r1/a2:1'), 'a1\'s artifact happens before a2, dispatched after O read a1');
+  assert.ok(!hb('event:r1/a2:1', 'event:r1/a1:1'), 'a2\'s early ts puts it before nothing');
+  assert.deepEqual(g.lifecycle(), []);
 });
 
 test('for a spec, both lists keep to agents with an event in a run that logged its ticket graph, wherever the agent ran before', () => {

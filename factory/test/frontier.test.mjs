@@ -32,7 +32,7 @@ test('frontier sorts each child of the map by state, labels, assignee and open b
   assert.deepEqual(ready, [44]);
 });
 
-test('in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its state and open blockers', () => {
+test('in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its title, state and open blockers', () => {
   const root = tempRoot();
   assert.equal(marker(['start', '--root', root, '--run', 'run-1', '--branch', 'integ']).status, 0);
   frontier({ number: 1, remote: REMOTE, gh: () => RESPONSE, root });
@@ -42,13 +42,13 @@ test('in an orchestrated run, the frontier writes one ticket-graph snapshot: eac
   const [e] = events;
   assert.deepEqual({ run: e.run, agent: e.agent, type: e.type, spec: e.spec }, { run: 'run-1', agent: 'orchestrator', type: 'ticket.graph', spec: 1 });
   assert.deepEqual(e.tickets, [
-    { number: 2, state: 'CLOSED', status: 'closed', blockers: [] },
-    { number: 14, state: 'OPEN', status: 'blocked', blockers: [44] },
-    { number: 18, state: 'OPEN', status: 'human', blockers: [] },
-    { number: 26, state: 'OPEN', status: 'spec', blockers: [] },
-    { number: 30, state: 'OPEN', status: 'assigned', blockers: [] },
-    { number: 31, state: 'OPEN', status: 'not-ready', blockers: [] },
-    { number: 44, state: 'OPEN', status: 'ready', blockers: [] },
+    { number: 2, title: 'Tracer: an agent run appears in one event stream', state: 'CLOSED', status: 'closed', blockers: [] },
+    { number: 14, title: 'Context meter', state: 'OPEN', status: 'blocked', blockers: [44] },
+    { number: 18, title: 'Pick the base model', state: 'OPEN', status: 'human', blockers: [] },
+    { number: 26, title: 'Node model map', state: 'OPEN', status: 'spec', blockers: [] },
+    { number: 30, title: 'Claimed ticket', state: 'OPEN', status: 'assigned', blockers: [] },
+    { number: 31, title: 'Untriaged idea', state: 'OPEN', status: 'not-ready', blockers: [] },
+    { number: 44, title: 'Repo scripts for the decision log, frontier, transcripts and Qwen review', state: 'OPEN', status: 'ready', blockers: [] },
   ]);
 });
 

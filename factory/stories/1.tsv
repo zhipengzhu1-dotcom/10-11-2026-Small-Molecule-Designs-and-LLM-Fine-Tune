@@ -39,13 +39,20 @@ story	kind	name
 23	test	a ref fetched by hand and recorded in curation.tsv shows as fetched and is never downloaded
 23	test	a ref whose curation says the cited page changed is never fetched and stays fetch-pending
 24	check	trail
+24	test	a fully audited, append-only trail with a named reviewer passes and logs a pass check event
+24	test	a decision row with no audit verdict fails and the evidence names its line
 24	test	decide calls the installed pstack log.sh on the decision log, with a transcript:<session>@<iso> pointer to the session first in the evidence
 24	test	decide refuses with exit 2, and writes nothing, when a file: pointer in the evidence does not resolve
 24	test	decide refuses with exit 2, and writes nothing, when pstack is not installed or a cell is missing
 25	check	trail
+25	test	a row whose phase is not a clean slash path on the log's one tree, or that has an empty cell, fails
 25	test	decisions form a tree by their slash-path phase, in the order each node first appeared
 26	none	-
 27	check	trail
+27	test	a log whose committed row was edited or removed fails and the evidence names the line and commit
+27	test	a log whose last committed row was dropped fails
+27	test	a log that only grew across its commits passes and says how many versions it compared
+27	test	a superseded row replaced by a later row passes and is counted as superseded
 28	test	SubagentStart then SubagentStop record agent.start and agent.stop for that agent in the stream
 28	test	the hook commands registered in .claude/settings.json record start and stop when run by a POSIX shell
 29	test	each agent writes only to its own activity file
@@ -81,7 +88,14 @@ story	kind	name
 41	test	the check event still records every failure
 41	test	the latest result of each check in the run is reported
 42	check	trail
+42	test	show prints the row and its session since the session's previous row, each line with its pointer
+42	test	add writes an ok verdict to the session's audit file, with the row's ts filled in
+42	test	add refuses a pointer that does not resolve and writes nothing
+42	test	a decision row with no audit verdict fails and the evidence names its line
 43	check	trail
+43	test	a review by a Claude model fails because it is not cross-family
+43	test	an audit with no review, or a review that names no reviewer, fails
+43	test	review judges each audited row against its nearest earlier standing rows, one qwen3.5:4b call per pair, and the trail check then passes
 43	test	review asks local qwen3.5:9b once, with thinking off, and returns its answer
 43	test	review fails loudly on an empty answer instead of returning nothing
 44	none	-

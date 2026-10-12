@@ -8,19 +8,17 @@
 // one hop of the focus, and is reached by clicking its way there. Each decision is drawn by the label the server took
 // from the graph module: in a solid dot, undec a grey one, out an outline.
 import { geodesic } from './disk.js';
-import { buildGraph, phaseDisk } from './layout.js';
+import { buildDecisionGraph, phaseDisk, ROWS } from './layout.js';
 import { createPlane } from './plane.js';
-import { clock, h } from './ui.js';
+import { clock, h, trim } from './ui.js';
 
-const trim = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
-const ROWS = ['supersedes', 'withdraws', 'corrects'];
 // "supersedes line 2", "superseded by line 5", "corrects part of line 2"
 const PAST = { supersedes: 'superseded', withdraws: 'withdrawn', corrects: 'corrected' };
 
 // Evidence nodes are not in the tree, so they are not on the disk: a source cited in two or more
 // phases links its citing decisions in a chain instead, `via` the evidence node.
 function build(tree) {
-  const g = buildGraph(tree);
+  const g = buildDecisionGraph(tree);
   const cited = new Map();
   const links = g.links.filter((l) => {
     if (l.kind !== 'evidence') return true;

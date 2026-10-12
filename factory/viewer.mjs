@@ -12,20 +12,22 @@ import { createServer } from 'node:http';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evidence } from './digest.mjs';
 import { buildGraph } from './graph.mjs';
-import { eigenmap, euclidean, neighbourhoods } from './graph/distortion.mjs';
+import { eigenmap, euclidean, hops, neighbourhoods } from './graph/distortion.mjs';
 import { scatterView } from './graph/scatter.mjs';
 import { defaultRoot } from './log.mjs';
 import { readStream } from './read.mjs';
-import { buildGraph as decisionGraph, phaseDisk } from './viewer/layout.js';
+import { storyEvidence } from './reads.mjs';
+import { buildCrew, buildDecisionGraph, createSimulation, phaseDisk } from './viewer/layout.js';
 
-// Turns the stream (ordered by ts) into what the page draws, for one run: the newest unless
-// `run` names another. The manual run (checks run by hand) is never the newest while a session
-// run exists: it would end that session in the page while its agents are still working. Decisions have no run, so a run's timeline takes the ones made between
-// its first and last event, and the newest run, still open, takes every later one too.
-// `crew` is every subagent of every run, for the agents diagram. The stream does not say what
-// an agent was asked to do, so `taskOf(run, agent)` supplies it (see readTask), or null.
+// Turns the stream (as readStream merges it) into what the page draws, for one run: the newest
+// unless `run` names another. The manual run (checks run by hand) is never the newest while a
+// session run exists: it would end that session in the page while its agents are still working.
+// Decisions have no run, so a run's timeline takes the ones made between its first and last event,
+// and the newest run, still open, takes every later one too.
+// `crew` is every subagent of every run, for the agents diagram, and `network` how far its layout
+// distorts the crew graph (networkView). The stream does not say what an agent was asked to do,
+// so `taskOf(run, agent)` supplies it (see readTask), or null.
 // Each decision in `tree` carries the node model's `label` (in, out or undec) and `relations`
 // (factory/graph.mjs), so the page and the orchestrator read one model; `labels` counts them.
 // `scatter` is the decision text projected to 2-D (graph/scatter.mjs): PCA unless `opts.scatter`
@@ -49,6 +51,9 @@ export function summarize(events, run, taskOf = () => null, opts = {}) {
     return asked.get(k);
   };
   const own = byRun.get(run) ?? [];
+  const crew = runs.flatMap((r) => agents(r, byRun.get(r), ask)
+    .filter((a) => a.agent !== 'orchestrator')
+    .map((a) => ({ run: r, ...a, live: a.status === 'running' && r === newest })));
   const from = own.length ? Date.parse(own[0].ts) : Infinity;
   const to = run === newest ? Infinity : own.length ? Date.parse(own.at(-1).ts) : -Infinity;
   const during = (e) => e.type === 'decision' && Date.parse(e.ts) >= from && Date.parse(e.ts) <= to;
@@ -61,9 +66,8 @@ export function summarize(events, run, taskOf = () => null, opts = {}) {
     newest,
     run,
     agents: agents(run, own, ask),
-    crew: runs.flatMap((r) => agents(r, byRun.get(r), ask)
-      .filter((a) => a.agent !== 'orchestrator')
-      .map((a) => ({ run: r, ...a, live: a.status === 'running' && r === newest }))),
+    crew,
+    network: networkView(crew),
     checks: latestChecks(own),
     tree: decisions,
     disk: diskView(decisions),
@@ -187,7 +191,7 @@ const node = (name, path) => ({ name, path, count: 0, decisions: [], children: [
 const YARDSTICK = { method: 'laplacian eigenmaps', d: 16 };
 let lastDisk = { key: null, view: null };
 function diskView(tree) {
-  const graph = decisionGraph(tree);
+  const graph = buildDecisionGraph(tree);
   const links = graph.links.map((l) => [l.source, l.target]);
   const key = JSON.stringify([graph.nodes.map((n) => n.id), links]);
   if (lastDisk.key === key) return lastDisk.view;
@@ -196,6 +200,25 @@ function diskView(tree) {
   const view = neighbourhoods(members.map((i) => members.map((j) => full[i][j])), members.map((_, a) => members.map((_, b) => disk.distance(a, b))));
   lastDisk = { key, view: { n: members.length, tau: disk.tau, ...view, against: YARDSTICK } };
   return lastDisk.view;
+}
+
+// How far the agent network distorts the crew graph (story 49), as the page first draws it, every
+// run: the force layout settled from the same deterministic start the page uses (layout.js),
+// against the crew graph's shortest-path hops (graph/distortion.mjs), agents of runs no link joins
+// being infinitely far. Not an eigenmap: each run is a star, whose leaves share one eigenspace, so
+// at d = 16 their coordinates are arbitrary and scored a faithful layout below random.
+const HOPS = { method: 'shortest-path hops' };
+let lastNetwork = { key: null, view: null };
+function networkView(crew) {
+  const graph = buildCrew(crew);
+  const links = graph.links.map((l) => [l.source, l.target]);
+  const key = JSON.stringify([graph.nodes.map((n) => n.id), links]);
+  if (lastNetwork.key === key) return lastNetwork.view;
+  const sim = createSimulation(graph.nodes, graph.links);
+  for (let i = 0; i < 300 || (!sim.settled() && i < 2000); i++) sim.tick();
+  const view = neighbourhoods(hops(graph.nodes.length, links), euclidean(graph.nodes.map((node) => [node.x, node.y])));
+  lastNetwork = { key, view: { n: graph.nodes.length, ...view, against: HOPS } };
+  return lastNetwork.view;
 }
 
 // The decision rows' TF-IDF vectors (graph/text.mjs) projected to 2-D, each point keyed by its
@@ -252,7 +275,7 @@ function handle(root, taskOf, req, res) {
     let state;
     try {
       const events = readStream(root);
-      state = { ...summarize(events, run, taskOf, { scatter, evidence: (spec) => evidence(root, events, spec) }), error: null };
+      state = { ...summarize(events, run, taskOf, { scatter, evidence: (spec) => storyEvidence(root, events, spec) }), error: null };
     } catch (err) {
       // readStream throws on a corrupt line or a misfiled event; show it rather than go blank.
       state = { ...summarize([], run, undefined, { scatter }), error: err.message };

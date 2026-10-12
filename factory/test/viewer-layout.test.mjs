@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCrew, buildGraph, buildScatter, createSimulation, linkViews, swimlanes } from '../viewer/layout.js';
+import { buildCrew, buildDecisionGraph, buildScatter, createSimulation, linkViews, swimlanes } from '../viewer/layout.js';
 import { summarize } from '../viewer.mjs';
 
 const at = (mm, ss = '00') => `2026-10-11T10:${mm}:${ss}Z`;
@@ -19,7 +19,7 @@ const tree = summarize([
 ]).tree;
 
 test('the graph has a root, a node per phase and a dot per decision, each with a tree link to its parent', () => {
-  const g = buildGraph(tree);
+  const g = buildDecisionGraph(tree);
   const { nodes } = g;
   const byId = new Map(nodes.map((n) => [n.id, n]));
   assert.deepEqual(nodes.filter((n) => n.kind === 'phase').map((n) => n.id), ['project', 'project/paper', 'project/paper/pick', 'project/plan', 'intake', 'intake/references']);
@@ -37,7 +37,7 @@ test('the graph has a root, a node per phase and a dot per decision, each with a
 });
 
 // Cross-links, from rows the way decisions.tsv holds them: each decision knows its line.
-const crossed = buildGraph(summarize([
+const crossed = buildDecisionGraph(summarize([
   decision('00', 'project/implement/ticket-2', { line: 2, decision: 'asked the #2 implementer to fix it', evidence: 'a.jsonl @10:00Z; notes.md' }),
   decision('01', 'project/implement/ticket-3', { line: 3, decision: 'merged', evidence: 'a.jsonl @10:05Z and @10:06Z' }),
   decision('02', 'project/spec/tickets', { line: 4, decision: 'filed #2, #3 and #9', evidence: 'issue #1' }),
@@ -55,9 +55,9 @@ test('row links come from the relations the server sends, never from the text', 
     { phase: 'a', line: 2, decision: 'first', why: '', evidence: 'x', result: 'adopted', label: 'out', relations: [] },
     { phase: 'a', line: 5, decision: 'asked again', why: '', evidence: 'y', result: 'adopted', label: 'in', relations: [{ kind: 'supersedes', line: 2, part: false }] },
   ] }] };
-  assert.deepEqual(linksOf(buildGraph(served), 'supersedes').map(([a, b]) => [a.decision.line, b.decision.line]), [[5, 2]]);
+  assert.deepEqual(linksOf(buildDecisionGraph(served), 'supersedes').map(([a, b]) => [a.decision.line, b.decision.line]), [[5, 2]]);
 
-  const g = buildGraph(summarize([
+  const g = buildDecisionGraph(summarize([
     decision('00', 'a', { line: 2 }),
     decision('01', 'a', { line: 3, why: 'it supersedes line 2 in spirit', result: 'see supersedes line 2' }),
     decision('02', 'b', { line: 4, decision: 'withdraws line 3: wrong' }),
@@ -92,7 +92,7 @@ function settled(graph, ticks = 400) {
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 test('the force layout settles in the plane to finite, spread-out positions with linked nodes closer than unlinked ones', () => {
-  const graph = buildGraph(tree);
+  const graph = buildDecisionGraph(tree);
   const { nodes } = settled(graph);
   for (const n of nodes) assert.ok([n.x, n.y].every(Number.isFinite) && n.z === undefined, `${n.id} at ${n.x},${n.y},${n.z}`);
   const linked = new Set(graph.links.map((l) => `${l.source}-${l.target}`));
@@ -107,13 +107,13 @@ test('the force layout settles in the plane to finite, spread-out positions with
 });
 
 test('the layout is the same every time for the same graph', () => {
-  const a = settled(buildGraph(tree)).nodes.map((n) => [n.x, n.y]);
-  const b = settled(buildGraph(tree)).nodes.map((n) => [n.x, n.y]);
+  const a = settled(buildDecisionGraph(tree)).nodes.map((n) => [n.x, n.y]);
+  const b = settled(buildDecisionGraph(tree)).nodes.map((n) => [n.x, n.y]);
   assert.deepEqual(a, b);
 });
 
 test('a pinned node stays where it is pinned, and a node that already has a position starts there', () => {
-  const graph = buildGraph(tree);
+  const graph = buildDecisionGraph(tree);
   Object.assign(graph.nodes[1], { fx: 500, fy: -200 });
   Object.assign(graph.nodes[2], { x: 42, y: 7 });
   const sim = createSimulation(graph.nodes, graph.links);
@@ -123,7 +123,7 @@ test('a pinned node stays where it is pinned, and a node that already has a posi
 });
 
 test('the simulation cools down and can be reheated', () => {
-  const sim = settled(buildGraph(tree), 1000);
+  const sim = settled(buildDecisionGraph(tree), 1000);
   assert.equal(sim.settled(), true);
   sim.reheat();
   assert.equal(sim.settled(), false);
@@ -142,7 +142,7 @@ test('the scatter has a node per row at its point, carrying the row from the tre
 });
 
 test('picking a row in either view highlights the same row in the other; picking a phase clears it', () => {
-  const disk = buildGraph(scattered.tree), scatter = buildScatter(scattered.scatter, scattered.tree);
+  const disk = buildDecisionGraph(scattered.tree), scatter = buildScatter(scattered.scatter, scattered.tree);
   const lit = { disk: [], scatter: [] };
   const link = linkViews();
   const diskView = link.join({ graph: () => disk, highlight: (i) => lit.disk.push(i) });

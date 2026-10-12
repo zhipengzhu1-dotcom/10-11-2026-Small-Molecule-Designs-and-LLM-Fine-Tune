@@ -13,7 +13,7 @@ story	kind	name
 7	test	on recorded calls, each dispatch's agent is the agent_id of the agent.start it caused
 8	test	a stop that handed back through SubagentHandback logs its full text as report
 8	test	a stop with no report text anywhere writes no report field
-9	test	in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its state and open blockers
+9	test	in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its title, state and open blockers
 9	test	with no run marked, the frontier writes nothing
 10	test	a check run for a ticket records the ticket number on its event
 10	test	a check event written with ticket=#59 records ticket 59; a ticket that is no issue number is rejected
@@ -65,7 +65,10 @@ story	kind	name
 29	test	the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec
 29	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 31	test	a hand-back no later decision or dispatch acted on is listed, ISSUES and BLOCKED before the rest
-31	test	a later row or dispatch acts on a hand-back by citing it: its event, agent, branch or log, a file it wrote, a commit it checked, or a resume
+31	test	a hand-back is acted on by a row citing its event or agent, a dispatch whose Cause names it, a resume, or its ticket's Merge commit
+31	test	only those count: an orchestrator check or challenge citing a hand-back, or a row naming its branch, log, file or commit, does not act on it
+31	test	decide takes event: and agent: pointers in the evidence when the stream holds them, and refuses one it does not
+38	test	an agent: or event: citation of a name with a dot still counts, as the pointer grammar allows
 31	test	for a spec, both lists keep to agents with an event in a run that logged its ticket graph, wherever the agent ran before
 31	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
 32	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
@@ -129,7 +132,7 @@ story	kind	name
 42	test	the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains
 42	test	the frontier read says so when spec has no ticket-graph snapshot, or every ticket merged
 37	test	proper completion: the sink is reached when every ticket merged, and proper only when every gate token was consumed too
-12	test	a logged challenge on a row puts the row out until a row closes it, and withdrawing the closing row brings the doubt back
+12	test	a rebut on a row is a mutual attack: row and challenge are both undec until a row closes it, and withdrawing the closing row brings the doubt back
 12	test	ISSUES, BLOCKED and unknown stops and fetch.failed are doubts until a later PASS for the ticket, a fetched ref or a row citing them
 37	test	a story with no story-map row is undeveloped, and a story whose only check failed shows an open doubt
 37	test	a later pass eliminates an earlier fail's doubt, for a check and for a test in the results
@@ -140,7 +143,6 @@ story	kind	name
 37	test	the snapshot lists the spec's user stories, the numbered items under its User Stories heading, so the done read sees a story missing from the map
 42	test	the done read on a clean fixture run prints one line
 36	test	a file written by two agents is reported with both writes; one agent rewriting its own file is not
-36	test	a check older than its artifact's last write is stale; a check re-run after the write is not
 36	test	a check naming no written file, or a file only as part of a longer path, is never stale
 36	test	both queries narrow to the given paths, which match an artifact logged by its absolute path too
 36	test	files written twice and stale checks among the changed files are listed, each on its line
@@ -167,3 +169,18 @@ story	kind	name
 50	test	GET /state serves the PCA scatter unless ?scatter=umap asks for UMAP; any other method is refused
 51	test	each story node carries its residual doubt from the done read, and the spec's total, for the latest spec with stories
 51	test	GET /state gives each story of the snapshot's spec its doubts from the committed story map
+26	test	a rebut on a row is a mutual attack: row and challenge are both undec until a row closes it, and withdrawing the closing row brings the doubt back
+26	test	an undermine or undercut on a row is one-way: the row is out while the challenge stands
+26	test	a failed check attacks the rows of its ticket's phase and the rows citing it until a later pass: the #4 close with an open defeater
+27	test	a partial supersede takes over no whole-row attack, since attacks do not name parts
+37	test	a failed check attacks the rows of its ticket's phase and the rows citing it until a later pass: the #4 close with an open defeater
+38	test	through readStream, happens-before ignores ts across agents: each file keeps its own order, and only the orchestrator's activity file and decision log interleave by ts
+36	test	a check that provably ran before its artifact's last write is stale; a check re-run after the write is not
+36	test	a check concurrent with a write is not stale, whatever their ts: only happens-before counts
+41	test	when the stream will not read, the meter says the overdue check failed instead of staying silent
+8	test	a report at the 64k-character cap is kept whole
+8	test	a report over the 64k-character cap is cut to the cap and flagged report_truncated
+22	test	a test declared through a wrapper of test() is named like any other; a helper that only takes a string is not
+49	test	the state carries the agent network's T(k) and C(k) at k = 5 and 10, its settled force layout against the crew graph's shortest-path hops
+49	test	hop distances count the links on a shortest path, and a node out of reach is infinitely far
+9	test	the text nodes are decision rows (decision and why), hand-back reports and tickets (their titles)

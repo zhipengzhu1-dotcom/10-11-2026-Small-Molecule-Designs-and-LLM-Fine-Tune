@@ -19,7 +19,7 @@ const STOP = new Set(('a an and are as at be been but by can for from had has ha
   + 'were what when which while who will with would you').split(' '));
 
 // Lower-cased runs of letters and digits that hold a letter, less a plural s, without stop words.
-export function terms(text) {
+function terms(text) {
   const out = [];
   for (const [w] of (text ?? '').toLowerCase().matchAll(/[\p{L}\p{N}]+/gu)) {
     if (STOP.has(w) || !/\p{L}/u.test(w)) continue;

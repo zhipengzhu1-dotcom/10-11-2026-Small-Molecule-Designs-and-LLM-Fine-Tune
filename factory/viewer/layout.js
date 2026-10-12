@@ -11,9 +11,9 @@ import { sarkar } from './disk.js';
 //   mentions    a decision to the ticket-N phase of a ticket it names (#N), outside its own phase
 //   evidence    an evidence node, for a source cited in two or more phases, to each citing decision
 // Links hold node indexes and a kind.
-const ROWS = ['supersedes', 'withdraws', 'corrects'];
+export const ROWS = ['supersedes', 'withdraws', 'corrects'];
 
-export function buildGraph(tree) {
+export function buildDecisionGraph(tree) {
   const nodes = [{ id: '', kind: 'root', label: 'decisions', count: tree.count }];
   const links = [];
   const link = (source, target, kind) => links.push({ source, target, kind });

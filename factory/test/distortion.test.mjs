@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { eigenmap, euclidean, neighbourhoods } from '../graph/distortion.mjs';
+import { eigenmap, euclidean, hops, neighbourhoods } from '../graph/distortion.mjs';
 
 // A seeded generator (mulberry32), so the fixture vectors are the same on every run.
 function random(seed) {
@@ -77,4 +77,17 @@ test('the 2-D Laplacian eigenmap of a cycle is a regular polygon', () => {
 
 test('an eigenmap asked for more dimensions than the graph has gives n - 1', () => {
   assert.deepEqual(eigenmap(3, [[0, 1], [1, 2]], 16).map((p) => p.length), [2, 2, 2]);
+});
+
+test('hop distances count the links on a shortest path, and a node out of reach is infinitely far', () => {
+  // 0 - 1 - 2 - 3 in a path, 4 linked to 1, 5 alone
+  const d = hops(6, [[0, 1], [1, 2], [2, 3], [1, 4], [4, 1], [5, 5]]);
+  assert.deepEqual(d.map((row) => [...row]), [
+    [0, 1, 2, 3, 2, Infinity],
+    [1, 0, 1, 2, 1, Infinity],
+    [2, 1, 0, 1, 2, Infinity],
+    [3, 2, 1, 0, 3, Infinity],
+    [2, 1, 2, 3, 0, Infinity],
+    [Infinity, Infinity, Infinity, Infinity, Infinity, 0],
+  ]);
 });
