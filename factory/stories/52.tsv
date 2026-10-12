@@ -65,9 +65,25 @@ story	kind	name
 29	test	the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec
 29	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 39	test	the dispatch read prints one line when no standing decision binds the ticket
+34	test	on spec #1's replaced rows, each recorded supersede or withdraw names its target as the rank-1 earlier neighbour
+34	test	similarity is exact cosine: a text scores 1 against itself, 0 against a text sharing no term, and ranks highest first
+34	test	the text nodes are decision rows (decision and why), hand-back reports and tickets (their titles)
+34	test	a contradicted row the new row does not mark is flagged with the judge's reason and the flags that would mark it
+34	test	a contradiction the new row already marks with --supersedes or --withdraws is no flag
+34	test	when the judge cannot be reached, the check says so and lists the nearest standing rows unjudged, asking no more
 39	test	a long dispatch read stops at 15 lines, the last one naming the command for the rest
 39	test	a long decision is cut so each line stays short
+39	test	a clean check is one line naming the rows judged
+40	test	decide prints the precedent check before it writes the row, flagging a standing row the judge finds contradicted
+40	test	decide still writes the row when the judge is unreachable, and says so
+40	test	decide --dry-run prints the precedent check and writes nothing
 42	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 42	test	the dispatch read prints one line when no standing decision binds the ticket
 43	test	the digest never writes: the factory root is the same after a read
 44	none	-
+45	test	precedents are the 3 nearest earlier rows that still stand: an out row is never one
+45	test	the judge sees only the 3 nearest rows that still stand, one call per pair, and never an out row
+45	test	a corrects pair is judged like any other but never reported as a contradiction
+46	test	the graph module is pure: it, the pointer grammar and every module they import import no built-in or package, so no file, network or model code
+46	test	the judge asks local qwen3.5:4b about one pair per call, with thinking off, and returns its verdict and reason
+46	test	the judge takes its host from the option, else FACTORY_JUDGE_HOST, and throws on an HTTP error or a refused connection

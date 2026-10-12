@@ -1,13 +1,29 @@
-import { test } from 'node:test';
+import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { transcriptsDir } from '../transcript.mjs';
 import { FACTORY, marker, tempRoot } from './helpers.mjs';
 
 const DECIDE = join(FACTORY, 'decide.mjs');
 const SESSION = '5e55f0c1-0000-4000-8000-000000000001';
+
+// A fake Ollama in its own process (fixtures/fake-ollama.mjs), so decide's precedent judge gets an
+// answer while the test waits on spawnSync. No test reaches a real Ollama or loads a model.
+async function startJudge(args = []) {
+  const p = spawn(process.execPath, [join(FACTORY, 'test', 'fixtures', 'fake-ollama.mjs'), ...args]);
+  const host = await new Promise((resolve, reject) => {
+    p.stdout.once('data', (d) => resolve(String(d).trim()));
+    p.once('exit', (code) => reject(new Error(`fake-ollama exited ${code}`)));
+  });
+  return { host, stop: () => p.kill() };
+}
+
+let judge;
+before(async () => (judge = await startJudge()));
+after(() => judge.stop());
 
 // A home folder holding an installed pstack whose log.sh records the arguments it got, one per
 // line, and a project transcripts folder holding the fixture session.
@@ -41,7 +57,7 @@ const LOG = ['ts\tphase\tdecision\twhy\tevidence\tresult',
 const cellsOf = (s) => readFileSync(join(s.root, 'factory', 'log.sh.args'), 'utf8').trimEnd().split('\n').slice(1);
 
 function decide({ home, root }, args, extraEnv = {}) {
-  const env = { ...process.env, HOME: home, USERPROFILE: home, ...extraEnv };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, FACTORY_JUDGE_HOST: judge.host, ...extraEnv };
   for (const k of ['FACTORY_ROOT', 'FACTORY_RUN', 'CLAUDE_PROJECT_DIR']) if (!(k in extraEnv)) delete env[k];
   return spawnSync(process.execPath, [DECIDE, '--root', root, ...args], { env, encoding: 'utf8' });
 }
@@ -257,4 +273,46 @@ test('decide refuses with exit 2, and writes nothing, when pstack is not install
   assert.match(short.stderr, /expected 5 cells/);
   assert.equal(decide(s, ['--run', 'no-such-session', ...ROW]).status, 2);
   assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+});
+
+// A row much like line 3 of the fixture log ("chose qwen3.5:4b as judge").
+const JUDGE_ROW = ['project/judge', 'chose gemma4:e4b as judge', 'it fits 8 GB and is a second family', 'issue:4', 'open'];
+
+test('decide prints the precedent check before it writes the row, flagging a standing row the judge finds contradicted', async () => {
+  const contra = await startJudge(['--contradicts', 'chose qwen3.5:4b as judge']);
+  try {
+    const s = setup();
+    const r = decide(s, ['--run', SESSION, ...JUDGE_ROW], { FACTORY_JUDGE_HOST: contra.host });
+    assert.equal(r.status, 0, r.stderr);
+    const out = r.stdout.trimEnd().split('\n');
+    assert.match(out[0], /^precedent: 1 of the \d nearest standing rows? may be replaced or reversed by this row; mark it with --supersedes/);
+    assert.match(out[1], /^ {2}row:3 0\.\d\d contradicts: chose qwen3\.5:4b as judge$/);
+    assert.equal(out[2], '    judge: fake judge: contradicts');
+    assert.match(out.at(-1), /^decide: logged to /);
+    assert.equal(cellsOf(s)[1], 'chose gemma4:e4b as judge');
+  } finally {
+    contra.stop();
+  }
+});
+
+test('decide still writes the row when the judge is unreachable, and says so', async () => {
+  const closed = createServer();
+  await new Promise((r) => closed.listen(0, '127.0.0.1', r));
+  const host = `http://127.0.0.1:${closed.address().port}`;
+  await new Promise((r) => closed.close(r));
+
+  const s = setup();
+  const r = decide(s, ['--run', SESSION, ...JUDGE_ROW], { FACTORY_JUDGE_HOST: host });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, new RegExp(`^precedent: judge unreachable \\(qwen3\\.5:4b at ${host.replace(/\./g, '\\.')}: [^\\n]+\\); the \\d nearest standing rows?, unjudged:\\n {2}row:3 `));
+  assert.match(r.stdout, /\ndecide: logged to /);
+  assert.equal(cellsOf(s)[1], 'chose gemma4:e4b as judge');
+});
+
+test('decide --dry-run prints the precedent check and writes nothing', () => {
+  const s = setup();
+  const r = decide(s, ['--run', SESSION, '--dry-run', ...JUDGE_ROW]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /^precedent: no contradiction among the \d nearest standing rows? \(row:3 0\.\d\d.*; judged by qwen3\.5:4b\)\ndecide: dry run, nothing written\n$/);
+  assert.ok(!existsSync(join(s.root, 'factory', 'log.sh.args')));
 });
