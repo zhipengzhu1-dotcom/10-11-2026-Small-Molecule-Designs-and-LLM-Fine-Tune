@@ -138,3 +138,57 @@ test('a corrects row leaves the row it corrects in, and superseding the correcti
   const later = buildGraph([...g.decisions, row(90, 'supersedes line 58: the changed page was deleted')]);
   assert.deepEqual(labels(later), { 35: 'in', 58: 'out', 90: 'in' });
 });
+
+// The workflow net: a ticket-graph snapshot of spec 52, and the integration branch's `Merge #<n>`
+// commits, which the digest reads from git and hands in as the snapshot's `merges`.
+const tk = (number, blockers = [], state = 'OPEN') => ({ number, state, status: blockers.length ? 'blocked' : 'ready', blockers });
+const snap = (s, tickets) => ev(s, 'r1', 'orchestrator', 'ticket.graph', { spec: 52, tickets });
+const start = (s, ticket) => ev(s, 'r1', 'orchestrator', 'dispatch', { to: `a${ticket}`, role: 'implementer', ticket, description: `implementer #${ticket} x`, tool_use_id: `t${s}` });
+const merged = (s, ticket) => ({ ticket, ts: `2026-10-12T09:00:${String(s).padStart(2, '0')}Z`, commit: `c0ffee${ticket}` });
+
+test('a ticket started before its blocker merged, with no decision row explaining it, is an early start; a standing row naming both explains it', () => {
+  const events = [
+    snap(0, [tk(63), tk(59), tk(67, [63, 59])]),
+    start(1, 63),
+    start(2, 59),
+    start(5, 67), // #59 merged at 4, #63 only at 10
+    row(20, 'merged #59', 'adopted', 'project/implement-spec/ticket-59'),
+  ];
+  const at = (evs, merges) => buildGraph(evs, { ...events[0], merges }).earlyStarts();
+  const merges = [merged(4, 59), merged(10, 63)];
+  assert.deepEqual(at(events, merges), [
+    { ticket: 67, blocker: 63, start: 'event:r1/orchestrator:4', merged: '2026-10-12T09:00:10Z', explainedBy: [] },
+  ]);
+  const explained = [...events, row(21, 'started #67 before #63 merged: its interface is fixed', 'adopted', 'project/implement-spec/ticket-67')];
+  assert.deepEqual(at(explained, merges).map((e) => [e.ticket, e.blocker, e.explainedBy]), [[67, 63, [21]]]);
+  const withdrawn = [...explained, row(22, 'withdraws line 21: the interface changed')];
+  assert.deepEqual(at(withdrawn, merges).map((e) => e.explainedBy), [[]]);
+  assert.deepEqual(at(events, [merged(4, 59)]).map((e) => [e.ticket, e.blocker, e.merged]), [[67, 63, null]]);
+  assert.deepEqual(at(events, [merged(4, 59), merged(5, 63)]), []);
+});
+
+test('zero-slack tickets are the unmerged tickets on a longest chain, each ticket one step', () => {
+  // 2 waits on 1, 3 on 2, 4 on 1, 5 on 3 and 4; 6 stands alone. By hand, earliest/latest start:
+  // 1 0/0, 2 1/1, 3 2/2, 4 1/2, 5 3/3, 6 0/3, so the critical path is 1-2-3-5 (4 steps).
+  const tickets = [tk(1), tk(2, [1]), tk(3, [2]), tk(4, [1]), tk(5, [3, 4]), tk(6)];
+  const slack = (merges = []) => buildGraph([snap(0, tickets)], { ...snap(0, tickets), merges }).slack().map((s) => [s.ticket, s.earliest, s.latest, s.slack]);
+  assert.deepEqual(slack(), [[1, 0, 0, 0], [2, 1, 1, 0], [3, 2, 2, 0], [4, 1, 2, 1], [5, 3, 3, 0], [6, 0, 3, 3]]);
+  // Once #1 merges it leaves the plan: 2-3-5 is critical, 4 has one step of slack, 6 two.
+  assert.deepEqual(slack([merged(1, 1)]), [[2, 0, 0, 0], [3, 1, 1, 0], [4, 0, 1, 1], [5, 2, 2, 0], [6, 0, 2, 2]]);
+  // A spec, and a ticket closed on GitHub without a merge, are not in the plan.
+  const more = [...tickets, { number: 7, state: 'OPEN', status: 'spec', blockers: [] }, tk(8, [6], 'CLOSED')];
+  assert.deepEqual(buildGraph([snap(0, more)]).slack().map((s) => s.ticket), [1, 2, 3, 4, 5, 6]);
+});
+
+test('proper completion: the sink is reached when every ticket merged, and proper only when every gate token was consumed too', () => {
+  const tickets = [tk(1), tk(2, [1])];
+  const done = (events, merges) => buildGraph(events, { ...snap(0, tickets), merges }).completion();
+  const ran = [snap(0, tickets), start(1, 1), start(3, 2)];
+  assert.deepEqual(done(ran, [merged(2, 1), merged(4, 2)]), { proper: true, sink: true, unmerged: [], gates: [] });
+  // #2 not yet started: #1's token waits in #2's gate, and the sink is not reached.
+  assert.deepEqual(done(ran.slice(0, 2), [merged(2, 1)]), { proper: false, sink: false, unmerged: [2], gates: [{ ticket: 2, tokens: [1], owed: [] }] });
+  // #2 started early and #1 never merged: the token #2's start took is still owed.
+  assert.deepEqual(done([snap(0, tickets), start(1, 2)], [merged(4, 2)]), { proper: false, sink: false, unmerged: [1], gates: [{ ticket: 2, tokens: [], owed: [1] }] });
+  // Both merged, but #2 never had a dispatch: its gate token was never consumed.
+  assert.deepEqual(done([snap(0, tickets), start(1, 1)], [merged(2, 1), merged(4, 2)]), { proper: false, sink: true, unmerged: [], gates: [{ ticket: 2, tokens: [1], owed: [] }] });
+});

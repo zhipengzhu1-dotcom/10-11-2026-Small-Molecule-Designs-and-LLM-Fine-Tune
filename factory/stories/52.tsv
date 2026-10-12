@@ -71,3 +71,11 @@ story	kind	name
 42	test	the dispatch read prints one line when no standing decision binds the ticket
 43	test	the digest never writes: the factory root is the same after a read
 44	none	-
+30	test	a ticket started before its blocker merged, with no decision row explaining it, is an early start; a standing row naming both explains it
+30	test	zero-slack tickets are the unmerged tickets on a longest chain, each ticket one step
+30	test	the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains
+30	test	the frontier read is one line when every early start has a standing row that explains it
+39	test	the frontier read is one line when every early start has a standing row that explains it
+42	test	the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains
+42	test	the frontier read says so when spec has no ticket-graph snapshot, or every ticket merged
+37	test	proper completion: the sink is reached when every ticket merged, and proper only when every gate token was consumed too
