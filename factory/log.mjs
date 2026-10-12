@@ -26,8 +26,9 @@ export function ticketNumber(v) {
   return Number(m[1]);
 }
 
-// A challenge id is a plain name, like a run or agent id, so `of=<id>` can name it exactly.
-function plainName(v) {
+// A challenge id is a plain name, like a run or agent id, so `of=<id>` and a decision row's
+// `closes challenge <id>` (decide.mjs) can name it exactly.
+export function plainName(v) {
   return ID.test(v) ? null : `${v} is not a plain name (letters, digits, '.', '_', '-' only)`;
 }
 
@@ -39,7 +40,7 @@ function target(v) {
 }
 
 // Challenge ids are unique across the stream, and an elimination names one of them.
-const challenged = (events, id) => events.some((e) => e.type === 'challenge' && e.id === id);
+export const challenged = (events, id) => events.some((e) => e.type === 'challenge' && e.id === id);
 const newId = (e, events) => (challenged(events, e.id) ? `id ${e.id} is already a challenge in the stream` : null);
 const knownId = (e, events) => (challenged(events, e.of) ? null : `of ${e.of} names no challenge in the stream`);
 

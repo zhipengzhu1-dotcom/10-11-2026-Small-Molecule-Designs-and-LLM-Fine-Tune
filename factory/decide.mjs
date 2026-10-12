@@ -33,9 +33,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { claimState, formatRelations, isChallengeId, leadingRelation, parseRowTarget, RELATIONS } from './claim.mjs';
+import { claimState, formatRelations, leadingRelation, parseRowTarget, RELATIONS } from './claim.mjs';
 import { cli, UsageError } from './cli.mjs';
-import { defaultRoot } from './log.mjs';
+import { challenged, defaultRoot, plainName } from './log.mjs';
 import { parsePointer, resolvePointer } from './pointer.mjs';
 import { readStream } from './read.mjs';
 import { defaultRun } from './run-marker.mjs';
@@ -81,9 +81,6 @@ function checkEvidence(evidence, opts) {
   if (problems.length) throw new Error(`evidence: ${problems.join('; ')}`);
 }
 
-// TEMP until #58 merges: then import its `challenged` from log.mjs.
-const challenged = (events, id) => events.some((e) => e.type === 'challenge' && e.id === id);
-
 // The decision cell with its relation prefix (claim.mjs). A row relation's target must be a row
 // already in the log, and --closes must name a challenge event in the stream. A hand-written
 // relation phrase is refused, so the flags are the only way to write one.
@@ -96,7 +93,8 @@ function decisionCell(root, decision, flags) {
   const relations = flags.map(({ kind, value }) => {
     const at = `--${kind} ${value}`;
     if (kind === 'closes') {
-      if (!isChallengeId(value)) throw new UsageError(`${at}: a challenge id is a plain name (letters, digits, '.', '_', '-' only)`);
+      const notPlain = plainName(value);
+      if (notPlain) throw new UsageError(`${at}: a challenge id must be a plain name; ${notPlain}`);
       events ??= readStream(root);
       if (!challenged(events, value)) throw new UsageError(`${at}: no challenge event with id ${value} in the stream`);
       return { kind, challenge: value };

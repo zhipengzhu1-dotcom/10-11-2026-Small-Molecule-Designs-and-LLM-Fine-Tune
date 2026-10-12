@@ -293,7 +293,7 @@ t('a push or PR row fails, since its commit always lands after the push it recor
 
 // Rows from 2026-10-13 on lead result with a claim state and write relations as the decision
 // writer does (factory/claim.mjs); every row before that stays valid as written.
-t('from the claim-rules cutoff, a row needs a claim state first in result and well-formed relations to earlier rows; rows before it pass as written', () => {
+test('from the claim-rules cutoff, a row needs a claim state first in result and well-formed relations to earlier rows; rows before it pass as written', { skip: !hasGit && 'git is not installed' }, () => {
   const rows = [
     row('2026-10-12T23:59:59Z', 'project/c', 'supersedes 2: kept 5 epochs', 'paper', 'notes/source.md', 'merged'),
     row('2026-10-13T00:00:00Z', 'project/c', 'supersedes line 3 (part), closes challenge judge-vram: kept 5 epochs', 'paper', 'notes/source.md', 'adopted: merged in abc1234'),

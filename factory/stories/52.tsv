@@ -12,6 +12,24 @@ story	kind	name
 12	test	challenge.eliminated names a challenge already in the stream, from any run
 12	test	challenge.eliminated naming no challenge in the stream is refused and nothing is written
 12	test	a challenge reusing an id already in the stream is refused, so of=<id> names one challenge
+13	test	each row relation flag puts "<relation> line N: " at the start of the decision cell, with " (part)" for a partial one
+13	test	--closes <id> puts "closes challenge <id>: " at the start of the decision cell
+13	test	--closes refuses with exit 2, and writes nothing, an id with no challenge event in the stream
+13	test	a relation pointing past the last row, at the header, or written as malformed text is refused with exit 2 before anything is written
+13	test	a decision that already starts with a relation word is refused, pointing at the flag
+13	test	--state puts the claim state first in result, as "<state>: <result>", or alone when result is left out
+14	test	each row relation flag puts "<relation> line N: " at the start of the decision cell, with " (part)" for a partial one
+14	test	several relation flags join in one prefix, separated by ", ", in the order supersedes, withdraws, corrects, closes
+15	test	each row relation flag puts "<relation> line N: " at the start of the decision cell, with " (part)" for a partial one
+16	test	--state puts the claim state first in result, as "<state>: <result>", or alone when result is left out
+16	test	an unknown --state word, a check result or "defeated" is refused with exit 2 before anything is written
+16	test	with no --state, result must already start with a claim state, else the row is refused
+17	test	decide refuses with exit 2, and writes nothing, when a file: pointer in the evidence does not resolve
+17	test	decide refuses an evidence item of an unknown pointer kind, or a malformed transcript: pointer, and writes nothing
+17	test	decide refuses with exit 2, and writes nothing, when a commit: pointer names no commit of the repo
+18	test	decide calls the installed pstack log.sh on the decision log, with a transcript:<session>@<iso> pointer to the session first in the evidence
+19	test	from the claim-rules cutoff, a row needs a claim state first in result and well-formed relations to earlier rows; rows before it pass as written
+19	check	trail
 21	check	stories
 22	test	a story-map row naming a check that is no check:* script fails, naming the row
 22	test	a story-map row naming a test that no test file declares fails, naming the row

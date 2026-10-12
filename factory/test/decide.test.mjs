@@ -86,7 +86,7 @@ test('--closes refuses with exit 2, and writes nothing, an id with no challenge 
   for (const [id, message] of [
     ['judge-cpu', /--closes judge-cpu: no challenge event with id judge-cpu in the stream/],
     ['3', /--closes 3: no challenge event with id 3 in the stream/],
-    ['bad id', /--closes bad id: a challenge id is a plain name/],
+    ['bad id', /--closes bad id: a challenge id must be a plain name; bad id is not a plain name/],
   ]) {
     const r = decide(s, ['--run', SESSION, '--closes', id, ...ROW]);
     assert.equal(r.status, 2, id);

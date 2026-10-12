@@ -27,7 +27,7 @@ const ROW_RELATIONS = RELATIONS.filter((r) => r !== 'closes');
 // Rows written from this date on follow the grammar above; the rows before it stay valid as written.
 export const CLAIM_RULES_FROM = '2026-10-13';
 
-// A challenge id is a plain name (factory/log.mjs).
+// A challenge id is a plain name (plainName in factory/log.mjs).
 const ID = '[A-Za-z0-9][A-Za-z0-9._-]*';
 const ONE = `(?:(${ROW_RELATIONS.join('|')}) line (\\d+)( \\(part\\))?|closes challenge (${ID}))`;
 const PREFIX = new RegExp(`^(${ONE}(?:, ${ONE})*): `);
@@ -51,9 +51,6 @@ export function parseRowTarget(value) {
   const m = /^\s*(\d+)\s*(\(part\))?\s*$/.exec(value);
   return m ? { line: Number(m[1]), part: Boolean(m[2]) } : null;
 }
-
-// Whether `value` has the form of a challenge id.
-export const isChallengeId = (value) => new RegExp(`^${ID}$`).test(value);
 
 // The decision-cell prefix for relations, "" for none: each is { kind, line, part } for a row
 // relation, or { kind: 'closes', challenge }.
