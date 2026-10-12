@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readStream } from '../read.mjs';
-import { FACTORY, REPO, tempRoot } from './helpers.mjs';
+import { FACTORY, tempRoot } from './helpers.mjs';
 
 const CHECK = join(FACTORY, 'checks', 'ticket.mjs');
 const FIXTURES = join(FACTORY, 'test', 'fixtures', 'ticket');
@@ -45,10 +45,21 @@ test('a refused name piped on stdin fails, whatever its case', () => {
   assert.match(r.events[0].evidence, /^stdin: line 1: SUMMARY\.md .*; line 2: research\/refs\/x\/analysis\.md /);
 });
 
-test('the repo\'s ticket template names its deliverables with names that pass', () => {
-  const template = join(REPO, 'docs', 'agents', 'ticket-template.md');
-  assert.match(readFileSync(template, 'utf8'), /`notes\.md`/);
-  const r = check({ body: template });
+test('every refused word fails, singular or plural', () => {
+  const names = ['summary.md', 'summaries.md', 'report.md', 'weekly-reports.md', 'finding.md', 'findings.md',
+    'analysis.md', 'cost-analyses.md'];
+  const r = check({ input: names.map((n) => `Write ${n}`).join('\n') + '\n' });
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  names.forEach((n, i) => assert.match(r.events[0].evidence, new RegExp(`line ${i + 1}: ${n.replace('.', '\\.')} `)));
+});
+
+test('a name that only contains a refused word passes', () => {
+  const r = check({ input: 'Write `reporter.md`, `summarize.md` and `analyst.md`\n' });
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+});
+
+test('a refused name in double quotes or on a > quote line is a mention, not a deliverable', () => {
+  const r = check({ body: join(FIXTURES, 'mentions.md') });
   assert.equal(r.status, 0, r.stderr + r.stdout);
   assert.equal(r.events[0].result, 'pass');
 });

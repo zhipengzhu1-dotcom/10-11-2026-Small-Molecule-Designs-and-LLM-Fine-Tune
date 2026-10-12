@@ -74,8 +74,14 @@ export function writeEvent({ root, run, agent, type, fields = {}, fillUnknown = 
   return event;
 }
 
+// Where each id can come from, for the error when it is missing.
+const SOURCES = {
+  run: 'pass --run, set FACTORY_RUN, or mark the run with factory/run-marker.mjs start',
+  agent: 'pass --agent or set FACTORY_AGENT',
+};
+
 function checkId(name, v) {
-  if (!v) throw new EventError(`missing field: ${name} (pass --${name} or set FACTORY_${name.toUpperCase()})`);
+  if (!v) throw new EventError(`missing field: ${name} (${SOURCES[name]})`);
   if (!ID.test(v)) throw new EventError(`invalid ${name}: ${v} (letters, digits, '.', '_', '-' only)`);
 }
 

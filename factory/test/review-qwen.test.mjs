@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -48,7 +48,7 @@ test('review reports an Ollama HTTP error', async () => {
   await assert.rejects(review({ files: FILES, fetch }), /Ollama HTTP 404: .*not found/);
 });
 
-test('the CLI sends the named files to the host and writes the review under a "reviewed by" line', async () => {
+test('the CLI sends the prompt, then the named files, to the host and writes the review under a "reviewed by" line', async () => {
   const root = tempRoot();
   const trail = join(root, 'trail.tsv');
   writeFileSync(trail, 'ts\tphase\n');
@@ -66,7 +66,7 @@ test('the CLI sends the named files to the host and writes the review under a "r
   const host = `http://127.0.0.1:${server.address().port}`;
   const out = join(root, 'review.md');
   const status = await new Promise((r) => {
-    const p = spawn(process.execPath, [join(FACTORY, 'review-qwen.mjs'), trail, '--host', host, '--out', out]);
+    const p = spawn(process.execPath, [join(FACTORY, 'review-qwen.mjs'), 'Flag weak evidence.', trail, '--host', host, '--out', out]);
     p.on('close', r);
   });
   server.close();
@@ -74,6 +74,18 @@ test('the CLI sends the named files to the host and writes the review under a "r
   assert.equal(status, 0);
   assert.equal(seen.length, 1);
   assert.equal(seen[0].think, false);
-  assert.match(seen[0].messages[0].content, /trail\.tsv ===\nts\tphase/);
+  assert.match(seen[0].messages[0].content, /^Flag weak evidence\.\n\n=== .*trail\.tsv ===\nts\tphase/);
   assert.equal(readFileSync(out, 'utf8'), 'reviewed by qwen3.5:9b\n\n- No flags.\n');
+});
+
+test('the CLI refuses a prompt with no files to review', () => {
+  const r = spawnSync(process.execPath, [join(FACTORY, 'review-qwen.mjs'), 'Flag weak evidence.'], { encoding: 'utf8' });
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /missing the files to review/);
+});
+
+test('review puts the prompt ahead of the files', async () => {
+  const { fetch, requests } = fakeOllama({ message: { role: 'assistant', content: 'ok' }, done_reason: 'stop' });
+  await review({ prompt: 'Flag weak evidence.', files: FILES, fetch });
+  assert.match(requests[0].body.messages[0].content, /^Flag weak evidence\.\n\n=== factory\/decisions\.tsv ===/);
 });

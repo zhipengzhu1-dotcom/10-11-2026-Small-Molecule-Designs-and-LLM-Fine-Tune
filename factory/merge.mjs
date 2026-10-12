@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Merge script: the one step that commits the factory's own writes in the main checkout.
 // During an orchestrated run the hooks write factory/agents/<run>/ and the orchestrator appends
-// factory/decisions.tsv, so the main checkout is never clean. This commits those paths on the
-// integration branch, then merges the ticket branch into it.
+// factory/decisions.tsv, so the main checkout is never clean. This commits factory/agents/ (every
+// run's folder) and the decision log on the integration branch, then merges the ticket branch.
 //
 //   npm run merge -- <branch> [-m <message> | -F <file>] [--root <repo>]   commit factory paths, then merge
 //   npm run merge -- --factory-only [-m <message> | -F <file>] [--root <repo>]   commit them only (close-out)
@@ -14,26 +14,19 @@
 //
 // The run and the integration branch come from the run marker (factory/run-marker.mjs).
 // Root: --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else the repo this script lives in.
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
+import { git, gitRun } from './git.mjs';
 import { defaultRoot } from './log.mjs';
 import { readMarker } from './run-marker.mjs';
 
 const DECISIONS = 'factory/decisions.tsv';
 
-// The paths the factory writes during a run, repo-relative.
-function factoryPaths(run) {
-  return [`factory/agents/${run}`, DECISIONS];
-}
-
-function git(root, ...args) {
-  const r = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
-  if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed:\n${(r.stderr || r.stdout).trim()}`);
-  return r.stdout.trim();
-}
+// The paths the factory writes, repo-relative: every run's activity folder, not only the marked
+// run's, so a merge leaves none of them behind uncommitted.
+const FACTORY_PATHS = ['factory/agents', DECISIONS];
 
 // Runs git with `-F <file>` holding the message, so no newline goes through argv.
 function gitWithMessage(root, message, args, rest) {
@@ -49,12 +42,12 @@ function gitWithMessage(root, message, args, rest) {
 
 const trailers = (message = '') => message.split(/\r?\n/).filter((l) => /^Co-Authored-By:/i.test(l.trim())).map((l) => l.trim());
 
-// Commits the run's factory paths, and nothing else, when they have changes. Returns whether it committed.
+// Commits the factory paths, and nothing else, when they changed. Returns whether it committed.
 function commitFactory(root, run, coAuthors) {
-  const paths = factoryPaths(run).filter((p) => existsSync(join(root, p)));
+  const paths = FACTORY_PATHS.filter((p) => existsSync(join(root, p)));
   if (!paths.length) return false;
   git(root, 'add', '-A', '--', ...paths);
-  const staged = spawnSync('git', ['-C', root, 'diff', '--cached', '--quiet', '--', ...paths]);
+  const staged = gitRun(root, 'diff', '--cached', '--quiet', '--', ...paths);
   if (staged.status === 0) return false;
   const subject = `Record factory activity for run ${run}`;
   const message = coAuthors.length ? `${subject}\n\n${coAuthors.join('\n')}` : subject;

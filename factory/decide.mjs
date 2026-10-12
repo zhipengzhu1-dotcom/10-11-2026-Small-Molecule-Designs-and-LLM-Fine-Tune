@@ -11,8 +11,9 @@
 //           cache keeps stale versions beside it, so never hard-code a cache path.
 // Session:  --run, else FACTORY_RUN, else the run marker's run (factory/run.json, run-marker.mjs).
 //           With none of them it refuses: the newest transcript can be a concurrent session's, so
-//           it is never taken as a guess. The pointer is "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z", the time of the
-//           transcript's latest entry.
+//           it is never taken as a guess. The pointer is
+//           "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z", the time of the transcript's
+//           latest entry.
 // Exit:     2 when the row cannot be logged (a bad argument, no pstack, no transcript, log.sh failed).
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -20,7 +21,7 @@ import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
-import { readMarker } from './run-marker.mjs';
+import { defaultRun } from './run-marker.mjs';
 import { projectTranscripts, readTranscript } from './transcript.mjs';
 
 const PLUGIN = 'pstack@pstack-marketplace';
@@ -57,7 +58,7 @@ function bash() {
 function decide({ root, run, cells, home = homedir() }) {
   const script = logScript(home);
   const dir = projectTranscripts(root, home);
-  const session = run || readMarker(root)?.run;
+  const session = run || defaultRun(root);
   if (!session) throw new Error('no run: pass --run <session-id>, set FACTORY_RUN, or start a run marker (factory/run-marker.mjs)');
   const [phase, decision, why, evidence, result] = cells;
   const pointer = transcriptPointer(dir, session);
@@ -74,7 +75,7 @@ cli(import.meta.url, {
   options: { root: 'string', run: 'string' },
   positionals: true,
   failure: 2,
-}, ({ positionals: cells, root = defaultRoot(process.env), run = process.env.FACTORY_RUN }) => {
+}, ({ positionals: cells, root = defaultRoot(process.env), run }) => {
   if (cells.length !== 5) throw new UsageError('expected 5 cells: <phase> <decision> <why> <evidence> <result>');
   const { log, pointer } = decide({ root, run, cells });
   process.stdout.write(`decide: logged to ${log} with ${pointer}\n`);

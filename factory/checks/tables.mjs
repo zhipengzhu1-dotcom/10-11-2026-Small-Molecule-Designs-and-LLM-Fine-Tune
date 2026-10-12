@@ -5,8 +5,7 @@
 //   node factory/checks/tables.mjs --tex <main.tex> --notes <dir> [--notes <dir> ...]
 //                                  [--root <repo>] [--run <run-id>] [--agent <agent-id>]
 //
-// Run and agent default to FACTORY_RUN (else the marked run) and FACTORY_AGENT, else run "manual" and agent
-// "orchestrator".
+// Run and agent default as in check.mjs.
 //
 // A note claims a float with a line like  Label: `tab:perf`  and holds the values as a Markdown
 // table. Rows are matched in order, counting only rows with at least one numeric cell; columns

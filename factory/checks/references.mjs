@@ -6,8 +6,7 @@
 //                                      [--tex <main.tex>] [--catalog <catalog.tsv>]
 //
 // --tex defaults to <root>/research/s1/raw/arxiv/latex/main.tex and --catalog to
-// <root>/research/refs/catalog.tsv. Run and agent default to FACTORY_RUN (else the marked run) and FACTORY_AGENT,
-// else run "manual" and agent "orchestrator".
+// <root>/research/refs/catalog.tsv. Run and agent default as in check.mjs.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkCli, shown } from './check.mjs';
@@ -51,7 +50,7 @@ function runCheck(opts) {
     if (!STATUSES.includes(r.status)) problems.push(`line ${r.line} (${r.key}): invalid status "${r.status ?? ''}"`);
   }
   const where = `${shown(opts.root, catalog)} vs ${keys.length} keys cited in ${shown(opts.root, tex)}`;
-  return { evidence: [where, ...(problems.length ? problems : ['all present with valid statuses'])].join('; '), problems };
+  return { where, ok: 'all present with valid statuses', problems };
 }
 
 checkCli(import.meta.url, {

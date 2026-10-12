@@ -4,9 +4,8 @@
 //
 //   node factory/checks/trail.mjs [--root <repo>] [--run <id>] [--agent <id>] [--transcripts <dir>]
 //
-// Run and agent default to FACTORY_RUN (else the marked run) and FACTORY_AGENT, else run "manual" and agent
-// "orchestrator". --transcripts defaults to the main checkout's Claude Code transcripts folder, also
-// when run from a git worktree.
+// Run and agent default as in check.mjs. --transcripts defaults to the main checkout's Claude Code
+// transcripts folder, also when run from a git worktree.
 //
 // An audit is factory/audit/<run>.tsv, written by the run that audited the log (pstack
 // show-me-your-work), with columns line, ts, verdict, superseded_by, pointers, note:
@@ -33,10 +32,11 @@
 //     one tree
 //   - a row from 2026-10-12 on records a push or PR (phase ending /push or /pr): git and GitHub
 //     hold that record, and the row would land in a commit after the push
-import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { gitRun as git } from '../git.mjs';
+import { projectTranscripts } from '../transcript.mjs';
 import { checkCli } from './check.mjs';
 
 const tsvLines = (text) => text.split(/\r?\n/).slice(1).filter((l) => l !== '').map((l) => l.split('\t'));
@@ -46,17 +46,6 @@ function readLog(text) {
   return text.split(/\r?\n/)
     .map((line, i) => ({ line: i + 1, ts: line.split('\t')[0], cells: line.split('\t'), text: line }))
     .filter((r) => r.line > 1 && r.text !== '');
-}
-
-const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
-
-// Claude Code keeps a project's transcripts under ~/.claude/projects/<main checkout's path, every
-// character other than a letter or digit turned into "-">. From a git worktree, the main checkout
-// is the folder holding the shared .git directory.
-function defaultTranscripts(root) {
-  const common = git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir');
-  const main = common.status === 0 ? dirname(common.stdout.trim()) : resolve(root);
-  return join(homedir(), '.claude', 'projects', resolve(main).replace(/[^A-Za-z0-9]/g, '-'));
 }
 
 // Transcripts run to megabytes and many pointers name the same one, so each is read once.
@@ -202,7 +191,7 @@ function rowProblems(row, treeRoot) {
 }
 
 function runCheck(opts) {
-  opts = { transcripts: defaultTranscripts(opts.root), ...opts };
+  opts = { transcripts: projectTranscripts(opts.root), ...opts };
   const auditDir = join(opts.root, 'factory', 'audit');
   const text = readFileSync(join(opts.root, 'factory', 'decisions.tsv'), 'utf8');
   const log = readLog(text);

@@ -27,6 +27,13 @@ export function readMarker(root) {
   return m;
 }
 
+// Whether a hook acts for a session: only while a run is marked, and only in the session it names.
+// A payload with no session id can't be told apart, so it counts while any run is marked.
+export function inMarkedRun(root, session) {
+  const m = readMarker(root);
+  return Boolean(m) && (!session || m.run === session);
+}
+
 // The run an event is filed under when no --run is passed: FACTORY_RUN, else the marked run, so
 // events written during an orchestrated run land in the folder the merge script commits.
 // Undefined when neither is set.

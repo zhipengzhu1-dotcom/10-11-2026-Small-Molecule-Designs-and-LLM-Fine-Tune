@@ -4,8 +4,7 @@
 //
 //   node factory/checks/brief.mjs [--root <repo>] [--run <id>] [--agent <id>] [--brief <brief.md>]
 //
-// --brief defaults to <root>/research/s1/brief.md. Run and agent default to FACTORY_RUN (else the marked run) and
-// FACTORY_AGENT, else run "manual" and agent "orchestrator".
+// --brief defaults to <root>/research/s1/brief.md. Run and agent default as in check.mjs.
 //
 // A parameter table is a Markdown table whose first header cell is "ID". It must also have the
 // columns paper location, verdict and assumption (matched by name, case-insensitive; other columns
@@ -19,7 +18,7 @@ import { join } from 'node:path';
 import { checkCli, shown } from './check.mjs';
 
 // Claim verdicts from issue #1, written exactly as here.
-const VERDICTS = ['VERIFIED', 'NOT VERIFIED', 'INCONCLUSIVE'];
+const CLAIM_VERDICTS = ['VERIFIED', 'NOT VERIFIED', 'INCONCLUSIVE'];
 
 // A location that stands in for one not yet found: ?, TBD, or a lone dash of any kind.
 const PLACEHOLDER = /^(\?+|tbd|[-–—]+)$/i;
@@ -71,7 +70,7 @@ function rowProblems(row) {
   if (!row.location) problems.push('no paper location');
   else if (PLACEHOLDER.test(row.location)) problems.push(`placeholder paper location "${row.location}"`);
   if (!row.verdict) problems.push('no verdict');
-  else if (!VERDICTS.includes(row.verdict)) problems.push(`invalid verdict "${row.verdict}"`);
+  else if (!CLAIM_VERDICTS.includes(row.verdict)) problems.push(`invalid verdict "${row.verdict}"`);
   else if (row.verdict !== 'VERIFIED' && !row.assumption) problems.push(`${row.verdict} with no assumption`);
   return problems;
 }
@@ -82,7 +81,7 @@ function runCheck(opts) {
   if (rows.length === 0 && problems.length === 0) problems.push('no parameter rows found');
   for (const r of rows) problems.push(...rowProblems(r).map((p) => `${r.id || '(no ID)'} (line ${r.line}): ${p}`));
   const where = `${shown(opts.root, brief)}: ${rows.length} parameter rows`;
-  return { evidence: [where, ...(problems.length ? problems : ['all have a location and a valid verdict'])].join('; '), problems };
+  return { where, ok: 'all have a location and a valid verdict', problems };
 }
 
 checkCli(import.meta.url, {

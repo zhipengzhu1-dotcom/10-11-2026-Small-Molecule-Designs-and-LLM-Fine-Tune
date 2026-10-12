@@ -7,15 +7,14 @@
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { defaultRoot } from '../log.mjs';
-import { readMarker } from '../run-marker.mjs';
+import { inMarkedRun } from '../run-marker.mjs';
 import { contextTokens } from '../transcript.mjs';
 
 function main() {
   const payload = JSON.parse(readFileSync(0, 'utf8'));
   // A subagent's tool calls carry its agent_id; the orchestrator's own never do.
   if (payload.agent_id || !payload.session_id || !payload.transcript_path) return;
-  const marker = readMarker(defaultRoot());
-  if (!marker || marker.run !== payload.session_id) return;
+  if (!inMarkedRun(defaultRoot(), payload.session_id)) return;
   let tokens;
   try {
     tokens = contextTokens(payload.transcript_path.replace(/^~(?=[\\/])/, homedir()));

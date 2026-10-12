@@ -71,6 +71,12 @@ for (const missing of ['run', 'agent']) {
   });
 }
 
+test('the error for a missing run names every place a run comes from, the run marker too', () => {
+  const r = write(['--root', tempRoot(), '--agent', 'worker-a', 'artifact', ...kv(VALID.artifact)]);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /missing field: run \(pass --run, set FACTORY_RUN, or mark the run with factory\/run-marker\.mjs start\)/);
+});
+
 test('a status or result outside its allowed values is rejected with an error naming the field', () => {
   const root = tempRoot();
   const a = write(['--root', root, '--run', 'run-1', '--agent', 'w', 'agent.stop', 'role=r', 'status=DONE']);

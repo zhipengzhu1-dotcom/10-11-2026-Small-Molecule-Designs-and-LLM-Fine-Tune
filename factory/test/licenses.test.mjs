@@ -12,12 +12,17 @@ const CHECK = join(FACTORY, 'checks', 'licenses.mjs');
 const hasGit = spawnSync('git', ['--version']).status === 0;
 const t = (name, fn) => test(name, { skip: !hasGit && 'git is not installed' }, fn);
 
+// The opening lines of the license texts, as their publishers print them.
+const APACHE = '                                 Apache License\n                           Version 2.0, January 2004\n';
+const MIT = 'MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\n';
+
 const HEADER = 'key\ttitle\tstatus\tlicense\tfile\tnote';
 
 // A fixture repo: `tracked` files are added to git, `untracked` files only written to disk, and
 // the catalog gets one row per [key, license, file]. `listed` rows [file, license] go in
 // research/licenses.tsv, the hand-kept list for raw files that are not cited references.
-function repo({ tracked = [], untracked = [], rows = [], listed }) {
+// `texts` maps a tracked path to its contents (other files hold "x").
+function repo({ tracked = [], untracked = [], rows = [], listed, texts = {} }) {
   const root = tempRoot();
   const put = (path, text = 'x') => {
     mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -25,7 +30,7 @@ function repo({ tracked = [], untracked = [], rows = [], listed }) {
   };
   put('research/refs/catalog.tsv', [HEADER, ...rows.map(([key, license, file]) => `${key}\tT\tfetched\t${license}\t${file}\t`)].join('\n') + '\n');
   if (listed) put('research/licenses.tsv', ['file\tlicense\tsource', ...listed.map(([file, license]) => `${file}\t${license}\tfront matter`)].join('\n') + '\n');
-  for (const p of [...tracked, ...untracked]) put(p);
+  for (const p of [...tracked, ...untracked]) put(p, texts[p]);
   const git = (...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
   git('init', '-q');
   git('add', '--', 'research/refs/catalog.tsv', ...tracked);
@@ -59,13 +64,13 @@ t('committed raw files under allowlisted licenses pass; gitignored raw files and
   assert.match(r.events[0].evidence, /^4 committed raw files vs research\/refs\/catalog\.tsv/);
 });
 
-t('a committed raw file with no catalog entry fails, and the evidence names the file', () => {
+t('a committed raw file with no license row fails, and the evidence names the file and both places a row can go', () => {
   const r = check(repo({ tracked: ['research/refs/foo/raw/paper.pdf'] }));
   assert.equal(r.status, 1, r.stderr + r.stdout);
   assert.equal(r.events.length, 1);
   assert.equal(r.events[0].name, 'licenses');
   assert.equal(r.events[0].result, 'fail');
-  assert.match(r.events[0].evidence, /research\/refs\/foo\/raw\/paper\.pdf: no catalog entry/);
+  assert.match(r.events[0].evidence, /research\/refs\/foo\/raw\/paper\.pdf: no row in research\/refs\/catalog\.tsv or research\/licenses\.tsv/);
 });
 
 t('a committed raw file whose license is not allowlisted fails, and the evidence names the file and license', () => {
@@ -91,7 +96,8 @@ t('an Apache-2.0 raw file fails until its license text is committed beside it', 
   assert.equal(bare.status, 1, bare.stderr + bare.stdout);
   assert.match(bare.events[0].evidence, /research\/s1\/raw\/datasets\/s1K\.md: Apache-2\.0 without its license text/);
 
-  const withText = check(repo({ tracked: [card, 'research/s1/raw/datasets/LICENSE'], rows }));
+  const license = 'research/s1/raw/datasets/LICENSE';
+  const withText = check(repo({ tracked: [card, license], rows, texts: { [license]: APACHE } }));
   assert.equal(withText.status, 0, withText.stderr + withText.stdout);
   assert.equal(withText.events[0].result, 'pass');
 });
@@ -102,7 +108,7 @@ t('a raw file listed in research/licenses.tsv as own work passes; a README not o
     listed: [['research/s1/raw/README.md', 'own work']],
   }));
   assert.equal(r.status, 1, r.stderr + r.stdout);
-  assert.match(r.events[0].evidence, /research\/refs\/x\/raw\/README\.md: no catalog entry/);
+  assert.match(r.events[0].evidence, /research\/refs\/x\/raw\/README\.md: no row in /);
   assert.doesNotMatch(r.events[0].evidence, /research\/s1\/raw\/README\.md/);
 });
 
@@ -114,4 +120,18 @@ t('a license recorded in research/licenses.tsv counts like a catalog row, and is
   assert.equal(r.status, 1, r.stderr + r.stdout);
   assert.match(r.events[0].evidence, /research\/s1\/raw\/datasets\/other\.md: license "CC BY-ND 4\.0" not allowlisted/);
   assert.doesNotMatch(r.events[0].evidence, /s1K-1\.1\.md/);
+});
+
+t('an Apache-2.0 raw file fails when the license text beside it is a different license', () => {
+  const card = 'research/s1/raw/datasets/s1K.md';
+  const mit = 'research/s1/raw/datasets/LICENSE-MIT.txt';
+  const r = check(repo({ tracked: [card, mit], rows: [['s1K', 'Apache-2.0', card]], texts: { [mit]: MIT } }));
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  assert.match(r.events[0].evidence, /research\/s1\/raw\/datasets\/s1K\.md: Apache-2\.0 without its license text/);
+});
+
+t('a raw file named like a license text but holding no license text is checked like any other file', () => {
+  const r = check(repo({ tracked: ['research/refs/x/raw/LICENSE-notes.md'] }));
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  assert.match(r.events[0].evidence, /research\/refs\/x\/raw\/LICENSE-notes\.md: no /);
 });
