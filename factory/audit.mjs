@@ -14,8 +14,9 @@
 //                                      its audit and its digest to local qwen (review-qwen.mjs) and
 //                                      writes factory/audit/<session>.review.md
 //
-// A row's session is the one its evidence names (`npm run decide` puts
-// "~/.claude/projects/<slug>/<session>.jsonl @<time>" first); --run names it for older rows.
+// A row's session is the one its evidence names (`npm run decide` puts transcript:<session>@<iso>
+// first, and "~/.claude/projects/<slug>/<session>.jsonl @<time>" before spec #52); --run names it
+// for older rows.
 // review's session is --run, else FACTORY_RUN, else the run marker's run.
 // Transcripts: --transcripts, else the main checkout's Claude Code transcripts folder.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -23,6 +24,7 @@ import { dirname, join } from 'node:path';
 import { readLog, verdictProblems } from './checks/trail.mjs';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
+import { parsePointer } from './pointer.mjs';
 import { MODEL, review as askQwen } from './review-qwen.mjs';
 import { defaultRun } from './run-marker.mjs';
 import { digest, projectTranscripts } from './transcript.mjs';
@@ -34,8 +36,13 @@ function rowAt(log, line) {
   return r;
 }
 
-// The session named by row `r`'s evidence, or undefined.
-const namedSession = (r) => /([^/\\\s]+)\.jsonl @/.exec(r.cells[4] ?? '')?.[1];
+// The session named by row `r`'s evidence, or undefined: its first transcript: pointer, else the
+// "<session>.jsonl @<time>" path that npm run decide wrote before spec #52.
+function namedSession(r) {
+  const evidence = r.cells[4] ?? '';
+  const pointer = evidence.split(';').map((s) => parsePointer(s.trim())).find((p) => p?.kind === 'transcript' && !p.problem);
+  return pointer?.session ?? /([^/\\\s]+)\.jsonl @/.exec(evidence)?.[1];
+}
 
 // The session whose transcript logged row `r`: --run, else the one its evidence names.
 function sessionOf(r, run) {

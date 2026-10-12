@@ -11,14 +11,14 @@
 //           cache keeps stale versions beside it, so never hard-code a cache path.
 // Session:  --run, else FACTORY_RUN, else the run marker's run (factory/run.json, run-marker.mjs).
 //           With none of them it refuses: the newest transcript can be a concurrent session's, so
-//           it is never taken as a guess. The pointer is
-//           "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z", the time of the transcript's
-//           latest entry.
+//           it is never taken as a guess. The pointer is transcript:<session>@<ISO time>, in the
+//           pointer grammar (pointer.mjs), at the transcript's latest entry, to the second. Rows
+//           before spec #52 carry the older "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z".
 // Exit:     2 when the row cannot be logged (a bad argument, no pstack, no transcript, log.sh failed).
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
 import { defaultRun } from './run-marker.mjs';
@@ -37,13 +37,13 @@ function logScript(home = homedir()) {
   return script;
 }
 
-// The evidence pointer to a session transcript's latest entry, written with ~ for the home folder.
+// The transcript:<session>@<iso> pointer to a session transcript's latest entry, to the second.
 function transcriptPointer(dir, session) {
   const file = join(dir, `${session}.jsonl`);
   if (!existsSync(file)) throw new Error(`no transcript at ${file}`);
   const ts = readTranscript(file).findLast((e) => typeof e?.timestamp === 'string')?.timestamp;
   if (!ts) throw new Error(`${file} has no timestamped entry`);
-  return `~/.claude/projects/${basename(dir)}/${session}.jsonl @${ts.slice(11, 19)}Z`;
+  return `transcript:${session}@${ts.slice(0, 19)}`;
 }
 
 // Git Bash, not the WSL bash.exe that Windows puts first on PATH.

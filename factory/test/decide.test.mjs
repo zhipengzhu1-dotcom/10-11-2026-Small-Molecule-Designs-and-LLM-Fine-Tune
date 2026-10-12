@@ -37,7 +37,7 @@ function decide({ home, root }, args, extraEnv = {}) {
 
 const ROW = ['project/frontier/next', 'took #44 next', 'it blocks #14', 'issue:44', 'started'];
 
-test('decide calls the installed pstack log.sh on the decision log, with the session transcript pointer first in the evidence', () => {
+test('decide calls the installed pstack log.sh on the decision log, with a transcript:<session>@<iso> pointer to the session first in the evidence', () => {
   const s = setup();
   const r = decide(s, ['--run', SESSION, ...ROW]);
   assert.equal(r.status, 0, r.stderr);
@@ -45,7 +45,7 @@ test('decide calls the installed pstack log.sh on the decision log, with the ses
   assert.equal(args[0].replace(/\\/g, '/'), join(s.root, 'factory', 'decisions.tsv').replace(/\\/g, '/'));
   assert.deepEqual(args.slice(1), [
     'project/frontier/next', 'took #44 next', 'it blocks #14',
-    `~/.claude/projects/${transcriptsDir(s.root, s.home).split(/[\\/]/).pop()}/${SESSION}.jsonl @04:40:09Z; issue:44`,
+    `transcript:${SESSION}@2026-10-12T04:40:09; issue:44`,
     'started',
   ]);
 });
@@ -59,11 +59,11 @@ test('decide takes the session from --run, then FACTORY_RUN, then the run marker
   const args = () => readFileSync(join(s.root, 'factory', 'log.sh.args'), 'utf8').split('\n')[4];
 
   assert.equal(decide(s, ['--run', SESSION, ...ROW], { FACTORY_RUN: 'env' }).status, 0);
-  assert.match(args(), new RegExp(`/${SESSION}\\.jsonl @04:40:09Z; issue:44$`));
+  assert.equal(args(), `transcript:${SESSION}@2026-10-12T04:40:09; issue:44`);
   assert.equal(decide(s, ROW, { FACTORY_RUN: 'env' }).status, 0);
-  assert.match(args(), /\/env\.jsonl @06:00:00Z; issue:44$/);
+  assert.equal(args(), 'transcript:env@2026-10-12T06:00:00; issue:44');
   assert.equal(decide(s, ROW).status, 0);
-  assert.match(args(), /\/marked\.jsonl @07:00:00Z; issue:44$/);
+  assert.equal(args(), 'transcript:marked@2026-10-12T07:00:00; issue:44');
 });
 
 // A concurrent session's transcript can be the newest one, so the newest is never a guess for the run.
