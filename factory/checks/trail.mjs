@@ -42,7 +42,7 @@ import { checkCli } from './check.mjs';
 const tsvLines = (text) => text.split(/\r?\n/).slice(1).filter((l) => l !== '').map((l) => l.split('\t'));
 
 // Decision rows as { line, ts, cells }, numbered by their line in the file (the header is line 1).
-function readLog(text) {
+export function readLog(text) {
   return text.split(/\r?\n/)
     .map((line, i) => ({ line: i + 1, ts: line.split('\t')[0], cells: line.split('\t'), text: line }))
     .filter((r) => r.line > 1 && r.text !== '');

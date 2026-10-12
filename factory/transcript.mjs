@@ -62,13 +62,22 @@ function toolInput(input = {}) {
   return oneLine(typeof input.command === 'string' ? input.command : JSON.stringify(input));
 }
 
-// The session as text, one "<timestamp> <who>: <text>" line per user message, assistant text block
-// and tool call. Tool results are left out. Audit agents read this, and the timestamps are what a
-// transcript:<session>@<time> pointer cites.
+// The user's picks in an AskUserQuestion result, as "<header> = <answer>; ...", or null.
+function answers(result) {
+  if (!result?.answers || typeof result.answers !== 'object') return null;
+  const header = new Map((result.questions ?? []).map((q) => [q.question, q.header]));
+  return Object.entries(result.answers).map(([q, a]) => `${oneLine(header.get(q) ?? q)} = ${oneLine(a)}`).join('; ');
+}
+
+// The session as text, one "<timestamp> <who>: <text>" line per user message, assistant text block,
+// tool call and answer to AskUserQuestion. Other tool results are left out. Audit agents read
+// this, and the timestamps are what a transcript:<session>@<time> pointer cites.
 export function digest(file) {
   const lines = [];
   for (const e of readTranscript(file)) {
     if (e?.type !== 'user' && e?.type !== 'assistant') continue;
+    const picked = answers(e.toolUseResult);
+    if (picked) lines.push(`${e.timestamp} answer: ${picked}`);
     const content = e.message?.content;
     const blocks = typeof content === 'string' ? [{ type: 'text', text: content }] : Array.isArray(content) ? content : [];
     for (const b of blocks) {

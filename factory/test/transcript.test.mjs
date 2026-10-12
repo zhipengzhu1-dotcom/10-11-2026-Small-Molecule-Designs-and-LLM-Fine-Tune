@@ -46,6 +46,14 @@ test('the CLI prints the digest of a transcript file, or its latest usage with -
   assert.equal(run(join(FACTORY, 'test', 'fixtures', 'no-such.jsonl')).status, 2);
 });
 
+// The user's picks are the evidence a decision row most often cites, and they arrive as a tool result.
+test('digest keeps the user\'s answers to AskUserQuestion, one line per prompt, and still drops other tool results', () => {
+  const lines = digest(join(FACTORY, 'test', 'fixtures', 'transcript-answers.jsonl'));
+  assert.deepEqual(lines.slice(1), [
+    '2026-10-12T05:58:52.100Z answer: Push = Push and open draft (Recommended); Policy = Yes, this session',
+  ]);
+});
+
 test('digest gives one timestamped line per user message, assistant text and tool call, and drops tool results', () => {
   assert.deepEqual(digest(SESSION), [
     '2026-10-12T04:40:00.000Z user: Pick the next ticket from #1. Then start it.',
