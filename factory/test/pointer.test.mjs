@@ -1,6 +1,30 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePointer } from '../pointer.mjs';
+import { parsePointer, parseTarget } from '../pointer.mjs';
+
+// A challenge's target (issue #58): any pointer, plus a decision row or one event of the stream.
+test('a target is a pointer, a decision row (row:N) or an event (event:<run>/<agent>:<line>)', () => {
+  assert.deepEqual(parseTarget('row:71'), { kind: 'row', text: 'row:71', line: 71 });
+  assert.deepEqual(parseTarget('event:3ecf8aea-7d0f/a7641a7e:12'),
+    { kind: 'event', text: 'event:3ecf8aea-7d0f/a7641a7e:12', run: '3ecf8aea-7d0f', agent: 'a7641a7e', line: 12 });
+  assert.deepEqual(parseTarget('commit:4beca44'), parsePointer('commit:4beca44'));
+  assert.equal(parseTarget('row 71'), null);
+});
+
+test('a malformed row or event target parses to a problem naming the form to write', () => {
+  const problem = (text) => parseTarget(text).problem;
+  assert.equal(problem('row:0'), 'row:0 is not a decision row; write row:<line number>');
+  assert.equal(problem('row:L71'), 'row:L71 is not a decision row; write row:<line number>');
+  assert.equal(problem('event:run-1:12'), 'event:run-1:12 is not an event; write event:<run>/<agent>:<line>');
+  assert.equal(problem('event:run-1/../x:3'), 'event:run-1/../x:3 is not an event; write event:<run>/<agent>:<line>');
+  assert.equal(problem('event:run-1/worker-a'), 'event:run-1/worker-a is not an event; write event:<run>/<agent>:<line>');
+  assert.equal(problem('doc:x'), 'unknown pointer doc:x');
+});
+
+test('row: and event: are targets, not evidence: the evidence grammar does not take them', () => {
+  assert.equal(parsePointer('row:71').problem, 'unknown pointer row:71');
+  assert.equal(parsePointer('event:run-1/worker-a:1').problem, 'unknown pointer event:run-1/worker-a:1');
+});
 
 test('each pointer kind of the grammar parses into its parts', () => {
   assert.deepEqual(parsePointer('file:notes/source.md'), { kind: 'file', text: 'file:notes/source.md', path: 'notes/source.md' });
