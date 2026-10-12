@@ -113,7 +113,7 @@ test('the decisions that bind a ticket: standing given rows, and standing adopte
   assert.deepEqual(bind(99), [[3, 'given']]);
 });
 
-test('the graph module is pure: it and every module it imports import no built-in or package, so no file, network or model code', () => {
+test('the graph module is pure: it, the pointer grammar and every module they import import no built-in or package, so no file, network or model code', () => {
   const imports = (file) => [...readFileSync(file, 'utf8').matchAll(/^\s*(?:import|export)\b[^'"]*?\bfrom\s+['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]/gm)].map((m) => m[1] ?? m[2]);
   const seen = new Set();
   const walk = (file) => {
@@ -125,7 +125,8 @@ test('the graph module is pure: it and every module it imports import no built-i
     }
   };
   walk(join(FACTORY, 'graph.mjs'));
-  assert.ok(seen.size >= 2, 'graph.mjs imports the claim grammar');
+  walk(join(FACTORY, 'pointer-grammar.mjs')); // the pointer parsers the graph may use
+  assert.ok(seen.size >= 3, 'graph.mjs imports the claim grammar');
 });
 
 test('a corrects row leaves the row it corrects in, and superseding the correction changes nothing for that row', () => {
