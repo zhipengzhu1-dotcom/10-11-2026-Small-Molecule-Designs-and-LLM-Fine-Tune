@@ -153,6 +153,24 @@ test('a missing ignored file is restored only when its SHA-256 matches the catal
   }
 });
 
+test('a cited key missing from reference.bib fails the run by name and writes no catalog', async () => {
+  const web = await fakeWeb();
+  try {
+    const r = repo(web.base);
+    writeFileSync(join(r.latex, 'main.tex'), 'A \\citep{paperA,webB} B \\cite{heldC} C \\citet{otherD} \\cite{ghostE}.\n');
+    const curation = join(r.root, 'research', 'refs', 'curation.tsv');
+    writeFileSync(curation, readFileSync(curation, 'utf8') + `ghostE\tno\tbackground\t\t${'\t'.repeat(6)}\n`);
+
+    const out = await run(r, web.base);
+    assert.notEqual(out.status, 0);
+    assert.match(out.stderr, /ghostE/);
+    assert.match(out.stderr, /reference\.bib/);
+    assert.ok(!existsSync(join(r.root, 'research', 'refs', 'catalog.tsv')), 'no catalog may be written');
+  } finally {
+    await web.close();
+  }
+});
+
 test('a ref fetched by hand and recorded in curation.tsv shows as fetched and is never downloaded', async () => {
   const web = await fakeWeb();
   try {
