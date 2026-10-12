@@ -97,6 +97,14 @@ story	kind	name
 42	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 43	test	the digest never writes: the factory root is the same after a read
 44	none	-
+47	test	the disk layout places every node closer to its parent than to any non-ancestor; only its children tie
+47	test	every tree edge has the same hyperbolic length, and distance is symmetric and zero only to itself
+47	test	drawn from any focus, the focus sits at the centre and the drawing keeps the layout distances
+49	test	T(k) and C(k) score 1 for an identity projection
+49	test	T(k) and C(k) score near the random baseline for a shuffled projection
+49	test	T(1) and C(1) of a worked example: two points swapped on a line
+49	test	the 2-D Laplacian eigenmap of a cycle is a regular polygon
+49	test	the state carries the phase disk's trustworthiness and continuity at k = 5 and 10, against Laplacian eigenmaps of the full graph
 45	test	precedents are the 3 nearest earlier rows that still stand: an out row is never one
 45	test	the judge sees only the 3 nearest rows that still stand, one call per pair, and never an out row
 45	test	a corrects pair is judged like any other but never reported as a contradiction
@@ -111,6 +119,8 @@ story	kind	name
 51	test	GET /state serves each decision with its label and relations from the graph module
 52	test	row links come from the relations the server sends, never from the text
 52	test	a decision that supersedes an earlier row links to that row's decision
+53	test	three.js is gone: no dependency, no import map or CDN on the page, no script importing a package, and no 3-D view
+53	test	the page's scripts are served from factory/viewer as JavaScript
 30	test	a ticket started before its blocker merged, with no decision row explaining it, is an early start; a standing row naming both explains it
 30	test	zero-slack tickets are the unmerged tickets on a longest chain, each ticket one step
 30	test	the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains

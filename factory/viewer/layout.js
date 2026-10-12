@@ -1,5 +1,7 @@
-// Geometry for the viewer's diagrams, with no three.js and no DOM so that node:test can run it:
-// the decision graph, the crew graph, their 3-D force layout, and the swimlane timeline.
+// Geometry for the viewer's diagrams, with no DOM so that node:test can run it and the server can
+// score what the page draws: the decision graph and its phase disk, the crew graph and its 2-D
+// force layout, and the swimlane timeline.
+import { sarkar } from './disk.js';
 
 // The decision log as a graph. Tree links join a root, one node per phase folder and one dot
 // per decision, each to its parent. Cross-links join what the rows themselves cite:
@@ -72,6 +74,17 @@ export function buildGraph(tree) {
   return { nodes, links };
 }
 
+// The phase tree of a decision graph (root, phases and decisions, not evidence nodes) laid out in
+// the Poincare disk (see disk.js). `members` are the graph's node indexes on the disk, in order;
+// `disk` answers for positions in that order.
+export function phaseDisk(graph) {
+  const members = graph.nodes.flatMap((n, i) => (n.kind === 'evidence' ? [] : [i]));
+  const at = new Map(members.map((i, p) => [i, p]));
+  const parents = members.map(() => -1);
+  for (const l of graph.links) if (l.kind === 'tree') parents[at.get(l.target)] = at.get(l.source);
+  return { members, disk: sarkar(parents) };
+}
+
 // The crew (see summarize in viewer.mjs) as a graph: a hub per run for its orchestrator and a
 // node per agent, joined by
 //   dispatched  the hub to each agent it started (the orchestrator is every subagent's parent)
@@ -128,31 +141,29 @@ const STRENGTH = { tree: 1, supersedes: 0.3, withdraws: 0.3, corrects: 0.3, ment
 // their agents pushing them apart.
 const GRAVITY = { hub: 0.08 };
 
-// A small d3-force-3d style simulation: springs on links, repulsion between every pair, a pull
-// to the centre. No randomness, so the same graph always settles the same way. A node with
-// fx/fy/fz is pinned there (for dragging); a node that already has x/y/z starts there.
+// A small d3-force style simulation in the plane: springs on links, repulsion between every pair,
+// a pull to the centre. No randomness, so the same graph always settles the same way. A node with
+// fx/fy is pinned there (for dragging); a node that already has x/y starts there.
 export function createSimulation(nodes, links, { alphaMin = 0.001, decay = 0.6 } = {}) {
   const golden = Math.PI * (3 - Math.sqrt(5));
-  const roll = Math.PI * 20 / (9 + Math.sqrt(221));
   nodes.forEach((n, i) => {
-    if (![n.x, n.y, n.z].every(Number.isFinite)) {
-      const r = 14 * Math.cbrt(0.5 + i), a = i * golden, b = i * roll;
-      n.x = r * Math.sin(b) * Math.cos(a);
-      n.y = r * Math.cos(b);
-      n.z = r * Math.sin(b) * Math.sin(a);
+    if (![n.x, n.y].every(Number.isFinite)) {
+      const r = 14 * Math.sqrt(0.5 + i), a = i * golden; // a sunflower, so no two start together
+      n.x = r * Math.cos(a);
+      n.y = r * Math.sin(a);
     }
-    n.vx = n.vy = n.vz = 0;
+    n.vx = n.vy = 0;
   });
   const degree = nodes.map(() => 0);
   for (const l of links) { degree[l.source]++; degree[l.target]++; }
   let alpha = 1;
   const alphaDecay = 1 - Math.pow(alphaMin, 1 / 300);
-  const AXES = [['x', 'vx', 'fx'], ['y', 'vy', 'fy'], ['z', 'vz', 'fz']];
+  const AXES = [['x', 'vx', 'fx'], ['y', 'vy', 'fy']];
 
   function tick() {
     for (const l of links) {
       const s = nodes[l.source], t = nodes[l.target];
-      const d = [t.x + t.vx - s.x - s.vx, t.y + t.vy - s.y - s.vy, t.z + t.vz - s.z - s.vz];
+      const d = [t.x + t.vx - s.x - s.vx, t.y + t.vy - s.y - s.vy];
       const len = Math.hypot(...d) || 1e-6;
       const rest = l.kind === 'tree' ? LENGTH.tree[t.kind] : LENGTH[l.kind];
       const k = ((len - rest) / len) * alpha * STRENGTH[l.kind] / Math.min(degree[l.source], degree[l.target]);
@@ -163,18 +174,17 @@ export function createSimulation(nodes, links, { alphaMin = 0.001, decay = 0.6 }
       const a = nodes[i];
       for (let j = i + 1; j < nodes.length; j++) {
         const b = nodes[j];
-        let dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
-        if (dx === 0 && dy === 0 && dz === 0) { dx = 1e-3 * (j - i); dy = dz = 1e-3; }
+        let dx = b.x - a.x, dy = b.y - a.y;
+        if (dx === 0 && dy === 0) { dx = 1e-3 * (j - i); dy = 1e-3; }
         // falls off with distance squared, as in d3's many-body force
-        const d2 = Math.max(dx * dx + dy * dy + dz * dz, 25);
+        const d2 = Math.max(dx * dx + dy * dy, 25);
         const fa = (CHARGE[b.kind] * alpha) / d2, fb = (CHARGE[a.kind] * alpha) / d2;
-        a.vx += dx * fa; a.vy += dy * fa; a.vz += dz * fa;
-        b.vx -= dx * fb; b.vy -= dy * fb; b.vz -= dz * fb;
+        a.vx += dx * fa; a.vy += dy * fa;
+        b.vx -= dx * fb; b.vy -= dy * fb;
       }
       const g = (GRAVITY[a.kind] ?? 0.01) * alpha;
       a.vx -= a.x * g;
       a.vy -= a.y * g;
-      a.vz -= a.z * g;
     }
     for (const n of nodes) {
       for (const [p, v, f] of AXES) {

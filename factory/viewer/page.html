@@ -4,12 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Factory Viewer</title>
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-} }
-</script>
 <style>
 /* Black, white and grey only. Status is told apart by fill: solid, grey, outline, pulse. */
 :root {
@@ -67,9 +61,8 @@ main { display: grid; gap: 16px; padding: 16px; }
 .layers input { accent-color: var(--ink); margin: 0; }
 .ln { display: inline-block; width: 22px; height: 0; border-top: 1px solid var(--faint); vertical-align: middle; }
 .ln.sup { border-top: 2px dashed var(--ink); } .ln.wd { border-top: 2px dotted var(--ink); } .ln.cor { border-top: 2px solid var(--mid); } .ln.men { border-top: 2px dotted var(--mid); } .ln.evi { border-top-color: var(--faint); }
-.sw.cube { width: 7px; height: 7px; background: var(--mid); border: 0; margin: 0 2px 0 0; }
 
-/* the two three.js stages */
+/* the canvas stages */
 .stage { position: relative; overflow: hidden; border-radius: 6px; touch-action: none; user-select: none; }
 .stage canvas { display: block; }
 #lanes { display: grid; grid-template-columns: 180px minmax(0, 1fr); }
@@ -91,16 +84,15 @@ main { display: grid; gap: 16px; padding: 16px; }
 .sw.dot.grey { background: var(--mid); border-color: var(--mid); } .sw.dot.ring { background: none; }
 .sw.dot.live { box-shadow: 0 0 0 3px var(--faint); animation: pulse 1.4s infinite; }
 .ln.same { border-top: 2px solid var(--ink); } .ln.dash { border-top: 2px dashed var(--g-node); }
-.labels { position: absolute; inset: 0; pointer-events: none; }
-.labels span { position: absolute; transform: translate(-50%, 0); font-size: 11px; color: var(--muted); white-space: nowrap; }
-.labels span.hi { color: var(--fg); font-weight: 600; }
 .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--panel); font-size: 12px; padding: 6px 9px; border-radius: 6px; max-width: 360px; overflow-wrap: anywhere; z-index: 2; }
 .tip[hidden] { display: none; }
 .card { position: absolute; right: 10px; top: 10px; width: min(340px, calc(100% - 20px)); max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--fg); border-radius: 8px; padding: 10px 12px; font-size: 13px; z-index: 2; }
 .card[hidden] { display: none; }
 .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 8px; }
 .card .x { float: right; cursor: pointer; color: var(--muted); border: 0; background: none; font: inherit; font-size: 16px; line-height: 1; }
-.nothree { color: var(--muted); padding: 24px 0; }
+.nodraw { color: var(--muted); padding: 24px 0; }
+.score { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.score b { color: var(--fg); font-weight: 600; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
 
 table { width: 100%; border-collapse: collapse; }
 td, th { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: top; }
@@ -140,7 +132,7 @@ summary .n { color: var(--muted); font-size: 12px; }
     <div class="stage" id="lanes"><div class="gutter" id="lane-labels"></div><div class="plot" id="lane-plot"><div class="axis" id="axis"></div><div class="tip" id="lane-tip" hidden></div></div></div>
   </section>
   <section class="panel" id="crew-panel">
-    <h2>Agent network <span class="muted" id="ccount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · click an agent for its card · double-click to fit</span> <button class="full" data-full="crew-panel">full screen</button></h2>
+    <h2>Agent network <span class="muted" id="ccount"></span> <span class="hint">drag to pan · scroll to zoom · drag an agent to move it · click an agent for its card · double-click to fit</span> <button class="full" data-full="crew-panel">full screen</button></h2>
     <div class="legend layers" id="crew-layers" style="margin-bottom:8px">
       <label><input type="checkbox" id="all-runs" checked>all runs</label>
       <span><i class="sw dot live"></i>running</span><span><i class="sw dot"></i>PASS</span><span><i class="sw dot grey"></i>ISSUES</span><span><i class="sw dot ring"></i>BLOCKED / unknown</span>
@@ -149,10 +141,10 @@ summary .n { color: var(--muted); font-size: 12px; }
       <label><input type="checkbox" data-kind="builds" checked><i class="ln dash"></i>builds on</label>
       <label><input type="checkbox" data-kind="files" checked><i class="ln men"></i>same file</label>
     </div>
-    <div class="stage big" id="crew"><div class="labels" id="crew-labels"></div><div class="tip" id="crew-tip" hidden></div><div class="card" id="crew-card" hidden></div></div>
+    <div class="stage big" id="crew"><div class="tip" id="crew-tip" hidden></div><div class="card" id="crew-card" hidden></div></div>
   </section>
   <section class="panel" id="graph-panel">
-    <h2>Decision graph <span class="muted" id="dcount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · drag a node to move it · double-click to fit</span> <button class="full" data-full="graph-panel">full screen</button></h2>
+    <h2>Phase disk <span class="muted" id="dcount"></span> <span class="hint">click a node to bring it to the centre and open its card · double-click to go back to the root</span> <button class="full" data-full="graph-panel">full screen</button></h2>
     <div class="legend layers" id="layers" style="margin-bottom:8px">
       <span><i class="sw dot"></i>in</span><span><i class="sw dot grey"></i>undec</span><span><i class="sw dot ring"></i>out</span>
       <label><input type="checkbox" data-kind="tree" checked><i class="ln tree"></i>phase tree</label>
@@ -160,9 +152,10 @@ summary .n { color: var(--muted); font-size: 12px; }
       <label><input type="checkbox" data-kind="withdraws" checked><i class="ln wd"></i>withdraws</label>
       <label><input type="checkbox" data-kind="corrects" checked><i class="ln cor"></i>corrects</label>
       <label><input type="checkbox" data-kind="mentions" checked><i class="ln men"></i>mentions a ticket</label>
-      <label><input type="checkbox" data-kind="evidence"><i class="ln evi"></i><i class="sw cube"></i>shared evidence</label>
+      <label><input type="checkbox" data-kind="evidence"><i class="ln evi"></i>shared evidence</label>
     </div>
-    <div class="stage big" id="graph"><div class="labels" id="graph-labels"></div><div class="tip" id="graph-tip" hidden></div><div class="card" id="card" hidden></div></div>
+    <p class="score" id="dscore"></p>
+    <div class="stage big" id="graph"><div class="tip" id="graph-tip" hidden></div><div class="card" id="card" hidden></div></div>
     <div id="tree" hidden></div>
   </section>
   <section class="panel"><h2>Agents in this run</h2><table><thead><tr><th>Agent</th><th>Status</th><th>Time</th><th>Events</th></tr></thead><tbody id="agents"></tbody></table><p class="muted" id="no-agents" hidden>No agents in this run.</p></section>

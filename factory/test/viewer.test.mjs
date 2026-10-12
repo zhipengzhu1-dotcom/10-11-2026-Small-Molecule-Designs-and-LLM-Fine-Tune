@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { join } from 'node:path';
 import { readTask, subagentTranscript, summarize } from '../viewer.mjs';
 import { startViewer, tempRoot } from './helpers.mjs';
+
+const SCRIPTS = ['app.js', 'ui.js', 'layout.js', 'disk.js', 'plane.js', 'swimlane.js', 'graph.js', 'crew.js'];
 
 const ev = (ts, run, agent, type, fields = {}) => ({ ts: `2026-10-11T10:${ts}:00Z`, run, agent, type, ...fields });
 const decision = (ts, phase, extra = {}) =>
@@ -107,6 +109,31 @@ test("each decision in the tree carries the graph module's label and relations",
 test('the state counts the decisions in, out and undec', () => {
   assert.deepEqual(argued().labels, { in: 3, out: 1, undec: 0 });
   assert.deepEqual(summarize([]).labels, { in: 0, out: 0, undec: 0 });
+});
+
+// 30 rows over 3 phases of 4 subphases each, a few superseding an earlier row of the same subphase.
+const wide = () => summarize(Array.from({ length: 30 }, (_, i) => decision(String(i).padStart(2, '0'), `p${i % 3}/q${i % 4}`, {
+  line: i + 2,
+  decision: i >= 24 ? `supersedes line ${i + 2 - 12}: again` : `row ${i}`,
+})));
+
+test("the state carries the phase disk's trustworthiness and continuity at k = 5 and 10, against Laplacian eigenmaps of the full graph", () => {
+  const { disk } = wide();
+  assert.equal(disk.n, 1 + 3 + 12 + 30); // the root, every phase and every decision
+  assert.deepEqual(disk.against, { method: 'laplacian eigenmaps', d: 16 });
+  assert.ok(disk.tau > 0);
+  for (const k of [5, 10]) {
+    // a random picture's expected score (see distortion.test.mjs); the disk keeps the tree, so it beats that
+    const random = 1 - (disk.n - 1 - k) ** 2 / ((disk.n - 1) * (2 * disk.n - 3 * k - 1));
+    for (const m of ['T', 'C']) assert.ok(disk[m][k] > random + 0.05 && disk[m][k] <= 1, `${m}(${k}) = ${disk[m][k]}, random ${random}`);
+  }
+});
+
+test('a log too small for a k leaves that score null', () => {
+  const { disk } = argued();
+  assert.equal(disk.n, 1 + 3 + 4); // k = 5 needs 11 points or more
+  assert.deepEqual([disk.T, disk.C], [{ 5: null, 10: null }, { 5: null, 10: null }]);
+  assert.deepEqual(summarize([]).disk.T, { 5: null, 10: null });
 });
 
 test('the latest result of each check in the run is reported', () => {
@@ -267,11 +294,27 @@ test('GET / serves the viewer page', async () => {
 
 test('the page\'s scripts are served from factory/viewer as JavaScript', async () => {
   await withViewer(seed(), async (url) => {
-    for (const name of ['app.js', 'ui.js', 'layout.js', 'swimlane.js', 'force.js', 'graph.js', 'crew.js']) {
+    for (const name of SCRIPTS) {
       const res = await fetch(`${url}/assets/${name}`);
       assert.equal(res.status, 200, name);
       assert.match(res.headers.get('content-type'), /text\/javascript/, name);
     }
+  });
+});
+
+test('three.js is gone: no dependency, no import map or CDN on the page, no script importing a package, and no 3-D view', async () => {
+  const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+  assert.deepEqual(Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }).filter((d) => /three/i.test(d)), []);
+  await withViewer(seed(), async (url) => {
+    const page = await (await fetch(url + '/')).text();
+    assert.doesNotMatch(page, /three|importmap|cdn\.|https?:\/\/(?!127\.0\.0\.1)/i);
+    for (const name of SCRIPTS) {
+      const text = await (await fetch(`${url}/assets/${name}`)).text();
+      const specs = [...text.matchAll(/\bfrom\s+['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]/g)].map((m) => m[1] ?? m[2]);
+      for (const s of specs) assert.match(s, /^\.\/[a-z]+\.js$/, `${name} imports ${s}`);
+      assert.doesNotMatch(text, /THREE|WebGL|PerspectiveCamera/, name);
+    }
+    assert.equal((await fetch(`${url}/assets/force.js`)).status, 404); // the 3-D force graph
   });
 });
 

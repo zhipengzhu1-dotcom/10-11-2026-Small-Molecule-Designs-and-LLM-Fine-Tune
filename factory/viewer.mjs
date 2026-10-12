@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Viewer. A read-only page that watches the event stream: a swimlane timeline of the run's
-// agents, a graph of every agent and how they connect, a graph of the decision tree, and lists. A quick stand-in until the dashboard
-// (piece C) replaces it. The page and its scripts live in factory/viewer/.
+// agents, a graph of every agent and how they connect, the decision log's phase tree as a
+// Poincare disk with the scores of how far it distorts the full graph, and lists. A quick
+// stand-in until the dashboard (piece C) replaces it. The page and its scripts live in
+// factory/viewer/.
 //
 //   node factory/viewer.mjs [--root <repo>] [--port 4175]
 import { closeSync, openSync, readFileSync, readSync } from 'node:fs';
@@ -10,8 +12,10 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildGraph } from './graph.mjs';
+import { eigenmap, euclidean, neighbourhoods } from './graph/distortion.mjs';
 import { defaultRoot } from './log.mjs';
 import { readStream } from './read.mjs';
+import { buildGraph as decisionGraph, phaseDisk } from './viewer/layout.js';
 
 // Turns the stream (ordered by ts) into what the page draws, for one run: the newest unless
 // `run` names another. The manual run (checks run by hand) is never the newest while a session
@@ -38,6 +42,10 @@ export function summarize(events, run, taskOf = () => null) {
   const from = own.length ? Date.parse(own[0].ts) : Infinity;
   const to = run === newest ? Infinity : own.length ? Date.parse(own.at(-1).ts) : -Infinity;
   const during = (e) => e.type === 'decision' && Date.parse(e.ts) >= from && Date.parse(e.ts) <= to;
+  const decisions = tree(events.filter((e) => e.type === 'decision').map((e) => {
+    const { label, relations } = graph.decision(e.line);
+    return { ...e, label, relations };
+  }));
   return {
     runs,
     newest,
@@ -47,10 +55,8 @@ export function summarize(events, run, taskOf = () => null) {
       .filter((a) => a.agent !== 'orchestrator')
       .map((a) => ({ run: r, ...a, live: a.status === 'running' && r === newest }))),
     checks: latestChecks(own),
-    tree: tree(events.filter((e) => e.type === 'decision').map((e) => {
-      const { label, relations } = graph.decision(e.line);
-      return { ...e, label, relations };
-    })),
+    tree: decisions,
+    disk: diskView(decisions),
     labels: Object.fromEntries(['in', 'out', 'undec'].map((l) => [l, graph.decisions.filter((d) => d.label === l).length])),
     timeline: events.filter((e) => e.run === run || during(e)).reverse(),
   };
@@ -157,6 +163,25 @@ function tree(decisions) {
 
 const node = (name, path) => ({ name, path, count: 0, decisions: [], children: [] });
 
+// How far the phase disk the page draws (layout.js, disk.js) distorts the full graph: trustworthiness
+// and continuity at k = 5 and 10 (graph/distortion.mjs) of its hyperbolic distances against the
+// Laplacian eigenmap (d = 16) of the whole decision graph, cross-links and evidence nodes included,
+// over the nodes on the disk. Computed on read; the last answer is kept in memory only, since the
+// page asks every 2 seconds and the graph rarely changes in between.
+const YARDSTICK = { method: 'laplacian eigenmaps', d: 16 };
+let lastDisk = { key: null, view: null };
+function diskView(tree) {
+  const graph = decisionGraph(tree);
+  const links = graph.links.map((l) => [l.source, l.target]);
+  const key = JSON.stringify([graph.nodes.map((n) => n.id), links]);
+  if (lastDisk.key === key) return lastDisk.view;
+  const { members, disk } = phaseDisk(graph);
+  const full = euclidean(eigenmap(graph.nodes.length, links, YARDSTICK.d));
+  const view = neighbourhoods(members.map((i) => members.map((j) => full[i][j])), members.map((_, a) => members.map((_, b) => disk.distance(a, b))));
+  lastDisk = { key, view: { n: members.length, tau: disk.tau, ...view, against: YARDSTICK } };
+  return lastDisk.view;
+}
+
 export function createViewer({ root = defaultRoot(), home = homedir() } = {}) {
   // A transcript's first line and meta are written when the agent starts and never change.
   const tasks = new Map();
@@ -206,7 +231,7 @@ function handle(root, taskOf, req, res) {
 
 // Served by name only, never by path, so nothing else in the repo can be fetched. Read on
 // every request, so an edit shows on reload.
-const SCRIPTS = new Set(['app.js', 'ui.js', 'layout.js', 'swimlane.js', 'force.js', 'graph.js', 'crew.js']);
+const SCRIPTS = new Set(['app.js', 'ui.js', 'layout.js', 'disk.js', 'plane.js', 'swimlane.js', 'graph.js', 'crew.js']);
 const ASSETS = join(dirname(fileURLToPath(import.meta.url)), 'viewer');
 const asset = (name) => readFileSync(join(ASSETS, name), 'utf8');
 
