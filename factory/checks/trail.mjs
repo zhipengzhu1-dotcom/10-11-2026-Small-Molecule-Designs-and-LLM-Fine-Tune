@@ -35,7 +35,8 @@
 //     hold that record, and the row would land in a commit after the push
 //   - a row from CLAIM_RULES_FROM (factory/claim.mjs) on has a result that does not start with a
 //     claim state, or a decision cell that starts with a relation word but is not a well-formed
-//     "<relation> line N[ (part)]: " prefix, or names a line that is not an earlier decision row
+//     relation prefix ("<relation> line N[ (part)]: ", "closes challenge <id>: "), or names a line
+//     that is not an earlier decision row
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CLAIM_RULES_FROM, claimState, parseRelations } from '../claim.mjs';
@@ -169,7 +170,7 @@ function claimProblems(row) {
   if (problem) problems.push(`result: ${problem}`);
   const parsed = parseRelations(row.cells[2] ?? '');
   if (parsed.problem) problems.push(parsed.problem);
-  for (const r of parsed.relations) {
+  for (const r of parsed.relations.filter((x) => x.kind !== 'closes')) {
     if (r.line < 2 || r.line >= row.line) problems.push(`${r.kind} line ${r.line} is not an earlier decision row`);
   }
   return problems;

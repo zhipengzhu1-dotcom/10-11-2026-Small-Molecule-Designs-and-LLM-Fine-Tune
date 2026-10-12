@@ -4,15 +4,17 @@
 // the session transcript at the moment of the decision first in the evidence cell.
 //
 //   npm run decide -- [--root <repo>] [--run <session-id>] [--state <state>]
-//                     [--supersedes|--withdraws|--corrects|--closes <line>[ (part)]]...
+//                     [--supersedes|--withdraws|--corrects <line>[ (part)]]... [--closes <challenge id>]...
 //                     <phase> <decision> <why> <evidence> [<result>]
 //
 // Claim:    the grammar is claim.mjs's. --state <state> leads the result cell ("<state>: <result>",
 //           or the state alone when <result> is left out); without it, <result> must already start
-//           with a claim state. Each relation flag names an earlier row's line, with "(part)" for a
-//           partial one, and becomes "<relation> line N[ (part)]: " at the start of the decision
-//           cell, joined by ", " in the order supersedes, withdraws, corrects, closes. A target past
-//           the log's last row, or a relation phrase written into <decision> by hand, is refused.
+//           with a claim state. --supersedes, --withdraws and --corrects name an earlier row's
+//           line, with "(part)" for a partial one, and become "<relation> line N[ (part)]: ";
+//           --closes names a challenge event's id and becomes "closes challenge <id>: ". They lead
+//           the decision cell, joined by ", " in the order supersedes, withdraws, corrects, closes.
+//           A line past the log's last row, an id with no challenge event in the stream, or a
+//           relation phrase written into <decision> by hand is refused.
 //
 // Root:     --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else this repo (see log.mjs).
 // log.sh:   <installPath>/skills/show-me-your-work/scripts/log.sh, where installPath is the
@@ -31,10 +33,11 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { claimState, formatRelations, leadingRelation, parseTarget, RELATIONS } from './claim.mjs';
+import { claimState, formatRelations, isChallengeId, leadingRelation, parseRowTarget, RELATIONS } from './claim.mjs';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
 import { parsePointer, resolvePointer } from './pointer.mjs';
+import { readStream } from './read.mjs';
 import { defaultRun } from './run-marker.mjs';
 import { projectTranscripts, readTranscript } from './transcript.mjs';
 
@@ -78,16 +81,27 @@ function checkEvidence(evidence, opts) {
   if (problems.length) throw new Error(`evidence: ${problems.join('; ')}`);
 }
 
-// The decision cell with its relation prefix (claim.mjs). Each target must be a row already in the
-// log; a hand-written relation phrase is refused, so the flags are the only way to write one.
+// TEMP until #58 merges: then import its `challenged` from log.mjs.
+const challenged = (events, id) => events.some((e) => e.type === 'challenge' && e.id === id);
+
+// The decision cell with its relation prefix (claim.mjs). A row relation's target must be a row
+// already in the log, and --closes must name a challenge event in the stream. A hand-written
+// relation phrase is refused, so the flags are the only way to write one.
 function decisionCell(root, decision, flags) {
   const word = leadingRelation(decision);
-  if (word) throw new UsageError(`decision starts with "${word}"; pass --${word} <line> instead of writing the phrase`);
+  if (word) throw new UsageError(`decision starts with "${word}"; pass --${word} instead of writing the phrase`);
   const logFile = join(root, 'factory', 'decisions.tsv');
   const last = existsSync(logFile) ? readFileSync(logFile, 'utf8').split(/\r?\n/).filter((l) => l !== '').length : 1;
+  let events;
   const relations = flags.map(({ kind, value }) => {
-    const target = parseTarget(value);
     const at = `--${kind} ${value}`;
+    if (kind === 'closes') {
+      if (!isChallengeId(value)) throw new UsageError(`${at}: a challenge id is a plain name (letters, digits, '.', '_', '-' only)`);
+      events ??= readStream(root);
+      if (!challenged(events, value)) throw new UsageError(`${at}: no challenge event with id ${value} in the stream`);
+      return { kind, challenge: value };
+    }
+    const target = parseRowTarget(value);
     if (!target) throw new UsageError(`${at}: write a line number, optionally followed by (part)`);
     if (target.line < 2) throw new UsageError(`${at}: line ${target.line} is the header, not a decision row`);
     if (target.line > last) throw new UsageError(`${at}: line ${target.line} is past the last row (${last})`);

@@ -48,12 +48,20 @@ function decide({ home, root }, args, extraEnv = {}) {
 
 const ROW = ['project/frontier/next', 'took #44 next', 'it blocks #14', 'issue:44', 'open: started'];
 
-test('each relation flag puts "<relation> line N: " at the start of the decision cell, with " (part)" for a partial one', () => {
+// A challenge event (issue #58) in the fixture repo's stream, so --closes has an id to name.
+function challenge(s, id) {
+  const dir = join(s.root, 'factory', 'agents', 'run-1');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'orchestrator.jsonl'), JSON.stringify({
+    ts: '2026-10-12T02:00:00.000Z', run: 'run-1', agent: 'orchestrator', type: 'challenge', id, target: 'row:3', kind: 'rebut', why: 'the judge was never measured',
+  }) + '\n');
+}
+
+test('each row relation flag puts "<relation> line N: " at the start of the decision cell, with " (part)" for a partial one', () => {
   for (const [flag, value, prefix] of [
     ['--supersedes', '2', 'supersedes line 2: '],
     ['--withdraws', '3', 'withdraws line 3: '],
     ['--corrects', '4', 'corrects line 4: '],
-    ['--closes', '3', 'closes line 3: '],
     ['--supersedes', '2 (part)', 'supersedes line 2 (part): '],
     ['--withdraws', '3(part)', 'withdraws line 3 (part): '],
   ]) {
@@ -64,11 +72,35 @@ test('each relation flag puts "<relation> line N: " at the start of the decision
   }
 });
 
+test('--closes <id> puts "closes challenge <id>: " at the start of the decision cell', () => {
+  const s = setup();
+  challenge(s, 'judge-vram');
+  const r = decide(s, ['--run', SESSION, '--closes', 'judge-vram', ...ROW]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(cellsOf(s)[1], 'closes challenge judge-vram: took #44 next');
+});
+
+test('--closes refuses with exit 2, and writes nothing, an id with no challenge event in the stream', () => {
+  const s = setup();
+  challenge(s, 'judge-vram');
+  for (const [id, message] of [
+    ['judge-cpu', /--closes judge-cpu: no challenge event with id judge-cpu in the stream/],
+    ['3', /--closes 3: no challenge event with id 3 in the stream/],
+    ['bad id', /--closes bad id: a challenge id is a plain name/],
+  ]) {
+    const r = decide(s, ['--run', SESSION, '--closes', id, ...ROW]);
+    assert.equal(r.status, 2, id);
+    assert.match(r.stderr, message);
+  }
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+});
+
 test('several relation flags join in one prefix, separated by ", ", in the order supersedes, withdraws, corrects, closes', () => {
   const s = setup();
-  const r = decide(s, ['--run', SESSION, '--closes', '3', '--withdraws', '4', '--supersedes', '2 (part)', '--withdraws', '3', ...ROW]);
+  challenge(s, 'c1');
+  const r = decide(s, ['--run', SESSION, '--closes', 'c1', '--withdraws', '4', '--supersedes', '2 (part)', '--withdraws', '3', ...ROW]);
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(cellsOf(s)[1], 'supersedes line 2 (part), withdraws line 4, withdraws line 3, closes line 3: took #44 next');
+  assert.equal(cellsOf(s)[1], 'supersedes line 2 (part), withdraws line 4, withdraws line 3, closes challenge c1: took #44 next');
 });
 
 test('a relation pointing past the last row, at the header, or written as malformed text is refused with exit 2 before anything is written', () => {
@@ -77,7 +109,7 @@ test('a relation pointing past the last row, at the header, or written as malfor
     [['--supersedes', '5'], /--supersedes 5: line 5 is past the last row \(4\)/],
     [['--withdraws', '1'], /--withdraws 1: line 1 is the header, not a decision row/],
     [['--corrects', 'two'], /--corrects two: write a line number, optionally followed by \(part\)/],
-    [['--closes', '3 (half)'], /--closes 3 \(half\): write a line number, optionally followed by \(part\)/],
+    [['--corrects', '3 (half)'], /--corrects 3 \(half\): write a line number, optionally followed by \(part\)/],
   ]) {
     const r = decide(s, ['--run', SESSION, ...args, ...ROW]);
     assert.equal(r.status, 2, args.join(' '));
@@ -91,7 +123,7 @@ test('a decision that already starts with a relation word is refused, pointing a
   const s = setup();
   const r = decide(s, ['--run', SESSION, ROW[0], 'supersedes line 2: took #44 next', ROW[2], ROW[3], ROW[4]]);
   assert.equal(r.status, 2);
-  assert.match(r.stderr, /decision starts with "supersedes"; pass --supersedes <line> instead of writing the phrase/);
+  assert.match(r.stderr, /decision starts with "supersedes"; pass --supersedes instead of writing the phrase/);
   assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
 });
 
