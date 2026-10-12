@@ -26,6 +26,8 @@
 //   (the last three: the workflow net in graph/workflow.mjs; merges come in as snapshot.merges,
 //    [{ ticket, ts, commit }], the integration branch's `Merge #<n>` commits)
 //   graph.overdue(now, { run? })  running agents past their role's usual time (graph/sojourn.mjs)
+//   graph.clock(id), .happensBefore(a, b), .unacted(spec?), .lifecycle(spec?)
+//                                 the causal-order overlay (graph/causal.mjs)
 //   graph.writtenTwice(paths?)    files two agents' artifact events wrote: [{ path, agents, writes }]
 //   graph.staleChecks(paths?)     checks that ran before their file's last write:
 //                                 [{ check, name, result, path, write }] (both graph/provenance.mjs)
@@ -33,6 +35,7 @@
 // Overlays (argumentation here, the others in graph/) live here or in sibling files, without
 // changing the interface.
 import { claimState, parseRelations } from './claim.mjs';
+import { causalOrder } from './graph/causal.mjs';
 import { ticketsNamed } from './graph/names.mjs';
 import { provenanceOverlay } from './graph/provenance.mjs';
 import { overdue } from './graph/sojourn.mjs';
@@ -50,6 +53,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   const agent = (name) => add(`agent:${name}`, 'agent', 'agent');
 
   const decisions = [];
+  const stream = []; // [{ id, e }] in stream order, for the causal overlay
   const count = new Map(); // `<run>/<agent>` -> lines read so far: the event's line in its file
   for (const e of events) {
     if (e.type === 'decision') {
@@ -57,12 +61,14 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
       const d = { ...e, relations, text, state: claimState(e.result).state ?? null };
       decisions.push(d);
       link(add(`row:${d.line}`, 'entity', 'decision', { event: e }), 'wasAttributedTo', agent(e.agent));
+      stream.push({ id: `row:${d.line}`, e });
       continue;
     }
     const file = `${e.run}/${e.agent}`;
     count.set(file, (count.get(file) ?? 0) + 1);
     const id = add(`event:${file}:${count.get(file)}`, 'activity', e.type, { event: e });
     link(id, 'wasAssociatedWith', agent(e.agent));
+    stream.push({ id, e });
     if (e.type === 'dispatch' && e.to) agent(e.to);
     if (e.type === 'artifact' && e.path) link(add(`file:${e.path}`, 'entity', 'file'), 'wasGeneratedBy', id);
   }
@@ -110,6 +116,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   graph.slack = () => replay().slack;
   graph.completion = () => replay().completion;
   graph.overdue = (now, opts) => overdue(events, now, opts);
+  Object.assign(graph, causalOrder(stream));
   Object.assign(graph, provenanceOverlay(graph));
   return graph;
 }
