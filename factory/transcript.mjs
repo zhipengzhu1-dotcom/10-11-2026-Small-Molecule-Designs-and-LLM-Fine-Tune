@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cli, UsageError } from './cli.mjs';
 
 // Claude Code keeps a project's transcripts in ~/.claude/projects/<slug>, where the slug is the
 // checkout's path with every character other than a letter or digit turned into "-".
@@ -80,20 +80,15 @@ export function digest(file) {
   return lines;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  const args = process.argv.slice(2);
-  const usage = args.includes('--usage');
-  const target = args.find((a) => a !== '--usage');
-  if (!target) {
-    process.stderr.write('usage: node factory/transcript.mjs <session-id | transcript.jsonl> [--usage]\n');
-    process.exit(2);
-  }
+cli(import.meta.url, {
+  usage: 'node factory/transcript.mjs <session-id | transcript.jsonl> [--usage]',
+  options: { usage: 'flag' },
+  positionals: true,
+}, ({ positionals: [target, ...extra], usage }) => {
+  if (!target) throw new UsageError('missing session id or transcript file');
+  if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
   // A bare session id is looked up in this project's transcripts folder.
   const file = target.endsWith('.jsonl') ? target : join(projectTranscripts(process.cwd()), `${target}.jsonl`);
-  if (!existsSync(file)) {
-    process.stderr.write(`transcript.mjs: no transcript at ${file}\n`);
-    process.exit(2);
-  }
+  if (!existsSync(file)) throw new UsageError(`no transcript at ${file}`);
   process.stdout.write(usage ? `${JSON.stringify(latestUsage(file))}\n` : digest(file).map((l) => `${l}\n`).join(''));
-}
+});

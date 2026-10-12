@@ -11,8 +11,8 @@
 // Root: --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else the repo this script lives in.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
 import { readMarker } from './run-marker.mjs';
 
@@ -56,31 +56,15 @@ export function mergeBranch({ root, branch, message, factoryOnly = false }) {
   return { committed, merged: true };
 }
 
-function parseArgs(argv, env) {
-  const opts = { root: defaultRoot(env), branch: undefined, message: undefined, factoryOnly: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--factory-only') opts.factoryOnly = true;
-    else if (a === '--root' || a === '-m' || a === '--message') {
-      if (argv[i + 1] === undefined) throw new Error(`missing value for ${a}`);
-      opts[a === '--root' ? 'root' : 'message'] = argv[++i];
-    } else if (a.startsWith('-') || opts.branch) throw new Error(`unexpected argument: ${a}`);
-    else opts.branch = a;
-  }
-  if (!opts.factoryOnly && !opts.branch) {
-    throw new Error('usage: merge.mjs <branch> [-m <message>] [--root <repo>] | --factory-only [--root <repo>]');
-  }
-  if (opts.factoryOnly && opts.branch) throw new Error('--factory-only takes no branch');
-  return opts;
-}
-
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  try {
-    const r = mergeBranch(parseArgs(process.argv.slice(2), process.env));
-    process.stdout.write(`${r.committed ? 'committed factory paths' : 'no factory changes'}${r.merged ? '; merged' : ''}\n`);
-  } catch (err) {
-    process.stderr.write(`factory/merge.mjs: ${err.message}\n`);
-    process.exit(1);
-  }
-}
+cli(import.meta.url, {
+  usage: 'node factory/merge.mjs <branch> [-m <message>] [--root <repo>] | --factory-only [--root <repo>]',
+  options: { root: 'string', message: { type: 'string', short: 'm' }, 'factory-only': 'flag' },
+  positionals: true,
+}, ({ positionals, root = defaultRoot(process.env), message, 'factory-only': factoryOnly = false }) => {
+  const [branch, ...extra] = positionals;
+  if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
+  if (factoryOnly && branch) throw new UsageError('--factory-only takes no branch');
+  if (!factoryOnly && !branch) throw new UsageError('missing branch');
+  const r = mergeBranch({ root, branch, message, factoryOnly });
+  process.stdout.write(`${r.committed ? 'committed factory paths' : 'no factory changes'}${r.merged ? '; merged' : ''}\n`);
+});
