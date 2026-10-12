@@ -1,7 +1,6 @@
-// Swimlane timeline in three.js: one lane per agent, time left to right, the orchestrator's
-// decisions and checks marked on the top lane. Drawn in screen pixels with an orthographic
-// camera, so lines stay one pixel wide at any zoom.
-import * as THREE from 'three';
+// Swimlane timeline on a canvas: one lane per agent, time left to right, the orchestrator's
+// decisions and checks marked on the top lane. Drawn in screen pixels, so lines stay one pixel
+// wide at any zoom.
 import { swimlanes } from './layout.js';
 import { clock, h, short } from './ui.js';
 
@@ -10,36 +9,22 @@ const STEPS = [1, 5, 10, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21
 
 const tokens = () => {
   const css = getComputedStyle(document.documentElement);
-  const c = (name) => new THREE.Color(css.getPropertyValue(name).trim());
+  const c = (name) => css.getPropertyValue(name).trim();
   return { ink: c('--ink'), mid: c('--mid'), line: c('--line'), faint: c('--faint'), sel: c('--sel') };
 };
 
 export function createSwimlane({ labels, plot, axis, tip }, { onSelect, roleOf }) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(devicePixelRatio);
-  plot.prepend(renderer.domElement);
-  const camera = new THREE.OrthographicCamera(0, 1, 0, -1, -10, 10);
-  const scene = new THREE.Scene();
-  const unit = new THREE.PlaneGeometry(1, 1).translate(0.5, -0.5, 0); // top-left anchored
-  const outline = new THREE.BufferGeometry().setFromPoints([[0, 0], [1, 0], [1, -1], [0, -1]].map(([x, y]) => new THREE.Vector3(x, y, 0)));
-  const diamond = new THREE.PlaneGeometry(6, 6).rotateZ(Math.PI / 4);
+  const canvas = h('canvas');
+  plot.prepend(canvas);
+  const ctx = canvas.getContext('2d');
 
   let model = null;      // swimlanes() output
   let view = null;       // [v0, v1] when the user has zoomed or panned; null follows the data
   let selected = null;
   let colors = tokens();
-  let items = [];        // { kind, mesh(es), lane, bar|mark }
+  let items = [];        // { kind, lane, bar | mark, agent }
   let w = 1, hgt = 1;
   let dirty = true;
-
-  const group = new THREE.Group();
-  scene.add(group);
-  const grid = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial());
-  const guides = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.5 }));
-  const nowLine = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial());
-  const selBand = new THREE.Mesh(unit, new THREE.MeshBasicMaterial());
-  scene.add(grid, guides, nowLine, selBand);
-
 
   function range() {
     if (view) return view;
@@ -50,39 +35,12 @@ export function createSwimlane({ labels, plot, axis, tip }, { onSelect, roleOf }
   const tOf = (x) => { const [a, b] = range(); return a + (x / w) * (b - a); };
   const yOf = (lane) => AXIS + lane * LANE;
 
-  function clear() {
-    for (const it of items) for (const m of it.meshes) { group.remove(m); m.material.dispose(); }
-    items = [];
-  }
-
   function rebuild() {
     if (!model) return;
-    clear();
-    model.lanes.forEach((lane, i) => {
-      const b = lane.bar;
-      if (!b) return;
-      const meshes = [];
-      const filled = b.status === 'PASS' || b.status === 'ISSUES' || b.running;
-      if (filled) {
-        const m = new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: b.status === 'ISSUES' ? colors.mid : colors.ink, transparent: b.running, opacity: b.running ? 0.35 : 1 }));
-        meshes.push(m);
-      }
-      if (!filled || b.running) meshes.push(new THREE.LineLoop(outline, new THREE.LineBasicMaterial({ color: colors.ink })));
-      meshes.forEach((m) => group.add(m));
-      items.push({ kind: 'bar', meshes, lane: i, bar: b, agent: lane.agent });
-    });
-    for (const mk of model.marks) {
-      const meshes = [];
-      if (mk.kind === 'decision') meshes.push(new THREE.Mesh(diamond, new THREE.MeshBasicMaterial({ color: colors.ink })));
-      else if (mk.result === 'pass') meshes.push(new THREE.Mesh(unit, new THREE.MeshBasicMaterial({ color: colors.ink })));
-      else meshes.push(new THREE.LineLoop(outline, new THREE.LineBasicMaterial({ color: colors.ink })));
-      meshes.forEach((m) => group.add(m));
-      items.push({ kind: mk.kind, meshes, lane: 0, mark: mk });
-    }
-    grid.material.color = colors.line;
-    guides.material.color = colors.faint;
-    nowLine.material.color = colors.mid;
-    selBand.material.color = colors.sel;
+    items = [
+      ...model.lanes.flatMap((lane, i) => (lane.bar ? [{ kind: 'bar', lane: i, bar: lane.bar, agent: lane.agent }] : [])),
+      ...model.marks.map((mk) => ({ kind: mk.kind, lane: 0, mark: mk })),
+    ];
     labels.replaceChildren(h('div', { class: 'axis-pad' }), ...model.lanes.map((lane) => {
       const row = h('div', { class: lane.agent === selected ? 'sel' : null, title: lane.agent },
         lane.bar ? h('span', { class: 'st ' + lane.status }) : null,
@@ -97,59 +55,70 @@ export function createSwimlane({ labels, plot, axis, tip }, { onSelect, roleOf }
     w = Math.max(1, plot.clientWidth);
     hgt = AXIS + Math.max(1, model?.lanes.length ?? 1) * LANE + 6;
     plot.style.height = hgt + 'px';
-    renderer.setSize(w, hgt);
-    Object.assign(camera, { left: 0, right: w, top: 0, bottom: -hgt });
-    camera.updateProjectionMatrix();
+    canvas.width = Math.round(w * devicePixelRatio);
+    canvas.height = Math.round(hgt * devicePixelRatio);
+    canvas.style.width = w + 'px';
+    canvas.style.height = hgt + 'px';
     dirty = true;
   }
   new ResizeObserver(resize).observe(plot);
 
-  function lines(target, segs) {
-    target.geometry.setAttribute('position', new THREE.Float32BufferAttribute(segs.flatMap(([x1, y1, x2, y2]) => [x1, -y1, 0, x2, -y2, 0]), 3));
-    target.geometry.computeBoundingSphere();
+  function segments(segs, color, alpha = 1) {
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    for (const [x1, y1, x2, y2] of segs) { ctx.moveTo(Math.round(x1) + 0.5, Math.round(y1) + 0.5); ctx.lineTo(Math.round(x2) + 0.5, Math.round(y2) + 0.5); }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 
-  function layoutFrame(now) {
+  function draw(now) {
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    ctx.clearRect(0, 0, w, hgt);
+    ctx.lineWidth = 1;
+    const si = model.lanes.findIndex((l) => l.agent === selected);
+    if (si >= 0) { ctx.fillStyle = colors.sel; ctx.fillRect(0, yOf(si), w, LANE); }
+    // time grid and axis labels
+    const [a, b] = range();
+    const step = STEPS.find((s) => (s / (b - a)) * w >= 90) ?? STEPS.at(-1);
+    const ticks = [];
+    for (let t = Math.ceil(a / step) * step; t <= b; t += step) ticks.push(t);
+    segments([...ticks.map((t) => [xOf(t), AXIS, xOf(t), hgt]), ...model.lanes.map((_, i) => [0, yOf(i + 1), w, yOf(i + 1)])], colors.line);
+    axis.replaceChildren(...ticks.map((t) => h('span', { style: `left:${xOf(t)}px` }, step >= 60000 ? clock(new Date(t).toISOString()).slice(0, 5) : clock(new Date(t).toISOString()))));
+    // a faint line down every lane at each decision, to see what each wave followed
+    segments(model.marks.filter((m) => m.kind === 'decision').map((m) => [xOf(m.t), yOf(1), xOf(m.t), hgt]), colors.faint, 0.5);
+    if (model.lanes.some((l) => l.bar?.running)) segments([[xOf(Date.now()), AXIS, xOf(Date.now()), hgt]], colors.mid);
     const pulse = 0.25 + 0.2 * Math.sin(now / 250);
     for (const it of items) {
       if (it.bar) {
         const end = it.bar.running ? Date.now() : it.bar.end;
         const x0 = xOf(it.bar.start), x1 = Math.max(x0 + 2, xOf(end));
         const y = yOf(it.lane) + (LANE - BAR) / 2;
-        for (const m of it.meshes) {
-          m.position.set(x0, -y, 0);
-          m.scale.set(x1 - x0, BAR, 1);
-          if (it.bar.running && m.isMesh) m.material.opacity = pulse;
+        const filled = it.bar.status === 'PASS' || it.bar.status === 'ISSUES' || it.bar.running;
+        if (filled) {
+          ctx.globalAlpha = it.bar.running ? pulse : 1;
+          ctx.fillStyle = it.bar.status === 'ISSUES' ? colors.mid : colors.ink;
+          ctx.fillRect(x0, y, x1 - x0, BAR);
+          ctx.globalAlpha = 1;
         }
-      } else {
-        const x = xOf(it.mark.t), mid = yOf(0) + LANE / 2;
-        for (const m of it.meshes) {
-          if (it.kind === 'decision') { m.position.set(x, -mid, 1); m.scale.set(1, 1, 1); }
-          else { m.position.set(x - 1.5, -(mid - 6), 1); m.scale.set(3, 12, 1); }
-        }
+        if (!filled || it.bar.running) { ctx.strokeStyle = colors.ink; ctx.strokeRect(Math.round(x0) + 0.5, Math.round(y) + 0.5, Math.round(x1 - x0), BAR); }
+        continue;
       }
+      const x = xOf(it.mark.t), mid = yOf(0) + LANE / 2;
+      ctx.fillStyle = ctx.strokeStyle = colors.ink;
+      if (it.kind === 'decision') {
+        ctx.beginPath();
+        ctx.moveTo(x, mid - 4.2); ctx.lineTo(x + 4.2, mid); ctx.lineTo(x, mid + 4.2); ctx.lineTo(x - 4.2, mid);
+        ctx.fill();
+      } else if (it.mark.result === 'pass') ctx.fillRect(x - 1.5, mid - 6, 3, 12);
+      else ctx.strokeRect(Math.round(x - 1.5) + 0.5, mid - 5.5, 3, 12);
     }
-    // time grid and axis labels
-    const [a, b] = range();
-    const step = STEPS.find((s) => (s / (b - a)) * w >= 90) ?? STEPS.at(-1);
-    const ticks = [];
-    for (let t = Math.ceil(a / step) * step; t <= b; t += step) ticks.push(t);
-    lines(grid, [...ticks.map((t) => [xOf(t), AXIS, xOf(t), hgt]), ...(model?.lanes ?? []).map((_, i) => [0, yOf(i + 1), w, yOf(i + 1)])]);
-    axis.replaceChildren(...ticks.map((t) => h('span', { style: `left:${xOf(t)}px` }, step >= 60000 ? clock(new Date(t).toISOString()).slice(0, 5) : clock(new Date(t).toISOString()))));
-    // a faint line down every lane at each decision, to see what each wave followed
-    lines(guides, (model?.marks ?? []).filter((m) => m.kind === 'decision').map((m) => [xOf(m.t), yOf(1), xOf(m.t), hgt]));
-    const live = model?.lanes.some((l) => l.bar?.running);
-    lines(nowLine, live ? [[xOf(Date.now()), AXIS, xOf(Date.now()), hgt]] : []);
-    const si = model?.lanes.findIndex((l) => l.agent === selected) ?? -1;
-    selBand.visible = si >= 0;
-    if (si >= 0) { selBand.position.set(0, -yOf(si), -1); selBand.scale.set(w, LANE, 1); }
   }
 
   function frame(now) {
     const live = model?.lanes.some((l) => l.bar?.running);
     if (model && (dirty || live)) {
-      layoutFrame(now);
-      renderer.render(scene, camera);
+      draw(now);
       dirty = false;
     }
     requestAnimationFrame(frame);

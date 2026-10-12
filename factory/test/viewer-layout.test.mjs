@@ -89,12 +89,12 @@ function settled(graph, ticks = 400) {
   return sim;
 }
 
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-test('the 3-D force layout settles to finite, spread-out positions with linked nodes closer than unlinked ones', () => {
+test('the force layout settles in the plane to finite, spread-out positions with linked nodes closer than unlinked ones', () => {
   const graph = buildGraph(tree);
   const { nodes } = settled(graph);
-  for (const n of nodes) assert.ok([n.x, n.y, n.z].every(Number.isFinite), `${n.id} at ${n.x},${n.y},${n.z}`);
+  for (const n of nodes) assert.ok([n.x, n.y].every(Number.isFinite) && n.z === undefined, `${n.id} at ${n.x},${n.y},${n.z}`);
   const linked = new Set(graph.links.map((l) => `${l.source}-${l.target}`));
   let near = 0, nearN = 0, far = 0, farN = 0, closest = Infinity;
   for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
@@ -104,26 +104,22 @@ test('the 3-D force layout settles to finite, spread-out positions with linked n
   }
   assert.ok(near / nearN < far / farN, `linked mean ${near / nearN} vs unlinked ${far / farN}`);
   assert.ok(closest > 1, `two nodes collapsed onto each other (${closest})`);
-  // a real third dimension, not a flat sheet
-  const zs = nodes.map((n) => n.z), mean = zs.reduce((a, b) => a + b) / zs.length;
-  const sd = Math.sqrt(zs.reduce((a, z) => a + (z - mean) ** 2, 0) / zs.length);
-  assert.ok(sd > 5, `depth spread only ${sd}`);
 });
 
 test('the layout is the same every time for the same graph', () => {
-  const a = settled(buildGraph(tree)).nodes.map((n) => [n.x, n.y, n.z]);
-  const b = settled(buildGraph(tree)).nodes.map((n) => [n.x, n.y, n.z]);
+  const a = settled(buildGraph(tree)).nodes.map((n) => [n.x, n.y]);
+  const b = settled(buildGraph(tree)).nodes.map((n) => [n.x, n.y]);
   assert.deepEqual(a, b);
 });
 
 test('a pinned node stays where it is pinned, and a node that already has a position starts there', () => {
   const graph = buildGraph(tree);
-  Object.assign(graph.nodes[1], { fx: 500, fy: -200, fz: 30 });
-  Object.assign(graph.nodes[2], { x: 42, y: 7, z: -3 });
+  Object.assign(graph.nodes[1], { fx: 500, fy: -200 });
+  Object.assign(graph.nodes[2], { x: 42, y: 7 });
   const sim = createSimulation(graph.nodes, graph.links);
-  assert.deepEqual([sim.nodes[2].x, sim.nodes[2].y, sim.nodes[2].z], [42, 7, -3]);
+  assert.deepEqual([sim.nodes[2].x, sim.nodes[2].y], [42, 7]);
   for (let i = 0; i < 200; i++) sim.tick();
-  assert.deepEqual([sim.nodes[1].x, sim.nodes[1].y, sim.nodes[1].z], [500, -200, 30]);
+  assert.deepEqual([sim.nodes[1].x, sim.nodes[1].y], [500, -200]);
 });
 
 test('the simulation cools down and can be reheated', () => {
@@ -173,7 +169,7 @@ test('agents that wrote the same file are linked once per pair, with the files',
 
 test('the crew layout settles with every agent near its hub', () => {
   const { nodes } = settled(crew);
-  for (const n of nodes) assert.ok([n.x, n.y, n.z].every(Number.isFinite), n.id);
+  for (const n of nodes) assert.ok([n.x, n.y].every(Number.isFinite), n.id);
   const hub = Object.fromEntries(nodes.filter((n) => n.kind === 'hub').map((n) => [n.id, n]));
   for (const n of nodes.filter((m) => m.kind === 'agent')) assert.ok(dist(n, hub['run:' + n.member.run]) < 150, n.id);
 });
