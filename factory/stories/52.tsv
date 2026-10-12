@@ -129,7 +129,7 @@ story	kind	name
 42	test	the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains
 42	test	the frontier read says so when spec has no ticket-graph snapshot, or every ticket merged
 37	test	proper completion: the sink is reached when every ticket merged, and proper only when every gate token was consumed too
-12	test	a logged challenge on a row puts the row out until a row closes it, and withdrawing the closing row brings the doubt back
+12	test	a rebut on a row is a mutual attack: row and challenge are both undec until a row closes it, and withdrawing the closing row brings the doubt back
 12	test	ISSUES, BLOCKED and unknown stops and fetch.failed are doubts until a later PASS for the ticket, a fetched ref or a row citing them
 37	test	a story with no story-map row is undeveloped, and a story whose only check failed shows an open doubt
 37	test	a later pass eliminates an earlier fail's doubt, for a check and for a test in the results
@@ -167,3 +167,8 @@ story	kind	name
 50	test	GET /state serves the PCA scatter unless ?scatter=umap asks for UMAP; any other method is refused
 51	test	each story node carries its residual doubt from the done read, and the spec's total, for the latest spec with stories
 51	test	GET /state gives each story of the snapshot's spec its doubts from the committed story map
+26	test	a rebut on a row is a mutual attack: row and challenge are both undec until a row closes it, and withdrawing the closing row brings the doubt back
+26	test	an undermine or undercut on a row is one-way: the row is out while the challenge stands
+26	test	a failed check attacks the rows of its ticket's phase and the rows citing it until a later pass: the #4 close with an open defeater
+27	test	a partial supersede takes over no whole-row attack, since attacks do not name parts
+37	test	a failed check attacks the rows of its ticket's phase and the rows citing it until a later pass: the #4 close with an open defeater

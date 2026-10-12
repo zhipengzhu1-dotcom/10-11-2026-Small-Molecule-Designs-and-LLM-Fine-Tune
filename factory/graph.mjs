@@ -34,7 +34,9 @@
 //                                 the story map and test results come in as snapshot.map and
 //                                 snapshot.results, the story list as the snapshot's `stories`.
 //                                 Challenges are arguments in the labelling: one on `row:<N>`
-//                                 attacks that row, and what eliminates it attacks the challenge
+//                                 attacks that row (a rebut mutually), a failed check the rows of
+//                                 its ticket's phase and those citing it, and what eliminates a
+//                                 challenge attacks it
 //   graph.clock(id), .happensBefore(a, b), .unacted(spec?), .lifecycle(spec?)
 //                                 the causal-order overlay (graph/causal.mjs)
 //   graph.writtenTwice(paths?)    files two agents' artifact events wrote: [{ path, agents, writes }]
@@ -43,7 +45,7 @@
 //
 // Overlays (argumentation here, the others in graph/) live here or in sibling files, without
 // changing the interface.
-import { claimState, parseRelations } from './claim.mjs';
+import { CLAIM_RULES_FROM, claimState, parseRelations } from './claim.mjs';
 import { assurance, challengesOf } from './graph/assurance.mjs';
 import { causalOrder } from './graph/causal.mjs';
 import { ticketsNamed } from './graph/names.mjs';
@@ -109,6 +111,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   const challenges = challengesOf(activities, decisions, provenanceOverlay({ nodes: [...nodes.values()] }).staleChecks());
   for (const c of challenges) {
     if (c.source === 'challenge') link(c.node, 'challenges', c.target);
+    else for (const r of c.rows) link(c.node, 'challenges', `row:${r}`);
     for (const d of decisions) if (d.relations.some((r) => r.kind === 'closes' && r.challenge === c.id)) link(`row:${d.line}`, 'closes', c.node);
   }
   const label = grounded(attacks(decisions, byLine, challenges));
@@ -138,8 +141,11 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   return graph;
 }
 
-// Claim states that put a rule in force; `open`, `assumed` and `cited` rows do not bind.
+// Claim states that put a rule in force; `open`, `assumed` and `cited` rows do not bind. A legacy
+// row (written before CLAIM_RULES_FROM) whose result starts with no state word ("merged", "closed",
+// "fix") recorded a decision or an action done, so it binds as `adopted`.
 const BINDS = new Set(['adopted', 'given']);
+const bindingState = (d) => d.state ?? (String(d.ts) < CLAIM_RULES_FROM ? 'adopted' : null);
 
 // The standing decisions that bind ticket n, in log order, each with why it binds: `given` (a rule
 // for every ticket), `#n` (the row names the ticket, by a `ticket-<n>` phase segment or `#<n>` in
@@ -157,7 +163,7 @@ function binding(graph, n) {
   for (const s of out(`issue:${n}`, 'subIssueOf')) if (!scope.has(s)) scope.set(s, `spec #${s}`);
   const result = [];
   for (const d of graph.decisions) {
-    if (d.label !== 'in' || !BINDS.has(d.state)) continue;
+    if (d.label !== 'in' || !BINDS.has(bindingState(d))) continue;
     const named = ticketsNamed(d);
     const because = d.state === 'given' ? 'given' : [...scope].find(([t]) => named.has(t))?.[1];
     if (because) result.push({ row: d, because });
@@ -180,7 +186,8 @@ const partBy = (a) => Number(a.split('/')[1]);
 // part it names; it takes over nothing, since a row's own relations belong to the whole row, which
 // still stands and keeps making them. An attack on a row is an attack on each of its parts.
 // `corrects` is no attack. Relations naming no row are left out. Each challenge (graph/assurance.mjs)
-// is an argument too, attacked by what eliminates it; one whose target is a row attacks that row.
+// is an argument too, attacked by what eliminates it, and it attacks its `rows`; a `mutual` one (a
+// logged rebut) is attacked back by them, so with nothing else both are undec.
 function attacks(decisions, byLine, challenges) {
   const rel = (d) => d.relations.filter((r) => ATTACKS.has(r.kind) && byLine.has(r.line));
   const made = new Map(); // row -> the arguments it attacks, its own and those taken over
@@ -204,9 +211,10 @@ function attacks(decisions, byLine, challenges) {
     }
   }
   for (const c of challenges) {
-    attackers.set(c.arg, c.by);
+    const rows = c.rows.filter((r) => attackers.has(r));
+    attackers.set(c.arg, [...c.by, ...(c.mutual ? rows : [])]);
     for (const b of c.by) if (!attackers.has(b)) attackers.set(b, []);
-    if (attackers.has(c.row)) attackers.get(c.row).push(c.arg);
+    for (const r of rows) attackers.get(r).push(c.arg);
   }
   for (const [a, by] of attackers) if (partOf(a) !== null) by.push(...attackers.get(partOf(a)));
   return attackers;

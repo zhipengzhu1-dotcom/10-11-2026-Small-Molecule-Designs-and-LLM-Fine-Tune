@@ -73,6 +73,17 @@ test('a partial supersede puts only the replaced part out: the row stays in with
   assert.deepEqual(back.decision(41).parts, [{ by: 43, label: 'in' }]);
 });
 
+test('a partial supersede takes over no whole-row attack, since attacks do not name parts', () => {
+  const g = buildGraph([
+    row(30, 'grade with Claude as judge'),
+    row(41, 'withdraws line 30: the replication uses only local models; grading plan to follow'),
+    row(43, 'supersedes line 41 (part): grade in tiers'),
+    row(50, 'withdraws line 41: hosted models are allowed again'),
+  ]);
+  // 41's attack on 30 stays 41's: once 41 is withdrawn, 30 is back, though 43 replaced part of 41.
+  assert.deepEqual(labels(g), { 30: 'in', 41: 'out', 43: 'in', 50: 'in' });
+});
+
 test('two rows that withdraw each other are both undec, until standing rows withdraw them', () => {
   const g = buildGraph([
     row(2, 'withdraws line 3: option A'),
@@ -107,10 +118,14 @@ test('the decisions that bind a ticket: standing given rows, and standing adopte
   ];
   const g = buildGraph(events);
   const bind = (n) => g.binding(n).map((b) => [b.row.line, b.because]);
-  assert.deepEqual(bind(63), [[3, 'given'], [4, 'blocker #53'], [5, 'blocker #54'], [6, '#63'], [7, 'spec #52'], [13, '#63'], [14, '#63']]);
+  // Row 10 is a legacy row (before the claim-state cutoff) with no state word: it binds as adopted.
+  assert.deepEqual(bind(63), [[3, 'given'], [4, 'blocker #53'], [5, 'blocker #54'], [6, '#63'], [7, 'spec #52'], [10, '#63'], [13, '#63'], [14, '#63']]);
   assert.deepEqual(g.binding(63).find((b) => b.row.line === 13).row.parts, [{ by: 14, label: 'out' }]);
   assert.deepEqual(bind(70), [[3, 'given'], [7, 'spec #52'], [8, '#70']]);
   assert.deepEqual(bind(99), [[3, 'given']]);
+  // From the cutoff on, a row has a state word; one without (the trail check refuses it) never binds.
+  const late = { ...row(15, 'merged #63', 'closed'), ts: '2026-10-13T08:00:00Z' };
+  assert.deepEqual(buildGraph([...events, late]).binding(63).map((b) => b.row.line).includes(15), false);
 });
 
 test('the graph module is pure: it, the pointer grammar and every module they import import no built-in or package, so no file, network or model code', () => {

@@ -39,18 +39,48 @@ test('a later pass eliminates an earlier fail\'s doubt, for a check and for a te
   assert.deepEqual(before.goals().map((s) => [s.story, s.status, s.doubts]), [[1, 'failing', ['event:r1/a1:1']], [2, 'failing', ['event:r1/a1:2#labels']]]);
 });
 
-test('a logged challenge on a row puts the row out until a row closes it, and withdrawing the closing row brings the doubt back', () => {
+test('a rebut on a row is a mutual attack: row and challenge are both undec until a row closes it, and withdrawing the closing row brings the doubt back', () => {
   const challenge = ev(1, 'r1', 'orchestrator', 'challenge', { id: 'c1', target: 'row:2', kind: 'rebut', why: 'the cap is 8 GB, not 9' });
   const rows = [row(2, 'plan the 9 GB judge'), row(3, 'closes challenge c1: the judge is qwen3.5:4b, 3.4 GiB')];
-  const label = (g) => [g.decision(2).label, g.challenges().map((c) => [c.id, c.label])];
-  assert.deepEqual(label(graphOf([snap(0), row(2, 'plan the 9 GB judge'), challenge])), ['out', [['c1', 'in']]]);
+  const label = (g) => [g.decision(2).label, g.challenges().map((c) => [c.id, c.label, c.open])];
+  assert.deepEqual(label(graphOf([snap(0), row(2, 'plan the 9 GB judge'), challenge])), ['undec', [['c1', 'undec', true]]]);
   const closed = graphOf([snap(0), challenge, ...rows]);
-  assert.deepEqual(label(closed), ['in', [['c1', 'out']]]);
+  assert.deepEqual(label(closed), ['in', [['c1', 'out', false]]]);
   assert.ok(closed.edges.some((e) => e.from === 'row:3' && e.rel === 'closes' && e.to === 'event:r1/orchestrator:2'));
   assert.ok(closed.edges.some((e) => e.from === 'event:r1/orchestrator:2' && e.rel === 'challenges' && e.to === 'row:2'));
-  assert.deepEqual(label(graphOf([snap(0), challenge, ...rows, row(4, 'withdraws line 3: 3.4 GiB was Ollama\'s figure')])), ['out', [['c1', 'in']]]);
+  assert.deepEqual(label(graphOf([snap(0), challenge, ...rows, row(4, 'withdraws line 3: 3.4 GiB was Ollama\'s figure')])), ['undec', [['c1', 'undec', true]]]);
   const eliminated = ev(2, 'r1', 'orchestrator', 'challenge.eliminated', { of: 'c1', by: 'commit:abc1234' });
-  assert.deepEqual(label(graphOf([snap(0), row(2, 'plan the 9 GB judge'), challenge, eliminated])), ['in', [['c1', 'out']]]);
+  assert.deepEqual(label(graphOf([snap(0), row(2, 'plan the 9 GB judge'), challenge, eliminated])), ['in', [['c1', 'out', false]]]);
+  // A logged challenge with no kind is a rebut, as log.mjs writes it.
+  const { kind: _, ...bare } = challenge;
+  assert.deepEqual(label(graphOf([snap(0), row(2, 'plan the 9 GB judge'), bare])), ['undec', [['c1', 'undec', true]]]);
+});
+
+test('an undermine or undercut on a row is one-way: the row is out while the challenge stands', () => {
+  for (const kind of ['undermine', 'undercut']) {
+    const challenge = ev(1, 'r1', 'orchestrator', 'challenge', { id: 'c1', target: 'row:2', kind, why: 'its evidence is a stale file' });
+    const g = graphOf([snap(0), row(2, 'plan the 9 GB judge'), challenge]);
+    assert.deepEqual([g.decision(2).label, g.challenges().map((c) => c.label)], ['out', ['in']], kind);
+    const closed = graphOf([snap(0), row(2, 'plan the 9 GB judge'), challenge, row(3, 'closes challenge c1: the file was rerun')]);
+    assert.deepEqual([closed.decision(2).label, closed.challenges().map((c) => c.label)], ['in', ['out']], kind);
+  }
+});
+
+test('a failed check attacks the rows of its ticket\'s phase and the rows citing it until a later pass: the #4 close with an open defeater', () => {
+  // Spec #1's row 40 closed #4 while its own result named a failing hooks test.
+  const fail = ev(1, 'r1', 'orchestrator', 'check', { name: 'npm-test', result: 'fail', evidence: 'hooks test fails under PowerShell', ticket: 4 });
+  const close = { ...row(40, 'merged #4: 15 tables and 10 figures', 'closed; PowerShell-only hooks test failure left for code review'), phase: 'project/implement/ticket-4' };
+  const named = { ...row(41, 'the #4 tables use the INCONCLUSIVE verdict'), phase: 'project/review/#4' };
+  const citing = { ...row(42, 'left the hooks failure for the code review'), evidence: 'event:r1/orchestrator:2' };
+  const other = { ...row(43, 'started #5'), phase: 'project/implement/ticket-5' };
+  const labels = (g) => g.decisions.map((d) => [d.line, d.label]);
+  const events = [snap(0), fail, close, named, citing, other];
+  assert.deepEqual(labels(graphOf(events)), [[40, 'out'], [41, 'out'], [42, 'out'], [43, 'in']]);
+  assert.deepEqual(graphOf(events).challenges().map((c) => [c.id, c.open]), [['event:r1/orchestrator:2', true]]);
+  const pass = ev(50, 'r1', 'orchestrator', 'check', { name: 'npm-test', result: 'pass', evidence: '554 pass' });
+  assert.deepEqual(labels(graphOf([...events, pass])), [[40, 'in'], [41, 'in'], [42, 'in'], [43, 'in']]);
+  const otherName = ev(50, 'r1', 'orchestrator', 'check', { name: 'trail', result: 'pass', evidence: 'ok' });
+  assert.deepEqual(labels(graphOf([...events, otherName])).map(([, l]) => l), ['out', 'out', 'out', 'in']);
 });
 
 test('ISSUES, BLOCKED and unknown stops and fetch.failed are doubts until a later PASS for the ticket, a fetched ref or a row citing them', () => {
