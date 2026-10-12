@@ -106,6 +106,36 @@ t('an ok verdict whose pointers do not resolve fails and the evidence names the 
   assert.match(ev, /line 3 \(2026-10-11T10:05:00Z\): unknown pointer doc:whatever/);
 });
 
+t('a file pointer to a gitignored path fails even though the file exists, since only one checkout has it', () => {
+  const f = fixture();
+  put(f.root, '.gitignore', 'notes/raw/\n');
+  put(f.root, 'notes/raw/page.md', 'downloaded\n');
+  put(f.root, `factory/audit/${AUDIT_RUN}.tsv`, AUDIT_HEADER
+    + row('2', '2026-10-11T10:00:00Z', 'ok', '', 'file:notes/raw/page.md; file:notes/source.md', 'x')
+    + GOOD_AUDIT[1]);
+  const r = check(f);
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  assert.match(r.events[0].evidence, /line 2 \(2026-10-11T10:00:00Z\): file:notes\/raw\/page\.md is gitignored; cite a tracked file, commit or transcript instead/);
+  assert.doesNotMatch(r.events[0].evidence, /source\.md is gitignored/);
+});
+
+t('run from a git worktree with no --transcripts, the check reads the main checkout\'s transcripts folder', () => {
+  const f = fixture();
+  put(f.root, `factory/audit/${AUDIT_RUN}.review.md`, GOOD_REVIEW);
+  git(f.root, 'add', '-A');
+  git(f.root, 'commit', '-q', '-m', 'audit');
+  const tree = join(tempRoot(), 'wt');
+  git(f.root, 'worktree', 'add', '-q', '--detach', tree);
+  // Claude Code names a project's transcripts folder after the main checkout's path.
+  const home = tempRoot();
+  const slug = git(f.root, 'rev-parse', '--show-toplevel').replace(/[^A-Za-z0-9]/g, '-');
+  put(home, `.claude/projects/${slug}/sess-1.jsonl`, '{"type":"user","timestamp":"2026-10-11T10:00:00.123Z"}\n');
+  const env = { ...process.env, HOME: home, USERPROFILE: home };
+  for (const k of ['FACTORY_ROOT', 'FACTORY_RUN', 'FACTORY_AGENT', 'CLAUDE_PROJECT_DIR']) delete env[k];
+  const r = spawnSync(process.execPath, [CHECK, '--root', tree], { env, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+});
+
 t('pointers to a real commit and a line range resolve; an ok verdict with no pointers fails', () => {
   const f = fixture();
   const sha = git(f.root, 'rev-parse', '--short', 'HEAD');
@@ -187,6 +217,24 @@ t('a row whose phase is not a clean slash path on the log\'s one tree, or that h
   assert.match(ev, /line 4 \(2026-10-11T10:10:00Z\): phase "Project\/Big step" is not a lowercase slash path/);
   assert.match(ev, /line 5 \(2026-10-11T10:11:00Z\): phase "other\/b" is not under project\//);
   assert.match(ev, /line 6 \(2026-10-11T10:12:00Z\): empty why/);
+  assert.doesNotMatch(ev, /line 7 /);
+});
+
+t('a push or PR row fails, since its commit always lands after the push it records; rows from before the rule stay', () => {
+  const rows = [
+    row('2026-10-11T23:08:09Z', 'project/implement/push', 'pushed', 'asked', 'commit abc', 'pushed'),
+    row('2026-10-12T05:00:00Z', 'project/implement/push', 'pushed', 'asked', 'commit abc', 'pushed'),
+    row('2026-10-12T05:01:00Z', 'project/implement/pr', 'opened PR #9', 'asked', 'PR #9', 'open'),
+    row('2026-10-12T05:02:00Z', 'project/implement/pushback', 'kept 3 epochs', 'paper', 'notes/source.md', 'kept'),
+  ];
+  const audit = AUDIT_HEADER + GOOD_AUDIT.join('')
+    + rows.map((r, i) => row(String(i + 4), r.split('\t')[0], 'ok', '', 'file:notes/source.md', 'x')).join('');
+  const r = check(fixture({ history: [HEADER + ROWS.join('') + rows.join('')], audit }));
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  const ev = r.events[0].evidence;
+  assert.match(ev, /line 5 \(2026-10-12T05:00:00Z\): phase "project\/implement\/push" records a push or PR; git and GitHub hold that record, so log no decision row for it/);
+  assert.match(ev, /line 6 \(2026-10-12T05:01:00Z\): phase "project\/implement\/pr" records a push or PR/);
+  assert.doesNotMatch(ev, /line 4 /);
   assert.doesNotMatch(ev, /line 7 /);
 });
 
