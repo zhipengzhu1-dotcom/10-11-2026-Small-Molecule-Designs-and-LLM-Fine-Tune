@@ -10,6 +10,7 @@ export const REPO = dirname(FACTORY);
 export const WRITER = join(FACTORY, 'log.mjs');
 export const HOOK = join(FACTORY, 'hooks', 'subagent.mjs');
 export const MARKER = join(FACTORY, 'run-marker.mjs');
+export const MERGE = join(FACTORY, 'merge.mjs');
 
 export function tempRoot() {
   return mkdtempSync(join(tmpdir(), 'factory-test-'));
@@ -45,6 +46,11 @@ export function hook(payload, extraEnv = {}, cwd = tempRoot()) {
 // Runs the run-marker CLI, as the orchestrator does when a run starts or ends.
 export function marker(args, extraEnv = {}) {
   return spawnSync(process.execPath, [MARKER, ...args], { env: env(extraEnv), encoding: 'utf8' });
+}
+
+// Runs the merge script, as a merger does in the main checkout.
+export function merge(args, extraEnv = {}) {
+  return spawnSync(process.execPath, [MERGE, ...args], { env: env(extraEnv), encoding: 'utf8' });
 }
 
 // Starts the fetch page CLI on a free port, the way a user would, and resolves once it prints
