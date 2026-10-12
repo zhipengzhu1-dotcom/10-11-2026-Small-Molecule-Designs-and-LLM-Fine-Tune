@@ -1,0 +1,9 @@
+{"data":{"repository":{"issue":{"number":1,"title":"Spec: s1 paper intake and factory event log","subIssues":{"nodes":[
+{"number":2,"title":"Tracer: an agent run appears in one event stream","state":"CLOSED","labels":{"nodes":[{"name":"ready-for-agent"}]},"assignees":{"nodes":[]},"subIssues":{"totalCount":0},"blockedBy":{"nodes":[]}},
+{"number":14,"title":"Context meter","state":"OPEN","labels":{"nodes":[{"name":"ready-for-agent"}]},"assignees":{"nodes":[]},"subIssues":{"totalCount":0},"blockedBy":{"nodes":[{"number":2,"state":"CLOSED"},{"number":44,"state":"OPEN"}]}},
+{"number":18,"title":"Pick the base model","state":"OPEN","labels":{"nodes":[{"name":"ready-for-human"}]},"assignees":{"nodes":[]},"subIssues":{"totalCount":0},"blockedBy":{"nodes":[]}},
+{"number":26,"title":"Node model map","state":"OPEN","labels":{"nodes":[{"name":"wayfinder:map"},{"name":"ready-for-agent"}]},"assignees":{"nodes":[]},"subIssues":{"totalCount":4},"blockedBy":{"nodes":[]}},
+{"number":30,"title":"Claimed ticket","state":"OPEN","labels":{"nodes":[{"name":"ready-for-agent"}]},"assignees":{"nodes":[{"login":"someone"}]},"subIssues":{"totalCount":0},"blockedBy":{"nodes":[]}},
+{"number":31,"title":"Untriaged idea","state":"OPEN","labels":{"nodes":[{"name":"needs-triage"}]},"assignees":{"nodes":[]},"subIssues":{"totalCount":0},"blockedBy":{"nodes":[]}},
+{"number":44,"title":"Repo scripts for the decision log, frontier, transcripts and Qwen review","state":"OPEN","labels":{"nodes":[{"name":"ready-for-agent"}]},"assignees":{"nodes":[]},"subIssues":{"totalCount":0},"blockedBy":{"nodes":[{"number":2,"state":"CLOSED"}]}}
+]}}}}}
