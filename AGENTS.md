@@ -4,6 +4,19 @@ Target paper and current spec: GitHub issue #1. Its sub-issues are the tickets.
 
 CI runs in a Docker container on this machine (Docker Desktop), never on GitHub Actions or any hosted runner.
 
+## Rules and what enforces them
+
+| Rule | Enforced by |
+|---|---|
+| CI is local Docker, no hosted runner | `scripts/rules.mjs` (run by `npm test`) fails on `.github/workflows/` |
+| Tests run on fixtures, never the live log, audits or `research/` | `scripts/rules.mjs` names the line |
+| A push tests the commit being pushed, with the data checks | `.githooks/pre-push` → `scripts/ci.mjs --pre-push` (`npm run hooks:install` once per clone) |
+| The decision log is append-only and every row is audited | `npm run check:trail` |
+| Audit evidence is tracked: no gitignored `file:` pointer | `npm run check:trail` |
+| No decision row for a push or PR | `npm run check:trail` |
+| Agent worktrees start at the orchestrator's branch, with the source data | `worktree.baseRef` in `.claude/settings.json`, `.worktreeinclude` |
+| Long text goes through the Write tool and `--body-file`, not a heredoc | PreToolUse hook `factory/hooks/long-heredoc.mjs` |
+
 ## Agent skills
 
 ### Issue tracker
