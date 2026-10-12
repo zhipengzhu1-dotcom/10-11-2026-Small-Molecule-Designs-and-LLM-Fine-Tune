@@ -120,6 +120,15 @@ test('the meter\'s output is unchanged when no agent is overdue: a running agent
   assert.equal(injected(meter(prompt(), env), 'UserPromptSubmit'), clean);
 });
 
+test('when the stream will not read, the meter says the overdue check failed instead of staying silent', () => {
+  const root = runRoot();
+  mkdirSync(join(root, 'factory', 'agents', SESSION), { recursive: true });
+  writeFileSync(join(root, 'factory', 'agents', SESSION, 'a1.jsonl'), '{not json\n');
+  const lines = injected(meter(prompt(), { CLAUDE_PROJECT_DIR: root }), 'UserPromptSubmit').split('\n');
+  assert.equal(lines.length, 2, lines.join('\n'));
+  assert.match(lines[1], /^Overdue check failed: .*a1\.jsonl:1: corrupt line/);
+});
+
 test('.claude/settings.json runs the meter on every prompt and every tool call', () => {
   const settings = JSON.parse(readFileSync(join(REPO, '.claude', 'settings.json'), 'utf8'));
   for (const event of ['UserPromptSubmit', 'PostToolUse']) {

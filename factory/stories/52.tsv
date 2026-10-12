@@ -177,3 +177,4 @@ story	kind	name
 38	test	through readStream, happens-before ignores ts across agents: each file keeps its own order, and only the orchestrator's activity file and decision log interleave by ts
 36	test	a check that provably ran before its artifact's last write is stale; a check re-run after the write is not
 36	test	a check concurrent with a write is not stale, whatever their ts: only happens-before counts
+41	test	when the stream will not read, the meter says the overdue check failed instead of staying silent
