@@ -5,12 +5,14 @@
 // orchestrator's budget check runs on a number instead of a guess. Other sessions, and tool
 // calls inside subagents, get nothing.
 //
-// It also asks the node model (factory/graph.mjs) for this run's overdue agents, those running
-// past their role's usual time (spec #52, stories 33 and 41), and adds one line naming them only
-// when there are any: a stuck last agent never hands back, so nothing else would show it.
+// It also asks the node model's sojourn query (factory/graph/sojourn.mjs, graph.overdue) for this
+// run's overdue agents, those running past their role's usual time (spec #52, stories 33 and 41),
+// and adds one line naming them only when there are any: a stuck last agent never hands back, so
+// nothing else would show it. It runs on every prompt and tool call, so it asks the query on the
+// events directly instead of building the whole graph.
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { buildGraph } from '../graph.mjs';
+import { overdue } from '../graph/sojourn.mjs';
 import { defaultRoot, safeId } from '../log.mjs';
 import { readStream } from '../read.mjs';
 import { inMarkedRun } from '../run-marker.mjs';
@@ -36,7 +38,7 @@ const span = (ms) => {
 function overdueLine(root, run) {
   let late;
   try {
-    late = buildGraph(readStream(root)).overdue(Date.now(), { run });
+    late = overdue(readStream(root), Date.now(), { run });
   } catch (err) {
     return `Overdue check failed: ${err.message}`;
   }

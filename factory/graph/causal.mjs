@@ -1,5 +1,6 @@
 // The causal-order overlay of the node model (spec #52, stories 31, 32 and 38), behind
-// buildGraph's interface. Pure: it imports only the pointer grammar's id rule.
+// buildGraph's interface. Pure: it imports only the pointer grammar's id rule and the graph's own
+// helpers.
 //
 // Workers talk only to the orchestrator O (a star), so happens-before needs two numbers per event
 // ([Mattern 1989] Thm. 11 on a star): `o`, O's count at the dispatch of the span the event is in,
@@ -45,6 +46,8 @@
 // With `spec`, the two lists keep to agents with an event in a run that logged that spec's
 // ticket graph.
 import { NAME } from '../pointer-grammar.mjs';
+import { namesPath } from './names.mjs';
+import { dispatchesOf, specRuns } from './scope.mjs';
 
 const O = 'orchestrator';
 // An id as the pointer grammar has it, less a trailing dot that ends the sentence citing it.
@@ -59,14 +62,6 @@ const URGENT = new Set(['ISSUES', 'BLOCKED']);
 
 const push = (map, key, value) => (map.has(key) ? map.get(key).push(value) : map.set(key, [value]));
 const matches = (re, text) => [...text.matchAll(re)];
-// Whether `text` names `path` as a whole path, not as part of a longer one; a folder (`dir/`) is
-// named by any path inside it too.
-const names = (text, path) => {
-  for (let i = text.indexOf(path); i >= 0; i = text.indexOf(path, i + 1)) {
-    if (!/[\w./-]/.test(text[i - 1] ?? ' ') && (path.endsWith('/') || !/[\w/-]/.test(text[i + path.length] ?? ' '))) return true;
-  }
-  return false;
-};
 
 // stream: [{ id, e }] in stream order, ids as graph.mjs names them (event:… and row:…).
 // merges: the snapshot's [{ ticket, ts, commit }], the integration branch's `Merge #<n>` commits.
@@ -82,8 +77,7 @@ export function causalOrder(stream, merges = []) {
   }
   const ours = history.get(O) ?? [];
 
-  const dispatches = new Map(); // agent -> O's dispatches of it, in O's order
-  for (const x of ours) if (x.e.type === 'dispatch' && x.e.to) push(dispatches, x.e.to, x);
+  const dispatches = dispatchesOf(ours); // agent -> O's dispatches of it, in O's order
   const spans = new Map(); // agent -> [{ o, dispatch, events }]; span 0 holds events before any start
   for (const [agent, events] of history) {
     if (agent === O) continue;
@@ -142,7 +136,7 @@ export function causalOrder(stream, merges = []) {
     const cite = (agent, acting) => cited.set(agent, cited.get(agent) || acting);
     for (const [, sep, agent] of matches(AGENT_ID, text)) cite(agent, row && sep === ':');
     for (const [, agent] of matches(AGENT_FILE, text)) cite(agent, false);
-    for (const [path, agents] of paths) if (names(text, path)) for (const a of agents) cite(a, false);
+    for (const [path, agents] of paths) if (namesPath(text, path)) for (const a of agents) cite(a, false);
     for (const [sha] of matches(SHA, text)) {
       for (const [theirs, agents] of shas) if (theirs.startsWith(sha) || sha.startsWith(theirs)) for (const a of agents) cite(a, false);
     }
@@ -162,7 +156,7 @@ export function causalOrder(stream, merges = []) {
   // Agents in scope: all, or those with an event in a run that logged spec s's ticket graph.
   const inScope = (spec) => {
     if (spec === undefined) return () => true;
-    const runs = new Set(ours.filter((x) => x.e.type === 'ticket.graph' && x.e.spec === spec).map((x) => x.e.run));
+    const runs = specRuns(ours, spec);
     return (agent) => history.get(agent).some((x) => runs.has(x.e.run));
   };
 

@@ -11,6 +11,8 @@
 // A running agent is overdue once its elapsed time passes mean + KAPPA sd of its role's completed
 // sojourns in other runs (Stertz's rule for a task still running, as that section adopts). A role
 // with fewer than MIN_HISTORY such sojourns raises no alarm.
+import { dispatchesOf } from './scope.mjs';
+
 const KAPPA = 2;
 const MIN_HISTORY = 2;
 
@@ -18,9 +20,10 @@ const MIN_HISTORY = 2;
 // elapsed, bound, mean, sd, n }], times in ms. `now` is ms since the epoch; `run`, when given,
 // limits the answer to that run's agents.
 export function overdue(events, now, { run } = {}) {
-  const roles = new Map(); // agent -> { role, ticket } of its dispatch with a known role
-  for (const e of events) {
-    if (e.type === 'dispatch' && e.to && e.role && e.role !== 'unknown') roles.set(e.to, { role: e.role, ticket: e.ticket });
+  const roles = new Map(); // agent -> { role, ticket } of its last dispatch with a known role
+  for (const [agent, ds] of dispatchesOf(events.map((e) => ({ e })))) {
+    const d = ds.findLast((x) => x.e.role && x.e.role !== 'unknown')?.e;
+    if (d) roles.set(agent, { role: d.role, ticket: d.ticket });
   }
   const done = [];
   const open = new Map(); // `<run>/<agent>` -> its open agent.start

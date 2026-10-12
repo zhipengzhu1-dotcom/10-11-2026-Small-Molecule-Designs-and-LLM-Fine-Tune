@@ -24,6 +24,7 @@
 // A stale check's id is `stale:<check event id>:file:<path>`, and it doubts the story that check
 // backs.
 import { inTicketPhase } from './names.mjs';
+import { dispatchesOf, specRuns } from './scope.mjs';
 //
 // Goals are the spec's user stories, `snapshot.stories` (the frontier logs them from the spec).
 // Their evidence is the story map, `snapshot.map` ([{ story, kind, name }], kind check, test or
@@ -53,8 +54,7 @@ const cites = (text, id) => {
 // attacks), `mutual` (whether those rows attack it back) and `by` (its attackers: row lines and the
 // event ids of eliminating events). `activities` are [{ id, e }] in stream order.
 export function challengesOf(activities, decisions, stale = []) {
-  const dispatched = new Map(); // agent -> its first dispatch
-  for (const { e } of activities) if (e.type === 'dispatch' && e.to && !dispatched.has(e.to)) dispatched.set(e.to, e);
+  const first = new Map([...dispatchesOf(activities)].map(([agent, [d]]) => [agent, d.e])); // agent -> its first dispatch
   const citesAny = (d, id) => [d.decision, d.why, d.evidence, d.result].some((t) => cites(t ?? '', id));
   const rowsCiting = (id) => decisions.filter((d) => citesAny(d, id)).map((d) => d.line);
   const later = (i, test) => activities.slice(i + 1).filter((x) => test(x.e)).map((x) => x.id);
@@ -86,10 +86,10 @@ export function challengesOf(activities, decisions, stale = []) {
       by = later(i, (x) => x.type === 'check' && x.name === e.name && x.result === 'pass' && (x.ticket === undefined || x.ticket === e.ticket));
     } else if (e.type === 'agent.stop' && STOPS.has(e.status)) {
       source = 'stop';
-      const d = dispatched.get(e.agent);
+      const d = first.get(e.agent);
       ticket = d?.ticket;
       why = e.report ?? '';
-      const peer = (a) => a === e.agent || (d?.ticket !== undefined && dispatched.get(a)?.ticket === d.ticket && dispatched.get(a)?.role === d.role);
+      const peer = (a) => a === e.agent || (d?.ticket !== undefined && first.get(a)?.ticket === d.ticket && first.get(a)?.role === d.role);
       by = [...later(i, (x) => x.type === 'agent.stop' && x.status === 'PASS' && peer(x.agent)), ...rowsCiting(id)];
     } else if (e.type === 'fetch.failed') {
       source = 'fetch.failed';
@@ -115,11 +115,10 @@ export function assurance(graph, activities, challenges, label, snapshot) {
   const all = challenges.map(({ arg, by, rows, mutual, on, ...c }) => ({ ...c, label: label.get(arg), open: label.get(arg) !== 'out' }));
   // What each open challenge doubts as evidence: a logged one its target, a stale check itself.
   const on = new Map(challenges.map((c) => [c.id, c.source === 'stale' ? c.on : c.target]));
-  const specRuns = (s) => new Set(activities.filter((x) => x.e.type === 'ticket.graph' && x.e.spec === s).map((x) => x.e.run));
   const specTickets = (s) => new Set([s, ...activities.filter((x) => x.e.type === 'ticket.graph' && x.e.spec === s).flatMap((x) => (x.e.tickets ?? []).map((t) => t.number))]);
-  const challengesOf = (s) => {
+  const challengesFor = (s) => {
     if (s === undefined) return all.map(({ run, ...c }) => c);
-    const runs = specRuns(s);
+    const runs = specRuns(activities, s);
     const tickets = specTickets(s);
     return all.filter((c) => runs.has(c.run) || tickets.has(c.ticket)).map(({ run, ...c }) => c);
   };
@@ -156,7 +155,7 @@ export function assurance(graph, activities, challenges, label, snapshot) {
   };
 
   const done = (s) => {
-    const open = challengesOf(s).filter((c) => c.open);
+    const open = challengesFor(s).filter((c) => c.open);
     const short = goals().filter((g) => g.status !== 'supported');
     return {
       goals: short,
@@ -168,5 +167,5 @@ export function assurance(graph, activities, challenges, label, snapshot) {
     };
   };
 
-  return { challenges: challengesOf, goals, done };
+  return { challenges: challengesFor, goals, done };
 }

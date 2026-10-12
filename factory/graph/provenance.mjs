@@ -1,5 +1,6 @@
 // The provenance overlay of the node model (spec #52, story 36; issue #69), behind buildGraph's
-// interface. Pure: it imports nothing, and takes happens-before from the causal overlay.
+// interface. Pure: it imports only the graph's own helpers, and takes happens-before from the causal
+// overlay.
 //
 // v1 answers the two questions the spec names (Implementation Decisions, Provenance):
 //   writtenTwice(paths?) -> [{ path, agents, writes }]
@@ -20,15 +21,9 @@
 //
 // Output comes in stream order, for reading only; no order between agents is taken from it.
 
-const slash = (p) => p.replace(/\\/g, '/');
+import { namesPath } from './names.mjs';
 
-// Whether `text` names `path` as a whole path, not as part of a longer one.
-function names(text, path) {
-  for (let i = text.indexOf(path); i >= 0; i = text.indexOf(path, i + 1)) {
-    if (!/[\w./-]/.test(text[i - 1] ?? ' ') && !/[\w/-]/.test(text[i + path.length] ?? ' ')) return true;
-  }
-  return false;
-}
+const slash = (p) => p.replace(/\\/g, '/');
 
 export function provenanceOverlay({ nodes, happensBefore: hb }) {
   const activities = nodes.filter((n) => n.class === 'activity');
@@ -61,7 +56,7 @@ export function provenanceOverlay({ nodes, happensBefore: hb }) {
     for (const [path, ws] of byFile(paths)) {
       const byName = new Map(); // check name -> its runs naming the file
       for (const c of checks) {
-        if (names(String(c.event.evidence ?? ''), path)) byName.set(c.event.name, [...(byName.get(c.event.name) ?? []), c]);
+        if (namesPath(String(c.event.evidence ?? ''), path)) byName.set(c.event.name, [...(byName.get(c.event.name) ?? []), c]);
       }
       for (const [name, runs] of byName) {
         // The writes after check c that no run of the same name came after.

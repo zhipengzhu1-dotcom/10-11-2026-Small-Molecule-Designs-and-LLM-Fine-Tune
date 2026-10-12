@@ -31,7 +31,7 @@
 import { h } from './ui.js';
 import { createSimulation } from './layout.js';
 
-export const tokens = () => {
+const tokens = () => {
   const css = getComputedStyle(document.documentElement);
   const c = (name) => css.getPropertyValue(name).trim();
   return { bg: c('--panel'), node: c('--g-node'), leaf: c('--g-leaf'), link: c('--g-link'), hi: c('--g-hi'), dim: c('--g-dim'), muted: c('--muted'), fg: c('--fg'), line: c('--line') };

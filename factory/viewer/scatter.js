@@ -5,9 +5,8 @@
 // Nearness here is only as good as the T(k) and C(k) printed above the panel.
 import { buildScatter } from './layout.js';
 import { createPlane } from './plane.js';
-import { clock, h } from './ui.js';
+import { clock, h, trim } from './ui.js';
 
-const trim = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
 
 // The points fill the stage, the same scale on both axes so distances keep their ratios; scroll
 // to zoom round the pointer, drag to pan, double-click to fit again.

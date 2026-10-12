@@ -4,24 +4,23 @@
 // the log's two unrecorded supersessions (41→43, 21→71); qwen3.5:4b finds both when shown the pair
 // (research/local-models). It is a sanity check, never a gate.
 //
-//   await trailReview({ graph, lines, judge, k }) -> { judged, flags }
+//   await trailReview({ graph, lines, judge, k }) -> { k, judged, flags }
 //       lines   the decision rows to review (the audited rows of one session)
 //       judge   (earlier, later) -> { verdict, why }, judge.mjs's createJudge() or a fake
 //       flags   [{ earlier, later, score, verdict, why }], every pair the judge did not call
 //               `consistent` that the later row does not already mark
-//   reviewText({ session, lines, model, judged, flags }) -> the review file, under the
+//   reviewText({ session, lines, model, k, judged, flags }) -> the review file, under the
 //       "reviewed by <model>" line the trail check reads
 //
 // A row that is out replaces nothing, so it is not reviewed. A pair the later row marks
 // (supersedes, withdraws, corrects) is judged like any other and dropped after, as in the precedent
 // check: a `corrects` pair is never named in the judge's prompt. A judge that throws stops the
 // review, so a review is never written from half the pairs.
-const K = 3;
-const fixed = (s) => s.toFixed(2);
+import { fixed, judged, K, plural } from './reads.mjs';
 
 export async function trailReview({ graph, lines, judge, k = K }) {
   const flags = [];
-  let judged = 0;
+  let count = 0;
   for (const line of lines) {
     const later = graph.decision(line);
     if (!later || later.label === 'out') continue;
@@ -33,16 +32,16 @@ export async function trailReview({ graph, lines, judge, k = K }) {
       const earlier = graph.decision(graph.node(id).event.line);
       let answer;
       try {
-        answer = await judge({ line: earlier.line, text: earlier.text, why: earlier.why }, { line, text: later.text, why: later.why });
+        answer = await judge(judged(earlier), judged(later));
       } catch (err) {
         throw new Error(`${judge.model ?? 'the judge'}: ${err.message} (judging row:${earlier.line} → row:${line})`);
       }
-      judged += 1;
+      count += 1;
       const marked = later.relations.some((r) => r.line === earlier.line && r.kind !== 'closes');
       if (answer.verdict !== 'consistent' && !marked) flags.push({ earlier, later, score, verdict: answer.verdict, why: answer.why });
     }
   }
-  return { judged, flags };
+  return { k, judged: count, flags };
 }
 
 // "2-8" for a run of consecutive lines, else the lines comma-separated.
@@ -52,15 +51,15 @@ function rowList(lines) {
   return run ? `${sorted[0]}-${sorted.at(-1)}` : sorted.join(', ');
 }
 
-export function reviewText({ session, lines, model, judged, flags }) {
-  const pairs = `${judged} pair${judged === 1 ? '' : 's'} judged`;
+export function reviewText({ session, lines, model, k = K, judged: count, flags }) {
+  const pairs = `${plural(count, 'pair')} judged`;
   return [
     `# Trail review, run ${session.slice(0, 8)}`,
     '',
     `reviewed by ${model}`,
     '',
     `Per-pair review of decision-log rows ${rowList(lines)}, by \`npm run audit -- review\`: each row that still stands against `
-      + `its ${K} nearest earlier rows that still stand (TF-IDF), one ${model} call per pair, thinking off. A pair the later row `
+      + `its ${k} nearest earlier rows that still stand (TF-IDF), one ${model} call per pair, thinking off. A pair the later row `
       + 'already marks (supersedes, withdraws, corrects) is dropped after the judge. It is a sanity check, not a gate: the scripted '
       + 'checks carry the weight.',
     '',

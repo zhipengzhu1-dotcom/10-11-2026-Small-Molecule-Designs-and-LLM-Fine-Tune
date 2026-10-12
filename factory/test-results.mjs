@@ -47,13 +47,28 @@ function parseTap(tap) {
 const stamp = (iso) => iso.replace(/[-:.]/g, '');
 const cell = (s) => s.replace(/[\t\r\n]+/g, ' ');
 
+// The results TSV's format, written by logTestResults and read by readResults, here together so a
+// change to one is a change to both.
+const HEADER = 'test\tresult';
+const formatResults = (tests) => [HEADER, ...tests.map((t) => `${cell(t.name)}\t${t.result}`), ''].join('\n');
+
+// A results TSV's rows as [{ name, result }]; a file with another header holds none.
+export function readResults(text) {
+  const [header, ...lines] = text.split(/\r?\n/);
+  if (header !== HEADER) return [];
+  return lines.filter(Boolean).map((l) => {
+    const [name, result] = l.split('\t');
+    return { name, result };
+  });
+}
+
 // Writes the results TSV for a TAP report and logs its artifact event. Returns the event, whose
 // `path` is repo-relative and whose `tests`, `pass`, `fail` and `skip` are counts.
 export function logTestResults({ root, run, agent, tap, fields = {} }) {
   const tests = parseTap(tap);
   const path = `factory/agents/${run}/tests/${agent}-${stamp(new Date().toISOString())}.tsv`;
   mkdirSync(dirname(join(root, path)), { recursive: true });
-  writeFileSync(join(root, path), ['test\tresult', ...tests.map((t) => `${cell(t.name)}\t${t.result}`), ''].join('\n'));
+  writeFileSync(join(root, path), formatResults(tests));
   const count = (r) => String(tests.filter((t) => t.result === r).length);
   return writeEvent({ root, run, agent, type: 'artifact',
     fields: { path, kind: 'test-results', tests: String(tests.length), pass: count('pass'), fail: count('fail'), skip: count('skip'), ...fields } });

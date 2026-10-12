@@ -12,7 +12,7 @@
 // Token replay runs online, in time order: a start whose gate lacks a blocker's token is an early
 // start, and the token it lacked is owed until that blocker merges. A ticket closed on GitHub that
 // never merged was dropped, so it leaves the net.
-import { ticketsNamed } from './names.mjs';
+import { issueNumber, ticketsNamed } from './names.mjs';
 
 export function workflow(graph, snapshot) {
   const merges = new Map();
@@ -25,8 +25,9 @@ export function workflow(graph, snapshot) {
   const inNet = new Set(tickets);
   const blockers = new Map(tickets.map((t) => [t, []]));
   for (const e of graph.edges) {
-    const t = Number(e.from.slice(6));
-    if (e.rel === 'blockedBy' && inNet.has(t)) blockers.get(t).push(Number(e.to.slice(6)));
+    if (e.rel !== 'blockedBy') continue;
+    const t = issueNumber(e.from);
+    if (inNet.has(t)) blockers.get(t).push(issueNumber(e.to));
   }
 
   const starts = new Map(); // ticket -> its first dispatch node

@@ -48,7 +48,7 @@
 import { CLAIM_RULES_FROM, claimState, parseRelations } from './claim.mjs';
 import { assurance, challengesOf } from './graph/assurance.mjs';
 import { causalOrder } from './graph/causal.mjs';
-import { ticketsNamed } from './graph/names.mjs';
+import { issueNumber, ticketsNamed } from './graph/names.mjs';
 import { provenanceOverlay } from './graph/provenance.mjs';
 import { overdue } from './graph/sojourn.mjs';
 import { textOverlay } from './graph/text.mjs';
@@ -153,7 +153,7 @@ const bindingState = (d) => d.state ?? (String(d.ts) < CLAIM_RULES_FROM ? 'adopt
 // its decision), `blocker #k` (it names a ticket n is blocked by, directly or through another),
 // or `spec #s` (it names the spec n belongs to).
 function binding(graph, n) {
-  const out = (id, rel) => graph.edges.filter((e) => e.from === id && e.rel === rel).map((e) => Number(e.to.slice(6)));
+  const out = (id, rel) => graph.edges.filter((e) => e.from === id && e.rel === rel).map((e) => issueNumber(e.to));
   const scope = new Map([[n, `#${n}`]]);
   const queue = [n];
   while (queue.length) {

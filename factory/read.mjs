@@ -7,7 +7,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cli } from './cli.mjs';
-import { defaultRoot } from './log.mjs';
+import { defaultRoot } from './root.mjs';
 
 export function readStream(root = defaultRoot()) {
   const files = [];

@@ -174,7 +174,7 @@ async function decide({ root, run, cells, state, relations = [], home = homedir(
 
 cli(import.meta.url, {
   usage: 'node factory/decide.mjs [--root <repo>] [--run <session-id>] [--state <state>] [--dry-run] '
-    + '[--supersedes|--withdraws|--corrects|--closes <line>[ (part)]]... <phase> <decision> <why> <evidence> [<result>]',
+    + '[--supersedes|--withdraws|--corrects <line>[ (part)]]... [--closes <challenge id>]... <phase> <decision> <why> <evidence> [<result>]',
   options: { root: 'string', run: 'string', state: 'string', 'dry-run': 'flag', ...Object.fromEntries(RELATIONS.map((k) => [k, 'list'])) },
   positionals: true,
   failure: 2,

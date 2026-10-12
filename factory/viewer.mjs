@@ -12,20 +12,22 @@ import { createServer } from 'node:http';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evidence } from './digest.mjs';
 import { buildGraph } from './graph.mjs';
 import { eigenmap, euclidean, hops, neighbourhoods } from './graph/distortion.mjs';
 import { scatterView } from './graph/scatter.mjs';
 import { defaultRoot } from './log.mjs';
 import { readStream } from './read.mjs';
-import { buildCrew, buildGraph as decisionGraph, createSimulation, phaseDisk } from './viewer/layout.js';
+import { storyEvidence } from './reads.mjs';
+import { buildCrew, buildDecisionGraph, createSimulation, phaseDisk } from './viewer/layout.js';
 
-// Turns the stream (ordered by ts) into what the page draws, for one run: the newest unless
-// `run` names another. The manual run (checks run by hand) is never the newest while a session
-// run exists: it would end that session in the page while its agents are still working. Decisions have no run, so a run's timeline takes the ones made between
-// its first and last event, and the newest run, still open, takes every later one too.
-// `crew` is every subagent of every run, for the agents diagram. The stream does not say what
-// an agent was asked to do, so `taskOf(run, agent)` supplies it (see readTask), or null.
+// Turns the stream (as readStream merges it) into what the page draws, for one run: the newest
+// unless `run` names another. The manual run (checks run by hand) is never the newest while a
+// session run exists: it would end that session in the page while its agents are still working.
+// Decisions have no run, so a run's timeline takes the ones made between its first and last event,
+// and the newest run, still open, takes every later one too.
+// `crew` is every subagent of every run, for the agents diagram, and `network` how far its layout
+// distorts the crew graph (networkView). The stream does not say what an agent was asked to do,
+// so `taskOf(run, agent)` supplies it (see readTask), or null.
 // Each decision in `tree` carries the node model's `label` (in, out or undec) and `relations`
 // (factory/graph.mjs), so the page and the orchestrator read one model; `labels` counts them.
 // `scatter` is the decision text projected to 2-D (graph/scatter.mjs): PCA unless `opts.scatter`
@@ -189,7 +191,7 @@ const node = (name, path) => ({ name, path, count: 0, decisions: [], children: [
 const YARDSTICK = { method: 'laplacian eigenmaps', d: 16 };
 let lastDisk = { key: null, view: null };
 function diskView(tree) {
-  const graph = decisionGraph(tree);
+  const graph = buildDecisionGraph(tree);
   const links = graph.links.map((l) => [l.source, l.target]);
   const key = JSON.stringify([graph.nodes.map((n) => n.id), links]);
   if (lastDisk.key === key) return lastDisk.view;
@@ -273,7 +275,7 @@ function handle(root, taskOf, req, res) {
     let state;
     try {
       const events = readStream(root);
-      state = { ...summarize(events, run, taskOf, { scatter, evidence: (spec) => evidence(root, events, spec) }), error: null };
+      state = { ...summarize(events, run, taskOf, { scatter, evidence: (spec) => storyEvidence(root, events, spec) }), error: null };
     } catch (err) {
       // readStream throws on a corrupt line or a misfiled event; show it rather than go blank.
       state = { ...summarize([], run, undefined, { scatter }), error: err.message };

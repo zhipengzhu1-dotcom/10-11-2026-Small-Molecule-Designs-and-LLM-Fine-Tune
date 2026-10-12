@@ -15,13 +15,9 @@
 //
 // One line when clean; otherwise a head line and an item per finding, cut by capRead to 15 lines,
 // the last naming `npm run merge -- <branch> --read --all`.
-import { capRead } from './digest.mjs';
+import { capRead, cut, judgeAt, judged, K, plural } from './reads.mjs';
 
-const K = 3;
-const WIDTH = 120;
 const REPORT_CAP = 6000; // characters of a report the judge sees: the model's context is small
-const cut = (line) => (line.length > WIDTH ? `${line.slice(0, WIDTH - 1)}…` : line);
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // The latest hand-back report of each agent that served the ticket or that `agents` names.
 function reports(graph, ticket, agents = []) {
@@ -42,7 +38,7 @@ async function contradictions(graph, list, judge) {
   for (const r of list) {
     const text = r.event.report.slice(0, REPORT_CAP);
     for (const { row } of graph.precedents(r.event.report, K)) {
-      const answer = await judge({ line: row.line, text: row.text, why: row.why }, { text, kind: 'report' });
+      const answer = await judge(judged(row), { text, kind: 'report' });
       if (answer.verdict !== 'consistent') found.push({ report: r, row, ...answer });
     }
   }
@@ -58,7 +54,7 @@ export async function mergeRead({ graph, branch, paths, ticket, agents = [], jud
   try {
     found = await contradictions(graph, list, judge);
   } catch (err) {
-    const where = [judge.model, judge.host].filter(Boolean).join(' at ');
+    const where = judgeAt(judge);
     unreachable = `${where ? `${where}: ` : ''}${err.message}`;
   }
 

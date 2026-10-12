@@ -89,7 +89,7 @@ export function frontier({ number, remote, gh, root }) {
 
 // The spec's user stories: the numbers of the numbered items under its `## User Stories` heading,
 // up to the next `## ` heading (its `### ` groups stay inside), for the assurance case's goals.
-export function userStories(body) {
+function userStories(body) {
   const lines = body.split(/\r?\n/);
   const start = lines.findIndex((l) => /^##\s+User Stories\s*$/i.test(l));
   if (start < 0) return [];

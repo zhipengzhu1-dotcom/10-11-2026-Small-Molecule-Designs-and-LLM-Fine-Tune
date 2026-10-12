@@ -92,6 +92,14 @@ test('a clean review says so plainly, with the pairs it judged', async () => {
   assert.doesNotMatch(text, /^- row:/m);
 });
 
+test('the review states the number of nearest rows it was run with', async () => {
+  const { judge } = fakeJudge();
+  const result = await trailReview({ graph: GRAPH, lines: [5, 8], judge, k: 1 });
+  const text = reviewText({ session: 's', lines: [5, 8], model: judge.model, ...result });
+  assert.match(text, /against its 1 nearest earlier rows that still stand/);
+  assert.equal(result.judged, 2);
+});
+
 test('a judge that throws stops the review: no partial review is returned', async () => {
   const judge = async () => { throw new Error('fetch failed (connect ECONNREFUSED 127.0.0.1:11434)'); };
   judge.model = 'qwen3.5:4b';
