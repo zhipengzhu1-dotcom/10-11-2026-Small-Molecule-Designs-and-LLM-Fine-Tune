@@ -52,6 +52,10 @@ A push or PR gets no decision row: its commit would land after the push and stra
 - Tick an acceptance box only against evidence the orchestrator opened itself. Leave boxes that wait on the user for the user.
 - The spec issue stays open until step 7's code review lands.
 
+## Close-out (after step 9)
+
+The final reply opens with the user's to-do list, numbered, or with "Nothing is waiting on you." The run's record (CI, merges, cleanup, GitHub, memory) follows it.
+
 ## Tests (tdd)
 
 Add **live-data-coupled** to the anti-patterns: a test that reads the project's real, growing data, such as a decision log or a catalog, breaks the test gate whenever that data grows. Tests run on fixtures. Rules about the real data belong in a data check the project runs.

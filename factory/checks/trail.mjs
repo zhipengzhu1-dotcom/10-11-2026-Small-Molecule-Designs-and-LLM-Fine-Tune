@@ -42,7 +42,7 @@ import { checkCli } from './check.mjs';
 const tsvLines = (text) => text.split(/\r?\n/).slice(1).filter((l) => l !== '').map((l) => l.split('\t'));
 
 // Decision rows as { line, ts, cells }, numbered by their line in the file (the header is line 1).
-function readLog(text) {
+export function readLog(text) {
   return text.split(/\r?\n/)
     .map((line, i) => ({ line: i + 1, ts: line.split('\t')[0], cells: line.split('\t'), text: line }))
     .filter((r) => r.line > 1 && r.text !== '');
@@ -150,7 +150,7 @@ function reviewOf(auditDir, file) {
 // What is wrong with one audit verdict on decision row `row`, plus notes on pointers that resolved
 // only in history. An ok row needs pointers that resolve; a superseded row needs a later row in
 // the log that replaces it.
-function verdictProblems(v, row, log, opts) {
+export function verdictProblems(v, row, log, opts) {
   const problems = [];
   const notes = [];
   if (v.ts !== row.ts) problems.push(`audit ts ${v.ts} does not match`);

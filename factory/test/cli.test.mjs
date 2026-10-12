@@ -18,6 +18,7 @@ const CLIS = [
   { script: 'factory/run-marker.mjs', takesRoot: true, positionals: true, dangling: '--branch' },
   { script: 'factory/merge.mjs', takesRoot: true, positionals: true, dangling: '-m' },
   { script: 'factory/decide.mjs', takesRoot: true, positionals: true, dangling: '--run' },
+  { script: 'factory/audit.mjs', takesRoot: true, positionals: true, dangling: '--transcripts' },
   { script: 'factory/frontier.mjs', takesRoot: false, positionals: true },
   { script: 'factory/transcript.mjs', takesRoot: false, positionals: true },
   { script: 'factory/review-qwen.mjs', takesRoot: false, positionals: true, dangling: '--out' },
