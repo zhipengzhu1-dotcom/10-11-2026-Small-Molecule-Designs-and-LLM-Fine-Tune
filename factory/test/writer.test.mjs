@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readStream } from '../read.mjs';
-import { tempRoot, write } from './helpers.mjs';
+import { marker, tempRoot, write } from './helpers.mjs';
 
 // Independent copy of the API contract in issue #1, with one valid example per type.
 const VALID = {
@@ -99,4 +99,22 @@ test('run and agent can come from FACTORY_RUN and FACTORY_AGENT, and root from C
   const [e] = readStream(root);
   assert.equal(e.run, 'run-env');
   assert.equal(e.agent, 'orchestrator');
+});
+
+// Events written without a run during an orchestrated run land in that run's folder, which the
+// merge script commits (issue #17).
+test('with no --run and no FACTORY_RUN, the run comes from the run marker', () => {
+  const root = tempRoot();
+  assert.equal(marker(['start', '--root', root, '--run', 'run-marked', '--branch', 'integ']).status, 0);
+  const r = write(['--root', root, '--agent', 'w', 'artifact', ...kv(VALID.artifact)]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(readStream(root).map((e) => e.run), ['run-marked']);
+});
+
+test('FACTORY_RUN still wins over the run marker', () => {
+  const root = tempRoot();
+  assert.equal(marker(['start', '--root', root, '--run', 'run-marked', '--branch', 'integ']).status, 0);
+  const r = write(['--root', root, '--agent', 'w', 'artifact', ...kv(VALID.artifact)], { FACTORY_RUN: 'run-env' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(readStream(root).map((e) => e.run), ['run-env']);
 });

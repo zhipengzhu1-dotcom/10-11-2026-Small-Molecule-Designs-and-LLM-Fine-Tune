@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { transcriptsDir } from '../transcript.mjs';
-import { FACTORY, tempRoot } from './helpers.mjs';
+import { FACTORY, marker, tempRoot } from './helpers.mjs';
 
 const DECIDE = join(FACTORY, 'decide.mjs');
 const SESSION = '5e55f0c1-0000-4000-8000-000000000001';
@@ -59,6 +59,16 @@ test('decide points at the session named by FACTORY_RUN or --run, not the latest
   assert.match(args(), new RegExp(`/${SESSION}\\.jsonl @04:40:09Z; issue:44$`));
   assert.equal(decide(s, ROW, { FACTORY_RUN: 'other' }).status, 0);
   assert.match(args(), /\/other\.jsonl @06:00:00Z; issue:44$/);
+});
+
+test('with no --run and no FACTORY_RUN, decide points at the marked run\'s session, not the latest transcript', () => {
+  const s = setup();
+  writeFileSync(join(transcriptsDir(s.root, s.home), 'other.jsonl'), '{"type":"user","timestamp":"2026-10-12T06:00:00.000Z"}\n');
+  assert.equal(marker(['start', '--root', s.root, '--run', SESSION, '--branch', 'integ']).status, 0);
+  const r = decide(s, ROW);
+  assert.equal(r.status, 0, r.stderr);
+  const evidence = readFileSync(join(s.root, 'factory', 'log.sh.args'), 'utf8').split('\n')[4];
+  assert.match(evidence, new RegExp(`/${SESSION}\\.jsonl @04:40:09Z; issue:44$`));
 });
 
 test('decide refuses with exit 2, and writes nothing, when pstack is not installed or a cell is missing', () => {

@@ -9,7 +9,8 @@
 // log.sh:   <installPath>/skills/show-me-your-work/scripts/log.sh, where installPath is the
 //           pstack@pstack-marketplace entry of ~/.claude/plugins/installed_plugins.json. The plugin
 //           cache keeps stale versions beside it, so never hard-code a cache path.
-// Session:  --run, else FACTORY_RUN, else the most recently written transcript of this project.
+// Session:  --run, else FACTORY_RUN, else the run marker's run, else the most recently written
+//           transcript of this project.
 //           The pointer is "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z", the time of the
 //           transcript's latest entry.
 import { spawnSync } from 'node:child_process';
@@ -18,6 +19,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultRoot } from './log.mjs';
+import { readMarker } from './run-marker.mjs';
 import { latestSession, projectTranscripts, readTranscript } from './transcript.mjs';
 
 export class DecideError extends Error {}
@@ -57,7 +59,7 @@ export function decide({ root, run, cells, home = homedir() }) {
   if (cells.length !== 5) throw new DecideError('expected 5 cells: <phase> <decision> <why> <evidence> <result>');
   const script = logScript(home);
   const dir = projectTranscripts(root, home);
-  const session = run || latestSession(dir);
+  const session = run || readMarker(root)?.run || latestSession(dir);
   if (!session) throw new DecideError(`no session transcript in ${dir}; pass --run <session-id>`);
   const [phase, decision, why, evidence, result] = cells;
   const pointer = transcriptPointer(dir, session);

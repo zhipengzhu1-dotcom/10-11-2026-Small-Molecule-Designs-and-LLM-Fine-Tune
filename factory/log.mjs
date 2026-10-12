@@ -6,11 +6,12 @@
 //
 // Root:  --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else the repo this script lives in.
 //        Never the cwd: subagents run in worktrees, but activity files live in the main checkout.
-// Run:   --run, else FACTORY_RUN.     Agent: --agent, else FACTORY_AGENT.
+// Run:   --run, else FACTORY_RUN, else the run marker's run.     Agent: --agent, else FACTORY_AGENT.
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cli, UsageError } from './cli.mjs';
+import { defaultRun } from './run-marker.mjs';
 
 // The API contract from issue #1. Dashboards depend on it.
 export const SCHEMA = {
@@ -92,7 +93,8 @@ cli(import.meta.url, {
     fields[kv.slice(0, eq)] = kv.slice(eq + 1);
   }
   try {
-    const event = writeEvent({ root: defaultRoot(env), run: env.FACTORY_RUN, agent: env.FACTORY_AGENT, ...opts, type, fields });
+    const root = opts.root ?? defaultRoot(env);
+    const event = writeEvent({ root, run: defaultRun(root, env), agent: env.FACTORY_AGENT, ...opts, type, fields });
     process.stdout.write(JSON.stringify(event) + '\n');
   } catch (err) {
     throw err instanceof EventError ? new UsageError(err.message) : err;

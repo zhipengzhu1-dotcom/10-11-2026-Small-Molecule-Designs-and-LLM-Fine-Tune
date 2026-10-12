@@ -3,7 +3,8 @@
 //   checkCli(import.meta.url, { name, usage, options }, run)
 //
 // Adds --root, --run and --agent to the check's own options. Run and agent default to FACTORY_RUN
-// and FACTORY_AGENT, else run "manual" and agent "orchestrator". run(opts) returns the findings:
+// and FACTORY_AGENT, else the run marker's run, else run "manual", and agent "orchestrator".
+// run(opts) returns the findings:
 //   evidence   what was checked and what failed, as the event records it
 //   problems   one string per failure; any problem fails the check
 //   unchecked  what could not be checked; with no problems, the verdict is inconclusive
@@ -14,6 +15,7 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import { cli } from '../cli.mjs';
 import { defaultRoot, writeEvent } from '../log.mjs';
+import { defaultRun } from '../run-marker.mjs';
 
 const EXIT = { pass: 0, fail: 1, inconclusive: 3 };
 
@@ -21,7 +23,8 @@ export function checkCli(url, { name, usage, options = {} }, run) {
   const all = { ...options, root: 'string', run: 'string', agent: 'string' };
   cli(url, { usage, options: all, failure: 2 }, (parsed) => {
     const env = process.env;
-    const opts = { root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator', ...parsed };
+    const root = parsed.root ?? defaultRoot(env);
+    const opts = { root, run: defaultRun(root, env) || 'manual', agent: env.FACTORY_AGENT || 'orchestrator', ...parsed };
     return report(name, opts, run(opts));
   });
 }
