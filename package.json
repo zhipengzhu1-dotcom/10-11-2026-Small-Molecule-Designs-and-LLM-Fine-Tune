@@ -13,6 +13,7 @@
     "decide": "node factory/decide.mjs",
     "audit": "node factory/audit.mjs",
     "frontier": "node factory/frontier.mjs",
+    "digest": "node factory/digest.mjs",
     "transcript": "node factory/transcript.mjs",
     "review:qwen": "node factory/review-qwen.mjs",
     "merge": "node factory/merge.mjs",

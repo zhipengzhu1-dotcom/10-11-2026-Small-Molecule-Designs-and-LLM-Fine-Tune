@@ -56,3 +56,18 @@ story	kind	name
 25	test	SubagentStart then SubagentStop record agent.start and agent.stop for that agent in the stream
 25	test	every event carries ts, run, agent and type, and only decision events have a null run
 25	test	the reader leaves the legacy transcript field out of agent.stop events, and only there
+26	test	a withdrawn row is out, and comes back in when its withdrawal is itself withdrawn
+26	test	a partial supersede puts only the replaced part out: the row stays in with that part out
+26	test	two rows that withdraw each other are both undec, until standing rows withdraw them
+27	test	a superseded row stays out when its replacement is itself superseded: a supersede takes over its target's attacks
+27	test	a withdrawn row is out, and comes back in when its withdrawal is itself withdrawn
+28	test	a corrects row leaves the row it corrects in, and superseding the correction changes nothing for that row
+29	test	the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec
+29	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
+39	test	the dispatch read prints one line when no standing decision binds the ticket
+39	test	a long dispatch read stops at 15 lines, the last one naming the command for the rest
+39	test	a long decision is cut so each line stays short
+42	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
+42	test	the dispatch read prints one line when no standing decision binds the ticket
+43	test	the digest never writes: the factory root is the same after a read
+44	none	-

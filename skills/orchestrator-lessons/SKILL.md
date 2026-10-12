@@ -40,6 +40,16 @@ Every `Agent` launch's description follows `<role> #<n|-> <what>`: a lowercase r
 
 **Smoke-test** each new kind of deliverable. Run one agent, confirm its write reached disk, then launch the rest. Claude Code refuses subagent writes to report-like files: `summary.md` was refused, while `notes.md`, `scout.md` and `review-a.md` went through. When a write is refused, rename the deliverable for the whole batch. If renaming fails, have one writer subagent take the bodies, so they stay out of the orchestrator's context.
 
+## Reading the node model
+
+The digest (`npm run digest`, the **Digest** in `CONTEXT.md`) answers the questions you face at the moments you already act. Read it at those moments, not on a schedule:
+
+- **Dispatch**: before you write a worker's prompt, run `npm run digest -- dispatch <ticket>` and put the rows it lists into the prompt, by their `row:<N>` pointers, as the rules in force. Run `npm run frontier -- <spec>` first at each frontier step: the read finds blockers and the spec through the ticket-graph snapshot that the frontier logs.
+
+A read is one line when clean and at most about 15 lines, ending with `+N more: <command>` when cut; run that command only when the cut part matters to the action at hand.
+
+The digest never acts. Log a decision row only when you act on something a read flagged, or deliberately defer it, and cite the transcript moment of the read (`transcript:<session>@<iso>`) in the evidence. A clean read, or one you only passed into a prompt, gets no row: the log records choices, not readings.
+
 ## Merges (step 5)
 
 - Run one merger at a time in the main checkout.
