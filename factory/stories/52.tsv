@@ -76,3 +76,8 @@ story	kind	name
 42	test	the dispatch read prints one line when no standing decision binds the ticket
 43	test	the digest never writes: the factory root is the same after a read
 44	none	-
+51	test	each decision in the tree carries the graph module's label and relations
+51	test	the state counts the decisions in, out and undec
+51	test	GET /state serves each decision with its label and relations from the graph module
+52	test	row links come from the relations the server sends, never from the text
+52	test	a decision that supersedes an earlier row links to that row's decision

@@ -85,6 +85,30 @@ test('decisions form a tree by their slash-path phase, in the order each node fi
   assert.equal(s.tree.count, 5);
 });
 
+// Rows 2 to 5 as decisions.tsv holds them: 3 supersedes 2, 4 withdraws 3, 5 corrects part of 2.
+const argued = () => summarize([
+  decision('00', 'plan/a', { line: 2, decision: 'use rule A', result: 'adopted' }),
+  decision('01', 'plan/a', { line: 3, decision: 'supersedes line 2: use rule B', result: 'adopted' }),
+  decision('02', 'plan/b', { line: 4, decision: 'withdraws line 3: rule B was a mistake', result: 'adopted' }),
+  decision('03', 'plan/b', { line: 5, decision: 'corrects line 2 (part): fix a typo in rule A', result: 'adopted' }),
+]);
+
+test("each decision in the tree carries the graph module's label and relations", () => {
+  const rows = (n) => [...n.decisions, ...n.children.flatMap(rows)];
+  const byLine = new Map(rows(argued().tree).map((d) => [d.line, d]));
+  // row 4 takes row 3 out, so row 2 is reinstated
+  assert.deepEqual([...byLine].map(([line, d]) => [line, d.label]), [[2, 'in'], [3, 'out'], [4, 'in'], [5, 'in']]);
+  assert.deepEqual(byLine.get(3).relations, [{ kind: 'supersedes', line: 2, part: false }]);
+  assert.deepEqual(byLine.get(5).relations, [{ kind: 'corrects', line: 2, part: true }]);
+  assert.deepEqual(byLine.get(2).relations, []);
+  assert.equal(byLine.get(3).decision, 'supersedes line 2: use rule B');
+});
+
+test('the state counts the decisions in, out and undec', () => {
+  assert.deepEqual(argued().labels, { in: 3, out: 1, undec: 0 });
+  assert.deepEqual(summarize([]).labels, { in: 0, out: 0, undec: 0 });
+});
+
 test('the latest result of each check in the run is reported', () => {
   const s = summarize([
     ev('00', 'r1', 'c', 'check', { name: 'tables', result: 'fail', evidence: 'row 3' }),
@@ -188,6 +212,18 @@ test('GET /state returns the summary of the factory logs, for the run asked for'
     assert.deepEqual(s.agents.map((a) => [a.agent, a.status]), [['a1', 'running']]);
     assert.equal(s.tree.count, 1);
     assert.deepEqual((await (await fetch(`${url}/state?run=nope`)).json()).agents, []);
+  });
+});
+
+test('GET /state serves each decision with its label and relations from the graph module', async () => {
+  const root = seed();
+  appendFileSync(join(root, 'factory', 'decisions.tsv'), '2026-10-11T10:03:00Z\tintake/a\tsupersedes line 2: read it twice\tonce missed a line\tx\tadopted\n');
+  await withViewer(root, async (url) => {
+    const s = await (await fetch(`${url}/state`)).json();
+    const [a] = s.tree.children;
+    const read = a.children[0].decisions.map((d) => [d.line, d.label, d.relations]);
+    assert.deepEqual(read, [[2, 'out', []], [3, 'in', [{ kind: 'supersedes', line: 2, part: false }]]]);
+    assert.deepEqual(s.labels, { in: 1, out: 1, undec: 0 });
   });
 });
 

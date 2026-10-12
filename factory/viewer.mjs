@@ -9,6 +9,7 @@ import { createServer } from 'node:http';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildGraph } from './graph.mjs';
 import { defaultRoot } from './log.mjs';
 import { readStream } from './read.mjs';
 
@@ -18,7 +19,10 @@ import { readStream } from './read.mjs';
 // its first and last event, and the newest run, still open, takes every later one too.
 // `crew` is every subagent of every run, for the agents diagram. The stream does not say what
 // an agent was asked to do, so `taskOf(run, agent)` supplies it (see readTask), or null.
+// Each decision in `tree` carries the node model's `label` (in, out or undec) and `relations`
+// (factory/graph.mjs), so the page and the orchestrator read one model; `labels` counts them.
 export function summarize(events, run, taskOf = () => null) {
+  const graph = buildGraph(events);
   const runs = [...new Set(events.map((e) => e.run).filter((r) => r !== null))];
   const newest = runs.findLast((r) => r !== 'manual') ?? runs.at(-1) ?? null;
   run ??= newest;
@@ -43,7 +47,11 @@ export function summarize(events, run, taskOf = () => null) {
       .filter((a) => a.agent !== 'orchestrator')
       .map((a) => ({ run: r, ...a, live: a.status === 'running' && r === newest }))),
     checks: latestChecks(own),
-    tree: tree(events.filter((e) => e.type === 'decision')),
+    tree: tree(events.filter((e) => e.type === 'decision').map((e) => {
+      const { label, relations } = graph.decision(e.line);
+      return { ...e, label, relations };
+    })),
+    labels: Object.fromEntries(['in', 'out', 'undec'].map((l) => [l, graph.decisions.filter((d) => d.label === l).length])),
     timeline: events.filter((e) => e.run === run || during(e)).reverse(),
   };
 }
