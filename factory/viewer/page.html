@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory Viewer</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<style>
+/* Black, white and grey only. Status is told apart by fill: solid, grey, outline, pulse. */
+:root {
+  --bg: #f3f3f3; --panel: #ffffff; --line: #e1e1e1; --fg: #161616; --muted: #6c6c6c; --faint: #b4b4b4;
+  --ink: #111111; --mid: #8f8f8f; --sel: #ececec;
+  --g-node: #4d4d4d; --g-leaf: #a3a3a3; --g-link: #d2d2d2; --g-hi: #000000; --g-dim: #ebebeb;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d0d0d; --panel: #161616; --line: #262626; --fg: #e8e8e8; --muted: #8c8c8c; --faint: #4b4b4b;
+  --ink: #f2f2f2; --mid: #8a8a8a; --sel: #222222;
+  --g-node: #c9c9c9; --g-leaf: #6e6e6e; --g-link: #3a3a3a; --g-hi: #ffffff; --g-dim: #262626;
+} }
+:root[data-theme="dark"] {
+  --bg: #0d0d0d; --panel: #161616; --line: #262626; --fg: #e8e8e8; --muted: #8c8c8c; --faint: #4b4b4b;
+  --ink: #f2f2f2; --mid: #8a8a8a; --sel: #222222;
+  --g-node: #c9c9c9; --g-leaf: #6e6e6e; --g-link: #3a3a3a; --g-hi: #ffffff; --g-dim: #262626;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+code, .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; color: var(--muted); }
+a { color: var(--fg); }
+header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+h1 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+h2 { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+h2 .hint, h2 .filter { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.hint { color: var(--faint); font-size: 12px; }
+.theme { margin-left: auto; font: inherit; font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+select { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; max-width: 100%; }
+.muted { color: var(--muted); }
+#error { background: var(--ink); color: var(--panel); padding: 8px 16px; overflow-wrap: anywhere; }
+#error:empty { display: none; }
+#checks { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--fg); border-radius: 99px; padding: 1px 9px; font-size: 12px; }
+.chip.pass { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.chip.fail { border-style: dashed; }
+.chip.fail::before { content: "✕ "; }
+main { display: grid; gap: 16px; padding: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+
+/* status glyphs, shared by the table and the legends */
+.st { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.st::before { display: inline-block; width: 1.1em; }
+.st.PASS::before { content: "●"; }
+.st.ISSUES { color: var(--mid); } .st.ISSUES::before { content: "◐"; }
+.st.BLOCKED::before, .st.unknown::before { content: "○"; }
+.st.running::before { content: "◌"; animation: pulse 1.4s infinite; }
+@keyframes pulse { 50% { opacity: .2; } }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.legend .sw { display: inline-block; width: 18px; height: 8px; margin-right: 5px; vertical-align: middle; border: 1px solid var(--ink); }
+.sw.pass { background: var(--ink); } .sw.issues { background: var(--mid); border-color: var(--mid); } .sw.out { background: none; }
+.sw.run { background: var(--ink); opacity: .35; }
+.sw.dia { width: 7px; height: 7px; transform: rotate(45deg); background: var(--ink); margin: 0 7px 0 3px; }
+.sw.tick { width: 3px; height: 11px; background: var(--ink); } .sw.tick.fail { background: none; }
+.layers label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.layers input { accent-color: var(--ink); margin: 0; }
+.ln { display: inline-block; width: 22px; height: 0; border-top: 1px solid var(--faint); vertical-align: middle; }
+.ln.sup { border-top: 2px dashed var(--ink); } .ln.men { border-top: 2px dotted var(--mid); } .ln.evi { border-top-color: var(--faint); }
+.sw.cube { width: 7px; height: 7px; background: var(--mid); border: 0; margin: 0 2px 0 0; }
+
+/* the two three.js stages */
+.stage { position: relative; overflow: hidden; border-radius: 6px; touch-action: none; user-select: none; }
+.stage canvas { display: block; }
+#lanes { display: grid; grid-template-columns: 180px minmax(0, 1fr); }
+#lanes .gutter { border-right: 1px solid var(--line); }
+#lanes .gutter div { height: 20px; display: flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 12px; white-space: nowrap; overflow: hidden; cursor: pointer; }
+#lanes .gutter div:hover, #lanes .gutter div.sel { background: var(--sel); }
+#lanes .gutter .axis-pad { height: 24px; cursor: default; }
+#lanes .gutter .axis-pad:hover { background: none; }
+#lanes .plot { position: relative; min-width: 0; cursor: grab; }
+#lanes .plot.dragging { cursor: grabbing; }
+.axis { position: absolute; left: 0; right: 0; top: 0; height: 24px; pointer-events: none; }
+.axis span { position: absolute; top: 4px; transform: translateX(-50%); font-size: 11px; color: var(--muted); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+.stage.big { height: max(560px, 78vh); background: var(--panel); cursor: grab; }
+.stage.big.dragging { cursor: grabbing; }
+.panel:fullscreen { border: 0; border-radius: 0; overflow: auto; }
+.panel:fullscreen .stage.big { height: calc(100vh - 100px); }
+.full { margin-left: auto; font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+.sw.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink); }
+.sw.dot.grey { background: var(--mid); border-color: var(--mid); } .sw.dot.ring { background: none; }
+.sw.dot.live { box-shadow: 0 0 0 3px var(--faint); animation: pulse 1.4s infinite; }
+.ln.same { border-top: 2px solid var(--ink); } .ln.dash { border-top: 2px dashed var(--g-node); }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.labels span { position: absolute; transform: translate(-50%, 0); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.labels span.hi { color: var(--fg); font-weight: 600; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--panel); font-size: 12px; padding: 6px 9px; border-radius: 6px; max-width: 360px; overflow-wrap: anywhere; z-index: 2; }
+.tip[hidden] { display: none; }
+.card { position: absolute; right: 10px; top: 10px; width: min(340px, calc(100% - 20px)); max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--fg); border-radius: 8px; padding: 10px 12px; font-size: 13px; z-index: 2; }
+.card[hidden] { display: none; }
+.card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 8px; }
+.card .x { float: right; cursor: pointer; color: var(--muted); border: 0; background: none; font: inherit; font-size: 16px; line-height: 1; }
+.nothree { color: var(--muted); padding: 24px 0; }
+
+table { width: 100%; border-collapse: collapse; }
+td, th { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+th { border-top: 0; font-weight: 500; color: var(--muted); font-size: 12px; }
+tbody tr { cursor: pointer; }
+tbody tr:hover, tr.sel { background: var(--sel); }
+details { margin-left: 12px; } details.top { margin-left: 0; }
+summary { cursor: pointer; padding: 1px 0; }
+summary .n { color: var(--muted); font-size: 12px; }
+.dec { margin: 4px 0 6px 14px; padding-left: 8px; border-left: 2px solid var(--line); }
+.dec .why, .dec .res { color: var(--muted); font-size: 13px; }
+.dec .res::before { content: "→ "; }
+#timeline { list-style: none; margin: 0; padding: 0; }
+#timeline li { display: grid; grid-template-columns: 64px 92px minmax(0, 1fr); gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+#timeline li:first-child { border-top: 0; }
+.type { font-size: 12px; color: var(--muted); }
+.type.t-decision, .type.t-check { color: var(--fg); font-weight: 600; }
+.type.fail { text-decoration: underline dashed; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Factory Viewer</h1>
+  <label>Run <select id="run"></select></label>
+  <span class="muted" id="updated"></span>
+  <div id="checks"></div>
+  <button id="theme" class="theme" title="theme"></button>
+</header>
+<div id="error" role="alert"></div>
+<main>
+  <section class="panel">
+    <h2>Swimlanes <span class="hint">ctrl + scroll to zoom · drag to pan · double-click to reset · click a bar to filter</span></h2>
+    <div class="legend" style="margin-bottom:8px">
+      <span><i class="sw pass"></i>PASS</span><span><i class="sw issues"></i>ISSUES</span><span><i class="sw out"></i>BLOCKED / unknown</span><span><i class="sw run"></i>running</span>
+      <span><i class="sw dia"></i>decision</span><span><i class="sw tick"></i>check pass</span><span><i class="sw tick fail"></i>check fail</span>
+    </div>
+    <div class="stage" id="lanes"><div class="gutter" id="lane-labels"></div><div class="plot" id="lane-plot"><div class="axis" id="axis"></div><div class="tip" id="lane-tip" hidden></div></div></div>
+  </section>
+  <section class="panel" id="crew-panel">
+    <h2>Agent network <span class="muted" id="ccount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · click an agent for its card · double-click to fit</span> <button class="full" data-full="crew-panel">full screen</button></h2>
+    <div class="legend layers" id="crew-layers" style="margin-bottom:8px">
+      <label><input type="checkbox" id="all-runs" checked>all runs</label>
+      <span><i class="sw dot live"></i>running</span><span><i class="sw dot"></i>PASS</span><span><i class="sw dot grey"></i>ISSUES</span><span><i class="sw dot ring"></i>BLOCKED / unknown</span>
+      <label><input type="checkbox" data-kind="dispatched" checked><i class="ln"></i>dispatched</label>
+      <label><input type="checkbox" data-kind="ticket" checked><i class="ln same"></i>same ticket</label>
+      <label><input type="checkbox" data-kind="builds" checked><i class="ln dash"></i>builds on</label>
+      <label><input type="checkbox" data-kind="files" checked><i class="ln men"></i>same file</label>
+    </div>
+    <div class="stage big" id="crew"><div class="labels" id="crew-labels"></div><div class="tip" id="crew-tip" hidden></div><div class="card" id="crew-card" hidden></div></div>
+  </section>
+  <section class="panel" id="graph-panel">
+    <h2>Decision graph <span class="muted" id="dcount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · drag a node to move it · double-click to fit</span> <button class="full" data-full="graph-panel">full screen</button></h2>
+    <div class="legend layers" id="layers" style="margin-bottom:8px">
+      <label><input type="checkbox" data-kind="tree" checked><i class="ln tree"></i>phase tree</label>
+      <label><input type="checkbox" data-kind="supersedes" checked><i class="ln sup"></i>supersedes</label>
+      <label><input type="checkbox" data-kind="mentions" checked><i class="ln men"></i>mentions a ticket</label>
+      <label><input type="checkbox" data-kind="evidence"><i class="ln evi"></i><i class="sw cube"></i>shared evidence</label>
+    </div>
+    <div class="stage big" id="graph"><div class="labels" id="graph-labels"></div><div class="tip" id="graph-tip" hidden></div><div class="card" id="card" hidden></div></div>
+    <div id="tree" hidden></div>
+  </section>
+  <section class="panel"><h2>Agents in this run</h2><table><thead><tr><th>Agent</th><th>Status</th><th>Time</th><th>Events</th></tr></thead><tbody id="agents"></tbody></table><p class="muted" id="no-agents" hidden>No agents in this run.</p></section>
+  <section class="panel"><h2>Timeline <span id="filter"></span></h2><ul id="timeline"></ul></section>
+</main>
+<script type="module" src="/assets/app.js"></script>
+</body>
+</html>

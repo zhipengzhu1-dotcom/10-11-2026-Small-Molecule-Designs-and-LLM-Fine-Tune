@@ -21,8 +21,9 @@ import { cli, UsageError } from '../factory/cli.mjs';
 const IMAGE = 'node:24.15.0';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Skips that are expected in the container: it has no network interface but loopback.
-const ALLOWED_SKIPS = [/no non-loopback IPv4 interface/];
+// Skips that are expected in the container: it has no network interface but loopback, and no
+// poppler (pdf-text's real-PDF test runs on the host instead).
+export const ALLOWED_SKIPS = [/no non-loopback IPv4 interface/, /^pdftotext is not installed$/];
 
 // The data checks, one per `check:*` script in package.json. The source tree is gitignored, so it
 // is read from the main checkout.

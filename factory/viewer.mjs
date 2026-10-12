@@ -1,0 +1,221 @@
+#!/usr/bin/env node
+// Viewer. A read-only page that watches the event stream: a swimlane timeline of the run's
+// agents, a graph of every agent and how they connect, a graph of the decision tree, and lists. A quick stand-in until the dashboard
+// (piece C) replaces it. The page and its scripts live in factory/viewer/.
+//
+//   node factory/viewer.mjs [--root <repo>] [--port 4175]
+import { closeSync, openSync, readFileSync, readSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defaultRoot } from './log.mjs';
+import { readStream } from './read.mjs';
+
+// Turns the stream (ordered by ts) into what the page draws, for one run: the newest unless
+// `run` names another. The manual run (checks run by hand) is never the newest while a session
+// run exists: it would end that session in the page while its agents are still working. Decisions have no run, so a run's timeline takes the ones made between
+// its first and last event, and the newest run, still open, takes every later one too.
+// `crew` is every subagent of every run, for the agents diagram. The stream does not say what
+// an agent was asked to do, so `taskOf(run, agent)` supplies it (see readTask), or null.
+export function summarize(events, run, taskOf = () => null) {
+  const runs = [...new Set(events.map((e) => e.run).filter((r) => r !== null))];
+  const newest = runs.findLast((r) => r !== 'manual') ?? runs.at(-1) ?? null;
+  run ??= newest;
+  const byRun = new Map(runs.map((r) => [r, []]));
+  for (const e of events) byRun.get(e.run)?.push(e);
+  const asked = new Map();
+  const ask = (r, agent) => {
+    const k = `${r}/${agent}`;
+    if (!asked.has(k)) asked.set(k, { task: null, tickets: [], mentions: [], ...(agent === 'orchestrator' ? null : taskOf(r, agent)) });
+    return asked.get(k);
+  };
+  const own = byRun.get(run) ?? [];
+  const from = own.length ? Date.parse(own[0].ts) : Infinity;
+  const to = run === newest ? Infinity : own.length ? Date.parse(own.at(-1).ts) : -Infinity;
+  const during = (e) => e.type === 'decision' && Date.parse(e.ts) >= from && Date.parse(e.ts) <= to;
+  return {
+    runs,
+    newest,
+    run,
+    agents: agents(run, own, ask),
+    crew: runs.flatMap((r) => agents(r, byRun.get(r), ask)
+      .filter((a) => a.agent !== 'orchestrator')
+      .map((a) => ({ run: r, ...a, live: a.status === 'running' && r === newest }))),
+    checks: latestChecks(own),
+    tree: tree(events.filter((e) => e.type === 'decision')),
+    timeline: events.filter((e) => e.run === run || during(e)).reverse(),
+  };
+}
+
+// One row per agent, in order of its first event. No agent.stop yet means it is still running.
+function agents(run, own, ask) {
+  const byAgent = new Map();
+  for (const e of own) {
+    if (!byAgent.has(e.agent)) byAgent.set(e.agent, { agent: e.agent, events: 0, startEvent: null, stopEvent: null, first: e.ts, last: e.ts, files: new Set() });
+    const a = byAgent.get(e.agent);
+    a.events++;
+    a.last = e.ts;
+    if (e.type === 'agent.start') a.startEvent ??= e;
+    if (e.type === 'agent.stop') a.stopEvent = e;
+    if (e.type === 'artifact' && e.path) a.files.add(e.path);
+  }
+  return [...byAgent.values()].map(({ agent, events, startEvent, stopEvent, first, last, files }) => ({
+    agent,
+    role: startEvent?.role ?? stopEvent?.role ?? (agent === 'orchestrator' ? 'orchestrator' : null),
+    ...ask(run, agent),
+    parent: startEvent?.parent ?? null,
+    start: startEvent?.ts ?? null,
+    stop: stopEvent?.ts ?? null,
+    status: stopEvent ? stopEvent.status : 'running',
+    events,
+    first,
+    last,
+    files: [...files],
+  }));
+}
+
+// What a subagent was asked to do, from its Claude Code transcript: `task` is the description
+// the orchestrator gave it (in the .meta.json beside the transcript), `tickets` the ones the
+// description names (with no description, the first one its instructions name), `mentions` the
+// other tickets its instructions name. Null when there is no transcript.
+export function readTask(file) {
+  let first;
+  try {
+    first = firstLine(file);
+  } catch {
+    return null;
+  }
+  let prompt;
+  try {
+    const content = JSON.parse(first).message?.content;
+    prompt = typeof content === 'string' ? content : (content ?? []).map((b) => b.text ?? '').join(' ');
+  } catch {
+    prompt = first; // a first line longer than we read: its raw text still names the tickets
+  }
+  let task = null;
+  try {
+    task = JSON.parse(readFileSync(file.replace(/\.jsonl$/, '.meta.json'), 'utf8')).description || null;
+  } catch {
+    // no meta file: an older Claude Code, or not written yet
+  }
+  const refs = (s) => [...new Set([...s.matchAll(/#(\d+)/g)].map((m) => m[1]))];
+  const tickets = task ? refs(task) : refs(prompt).slice(0, 1);
+  return { task, tickets, mentions: refs(prompt).filter((t) => !tickets.includes(t)) };
+}
+
+// Transcripts grow to megabytes; the instructions are on the first line.
+function firstLine(file) {
+  const fd = openSync(file, 'r');
+  try {
+    const buf = Buffer.alloc(65536);
+    return buf.toString('utf8', 0, readSync(fd, buf, 0, buf.length, 0)).split('\n')[0];
+  } finally {
+    closeSync(fd);
+  }
+}
+
+// Claude Code keeps a session's subagent transcripts in
+// ~/.claude/projects/<slug>/<session>/subagents/agent-<id>.jsonl, where the slug is the
+// checkout's path with every character but a letter or digit turned into "-", and the session is
+// the run. Built from ids, never from a path in the stream; null for an id that isn't one.
+export function subagentTranscript(root, run, agent, home = homedir()) {
+  if (!/^[A-Za-z0-9-]+$/.test(run) || !/^a[0-9a-f]+$/.test(agent)) return null;
+  return join(home, '.claude', 'projects', root.replace(/[^A-Za-z0-9]/g, '-'), run, 'subagents', `agent-${agent}.jsonl`);
+}
+
+function latestChecks(own) {
+  const checks = new Map();
+  for (const e of own) if (e.type === 'check') checks.set(e.name, { name: e.name, result: e.result, evidence: e.evidence, ts: e.ts, agent: e.agent });
+  return [...checks.values()];
+}
+
+// Nodes keyed by the phase's slash path. `count` is every decision at or under the node.
+function tree(decisions) {
+  const root = node('', '');
+  for (const d of decisions) {
+    let n = root;
+    n.count++;
+    for (const part of String(d.phase).split('/')) {
+      let child = n.children.find((c) => c.name === part);
+      if (!child) n.children.push((child = node(part, n.path ? `${n.path}/${part}` : part)));
+      n = child;
+      n.count++;
+    }
+    n.decisions.push(d);
+  }
+  return root;
+}
+
+const node = (name, path) => ({ name, path, count: 0, decisions: [], children: [] });
+
+export function createViewer({ root = defaultRoot(), home = homedir() } = {}) {
+  // A transcript's first line and meta are written when the agent starts and never change.
+  const tasks = new Map();
+  const taskOf = (run, agent) => {
+    const file = subagentTranscript(root, run, agent, home);
+    if (!file) return null;
+    if (!tasks.has(file)) {
+      const task = readTask(file);
+      if (!task) return null;
+      tasks.set(file, task);
+    }
+    return tasks.get(file);
+  };
+  return createServer((req, res) => {
+    try {
+      handle(root, taskOf, req, res);
+    } catch (err) {
+      if (!res.headersSent) send(res, 500, 'text/plain', err.message);
+      else res.destroy();
+    }
+  });
+}
+
+function handle(root, taskOf, req, res) {
+  const url = new URL(req.url, 'http://127.0.0.1');
+  // Bound to 127.0.0.1, but a page in the user's browser can still reach it: refuse any Host
+  // but this one (DNS rebinding).
+  const port = req.socket.localPort;
+  if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(req.headers.host)) return send(res, 403, 'text/plain', 'local requests only');
+  if (req.method !== 'GET') return send(res, 405, 'text/plain', 'the viewer is read-only');
+  if (url.pathname === '/') return send(res, 200, 'text/html', asset('page.html'));
+  const script = /^\/assets\/([a-z]+\.js)$/.exec(url.pathname);
+  if (script && SCRIPTS.has(script[1])) return send(res, 200, 'text/javascript', asset(script[1]));
+  if (url.pathname === '/state') {
+    const run = url.searchParams.get('run') || undefined;
+    let state;
+    try {
+      state = { ...summarize(readStream(root), run, taskOf), error: null };
+    } catch (err) {
+      // readStream throws on a corrupt line or a misfiled event; show it rather than go blank.
+      state = { ...summarize([], run), error: err.message };
+    }
+    return send(res, 200, 'application/json', JSON.stringify(state));
+  }
+  send(res, 404, 'text/plain', 'not found');
+}
+
+// Served by name only, never by path, so nothing else in the repo can be fetched. Read on
+// every request, so an edit shows on reload.
+const SCRIPTS = new Set(['app.js', 'ui.js', 'layout.js', 'swimlane.js', 'force.js', 'graph.js', 'crew.js']);
+const ASSETS = join(dirname(fileURLToPath(import.meta.url)), 'viewer');
+const asset = (name) => readFileSync(join(ASSETS, name), 'utf8');
+
+function send(res, status, type, body) {
+  res.writeHead(status, { 'content-type': `${type}; charset=utf-8`, 'cache-control': 'no-store' });
+  res.end(body);
+}
+
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  const arg = (name, fallback) => {
+    const i = process.argv.indexOf(name);
+    return i > 0 ? process.argv[i + 1] : fallback;
+  };
+  const root = arg('--root', defaultRoot());
+  const server = createViewer({ root });
+  server.listen(Number(arg('--port', 4175)), '127.0.0.1', () => {
+    process.stdout.write(`viewer: http://127.0.0.1:${server.address().port}/ (root ${root})\n`);
+  });
+}
