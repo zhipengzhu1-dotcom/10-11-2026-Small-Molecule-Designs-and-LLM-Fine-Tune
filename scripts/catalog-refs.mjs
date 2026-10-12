@@ -28,25 +28,17 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cli, UsageError } from '../factory/cli.mjs';
 import { citedKeys, readCatalog } from '../factory/checks/references.mjs';
 
 const COLUMNS = ['key', 'title', 'year', 'link', 'why', 'tier1', 'status', 'oa_source', 'oa_url', 'license', 'file', 'sha256', 'note'];
 // Licenses that allow anyone to redistribute the file, so it may be committed to this public repo.
 const REDISTRIBUTABLE = /^(CC BY( |-SA )\d|CC0|public domain)/i;
 
-function args(argv) {
-  const out = { root: dirname(dirname(fileURLToPath(import.meta.url))), cache: join(tmpdir(), 's1-catalog-refs', 'lookups.json'), download: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--download') out.download = true;
-    else if (['--root', '--cache', '--latex', '--arxiv-base'].includes(a) && i + 1 < argv.length) out[a.slice(2)] = argv[++i];
-    else throw new Error(`unknown argument: ${a}`);
-  }
-  if (!out.latex) throw new Error('--latex <dir> is required (the gitignored LaTeX lives in the main checkout)');
-  return out;
-}
+const USAGE = 'node scripts/catalog-refs.mjs --latex <dir with main.tex and reference.bib> [--root <repo>] [--cache <lookups.json>] [--download] [--arxiv-base <url>]';
+const OPTIONS = { root: 'string', cache: 'string', latex: 'string', 'arxiv-base': 'string', download: 'flag' };
 
 // ---------- BibTeX ----------
 
@@ -411,8 +403,9 @@ async function settleTier1(row, look, cur, opts) {
   return null;
 }
 
-async function main() {
-  const opts = args(process.argv.slice(2));
+async function main(parsed) {
+  const opts = { root: dirname(dirname(fileURLToPath(import.meta.url))), cache: join(tmpdir(), 's1-catalog-refs', 'lookups.json'), download: false, ...parsed };
+  if (!opts.latex) throw new UsageError('--latex <dir> is required (the gitignored LaTeX lives in the main checkout)');
   if (opts['arxiv-base']) arxivBase = opts['arxiv-base'].replace(/\/$/, '');
   const keys = citedKeys(readFileSync(join(opts.latex, 'main.tex'), 'utf8'));
   const bib = parseBib(readFileSync(join(opts.latex, 'reference.bib'), 'utf8'));
@@ -455,7 +448,4 @@ async function main() {
   for (const f of failures) process.stdout.write(`FAILED\t${f.key}\t${f.url}\t${f.reason}\t${f.title}\n`);
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  main().catch((err) => { process.stderr.write(`catalog-refs: ${err.message}\n`); process.exit(1); });
-}
+cli(import.meta.url, { usage: USAGE, options: OPTIONS }, main);
