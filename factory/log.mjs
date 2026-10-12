@@ -67,7 +67,8 @@ const SCHEMA = {
   'ticket.graph': { required: [], json: { spec: Number.isInteger, tickets: Array.isArray } },
   // Issue #56: written by factory/hooks/dispatch.mjs into the orchestrator's file. `to` is the
   // agent dispatched or messaged (the stamped `agent` is the orchestrator). A dispatch may also
-  // carry `resume: true` and `cause`; a message may carry `cause`.
+  // carry `resume: true` and `cause`; a message may carry `cause`. Either gets `cause_invalid: true`
+  // when its cause is not a valid target.
   dispatch: { required: ['to', 'role', 'description', 'tool_use_id'], optional: { ticket: ticketNumber } },
   message: { required: ['to', 'tool_use_id'] },
   // A doubt raised against a row, event or pointer (issue #58), and its elimination by a later
