@@ -14,7 +14,7 @@
 // `notes.md`, `scout.md`, `reporter.md` and `review-a.md` pass. Each one is named with its line.
 // A name in double quotes or on a `>` quote line is a mention, not a deliverable, and passes.
 import { readFileSync } from 'node:fs';
-import { checkCli } from './check.mjs';
+import { checkCli, shown } from './check.mjs';
 
 // Report-like words Claude Code refuses in a subagent's .md writes, singular or plural. `summary`
 // was refused for all 10 readers of #10 (run 14c93a90, see skills/orchestrator-lessons); the rest
@@ -43,7 +43,7 @@ function refusedNames(text) {
 function runCheck(opts) {
   const text = readFileSync(opts.body ?? 0, 'utf8');
   const problems = refusedNames(text).map((f) => `line ${f.line}: ${f.path} is refused to subagents ("${f.word}"); name it notes.md or <role>.md`);
-  const where = opts.body ? opts.body.replace(/\\/g, '/') : 'stdin';
+  const where = opts.body ? shown(opts.root, opts.body) : 'stdin';
   return { evidence: `${where}: ${problems.length ? problems.join('; ') : 'no refused deliverable name'}`, problems };
 }
 
