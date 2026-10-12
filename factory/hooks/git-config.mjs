@@ -157,15 +157,30 @@ function commonDir(dir) {
   return r.status === 0 ? resolve(r.stdout.trim()) : null;
 }
 
-// The git config command in the words, with the directory it runs in, else null.
-function configCommand(w, dir) {
-  if (!/^(.*[\\/])?git(\.exe)?$/i.test(w[0] ?? '')) return null;
-  let i = 1;
-  while (w[i]?.startsWith('-')) {
-    if (w[i] === '-C' && w[i + 1] !== undefined) dir = at(dir, w[i + 1]);
-    i += GIT_TAKES_VALUE.has(w[i]) ? 2 : 1;
+// A shell variable assignment word, as in GIT_DIR=x: [name, value], else null.
+const assignment = (word) => /^([A-Za-z_]\w*)=(.*)$/s.exec(word)?.slice(1) ?? null;
+
+// The git config command in the words, else null: its args, the directory it runs in, and the git
+// dir and work tree that --git-dir, --work-tree, GIT_DIR or GIT_WORK_TREE (from `vars` or an
+// `env`/NAME=value prefix) point it at.
+function configCommand(w, dir, vars) {
+  vars = { ...vars };
+  let i = 0;
+  if (w[i] === 'env') i++;
+  for (let a; (a = assignment(w[i] ?? '')); i++) vars[a[0]] = a[1];
+  if (!/^(.*[\\/])?git(\.exe)?$/i.test(w[i] ?? '')) return null;
+  let gitDir = vars.GIT_DIR;
+  let workTree = vars.GIT_WORK_TREE;
+  for (i++; w[i]?.startsWith('-'); i += GIT_TAKES_VALUE.has(w[i]) ? 2 : 1) {
+    const [flag, value = w[i + 1]] = w[i].split(/=(.*)/s);
+    if (value === undefined) continue;
+    if (w[i] === '-C') dir = at(dir, value);
+    else if (flag === '--git-dir') gitDir = value;
+    else if (flag === '--work-tree') workTree = value;
   }
-  return w[i] === 'config' ? { args: w.slice(i + 1), dir } : null;
+  if (w[i] !== 'config') return null;
+  const where = (p) => (p === undefined || p === '' ? undefined : at(dir, p));
+  return { args: w.slice(i + 1), dir, gitDir: where(gitDir), workTree: where(workTree) };
 }
 
 // True when the args after `git config` write config.
@@ -181,25 +196,30 @@ function writes(args) {
   return !(READ_SUBCOMMANDS.has(positional[0]) || positional.length === 1);
 }
 
-// True when a git config write run in dir lands in a config every checkout of the project shares:
-// the user's or system's config, the project's .git/config, or a --file that names it. A write
-// with --worktree, to another file, or in another repo (a test fixture) does not.
-function shared(args, dir, project) {
+// True when a git config write lands in a config every checkout of the project shares: the user's
+// or system's config, the project's .git/config, or a --file that names it. The repo is the git
+// dir's when one is named, else the working folder's or, to be safe, the work tree's. A write with
+// --worktree, to another file, or in another repo (a test fixture) does not.
+function shared({ args, dir, gitDir, workTree }, project) {
   if (args.includes('--worktree')) return false;
   if (args.includes('--global') || args.includes('--system')) return true;
   if (!project) return true;
   const f = args.findIndex((a) => a === '-f' || a === '--file');
   const file = f !== -1 ? args[f + 1] : args.find((a) => a.startsWith('--file='))?.slice(7);
   if (file !== undefined) return same(at(dir, file), join(project, 'config'));
-  const common = commonDir(dir);
-  return common !== null && same(common, project);
+  const repos = gitDir ? [gitDir] : [dir, workTree].filter(Boolean);
+  return repos.some((r) => {
+    const common = commonDir(r);
+    return common !== null && same(common, project);
+  });
 }
 
 // The commands in a shell command line, run from dir, that write the git config every checkout
 // shares: a `git config` write without --worktree, or the npm script that sets core.hooksPath.
-// cd follows the line in order; a shell handed a command string is read like the line itself.
+// cd and variables set on their own (NAME=v, export NAME=v, PowerShell's $env:NAME = v) follow the
+// line in order; a shell handed a command string is read like the line itself.
 const CD = /^(cd|chdir|pushd|sl|set-location|push-location)$/i;
-function sharedConfigWrites(command, dir, project) {
+function sharedConfigWrites(command, dir, project, vars = {}) {
   const found = [];
   for (const w of commands(command)) {
     if (CD.test(w[0])) {
@@ -207,12 +227,22 @@ function sharedConfigWrites(command, dir, project) {
       dir = to === undefined ? homedir() : at(dir, to);
       continue;
     }
+    const ps = /^\$env:(\w+)(?:=(.*))?$/is.exec(w[0]);
+    if (ps) {
+      vars = { ...vars, [ps[1]]: ps[2] ?? (w[1] === '=' ? w[2] : w[1]?.replace(/^=/, '')) };
+      continue;
+    }
+    const sets = (w[0] === 'export' ? w.slice(1) : w).map(assignment);
+    if (sets.every(Boolean)) {
+      vars = { ...vars, ...Object.fromEntries(sets) };
+      continue;
+    }
     const inner = handed(w);
-    if (inner !== null) found.push(...sharedConfigWrites(inner, dir, project));
+    if (inner !== null) found.push(...sharedConfigWrites(inner, dir, project, vars));
     else if (w[0] === 'npm' && (w[1] === 'run' || w[1] === 'run-script') && w[2] === 'hooks:install') found.push(w.join(' '));
     else {
-      const config = configCommand(w, dir);
-      if (config && writes(config.args) && shared(config.args, config.dir, project)) found.push(w.join(' '));
+      const config = configCommand(w, dir, vars);
+      if (config && writes(config.args) && shared(config, project)) found.push(w.join(' '));
     }
   }
   return found;

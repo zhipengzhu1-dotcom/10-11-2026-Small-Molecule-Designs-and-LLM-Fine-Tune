@@ -146,6 +146,33 @@ test('a subagent\'s git config write in a throwaway repo outside the project run
   }
 });
 
+test('a write aimed at the project by --git-dir, --work-tree, GIT_DIR or GIT_WORK_TREE is blocked from anywhere', () => {
+  const gitDir = slash(join(PROJECT, '.git'));
+  const tree = slash(PROJECT);
+  for (const [command, tool = 'Bash'] of [
+    [`git --git-dir="${gitDir}" config core.hooksPath x`],
+    [`git --git-dir=${gitDir} config core.hooksPath x`],
+    [`git --work-tree="${tree}" config core.x y`],
+    [`git --work-tree=${tree} config core.x y`],
+    [`GIT_DIR="${gitDir}" git config core.x y`],
+    [`GIT_WORK_TREE="${tree}" git config core.x y`],
+    [`env GIT_DIR="${gitDir}" git config core.x y`],
+    [`export GIT_DIR="${gitDir}"; git config core.x y`],
+    [`$env:GIT_DIR = "${gitDir}"; git config core.x y`, 'PowerShell'],
+  ]) {
+    const r = run(call(command, { cwd: SCRATCH, tool }));
+    assert.equal(r.status, 2, `${command}: ${r.stderr}`);
+  }
+});
+
+test('a write aimed by --git-dir or GIT_DIR at a throwaway repo runs', () => {
+  const gitDir = slash(join(SCRATCH, '.git'));
+  for (const command of [`git --git-dir="${gitDir}" config user.name x`, `GIT_DIR="${gitDir}" git config user.name x`]) {
+    const r = run(call(command));
+    assert.equal(r.status, 0, `${command}: ${r.stderr}`);
+  }
+});
+
 test('a write to the global config is blocked even from a throwaway repo', () => {
   assert.equal(run(call('git config --global user.name x', { cwd: SCRATCH })).status, 2);
 });
