@@ -17,13 +17,23 @@
 //   graph.binding(n)              the standing decisions that bind ticket n: [{ row, because }]
 //   graph.similar(query, opts)    TF-IDF neighbours of a text node or { text } (graph/text.mjs)
 //   graph.precedents(text, k)     the k rows still in nearest to a text, as [{ row, score }]
+//   graph.spec                    the snapshot's spec, or null with no snapshot
+//   graph.earlyStarts()           starts before a blocker merged:
+//                                 [{ ticket, blocker, start, merged, explainedBy }]
+//   graph.slack()                 critical path of the unmerged tickets:
+//                                 [{ ticket, earliest, latest, slack }]
+//   graph.completion()            { proper, sink, unmerged, gates } for the done read
+//   (the last three: the workflow net in graph/workflow.mjs; merges come in as snapshot.merges,
+//    [{ ticket, ts, commit }], the integration branch's `Merge #<n>` commits)
 //   graph.overdue(now, { run? })  running agents past their role's usual time (graph/sojourn.mjs)
 //
-// Overlays (argumentation so far) live here, or in sibling files once this passes about 400 lines,
-// without changing the interface.
+// Overlays (argumentation here, the others in graph/) live here or in sibling files, without
+// changing the interface.
 import { claimState, parseRelations } from './claim.mjs';
+import { ticketsNamed } from './graph/names.mjs';
 import { overdue } from './graph/sojourn.mjs';
 import { textOverlay } from './graph/text.mjs';
+import { workflow } from './graph/workflow.mjs';
 
 export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   const nodes = new Map();
@@ -86,9 +96,15 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
     node: (id) => nodes.get(id),
     decisions,
     decision: (line) => byLine.get(line),
+    spec: snapshot?.spec ?? null,
   };
   graph.binding = (n) => binding(graph, n);
   Object.assign(graph, textOverlay(graph));
+  let net;
+  const replay = () => (net ??= workflow(graph, snapshot));
+  graph.earlyStarts = () => replay().earlyStarts;
+  graph.slack = () => replay().slack;
+  graph.completion = () => replay().completion;
   graph.overdue = (now, opts) => overdue(events, now, opts);
   return graph;
 }
@@ -110,14 +126,10 @@ function binding(graph, n) {
     }
   }
   for (const s of out(`issue:${n}`, 'subIssueOf')) if (!scope.has(s)) scope.set(s, `spec #${s}`);
-  const names = (d) => new Set([
-    ...d.phase.split('/').map((p) => /^ticket-(\d+)$/.exec(p)?.[1]).filter(Boolean).map(Number),
-    ...[...d.decision.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1])),
-  ]);
   const result = [];
   for (const d of graph.decisions) {
     if (d.label !== 'in' || !BINDS.has(d.state)) continue;
-    const named = names(d);
+    const named = ticketsNamed(d);
     const because = d.state === 'given' ? 'given' : [...scope].find(([t]) => named.has(t))?.[1];
     if (because) result.push({ row: d, because });
   }

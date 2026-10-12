@@ -6,10 +6,14 @@
 //
 //   npm run digest -- dispatch <ticket> [--all] [--root <repo>]
 //       the standing decisions that bind the ticket, for the worker's prompt
+//   npm run digest -- frontier <spec> [--all] [--root <repo>]
+//       the zero-slack tickets, and starts before a blocker merged that no decision row explains
 import { cli, UsageError } from './cli.mjs';
+import { gitRun } from './git.mjs';
 import { buildGraph } from './graph.mjs';
 import { defaultRoot } from './log.mjs';
 import { readStream } from './read.mjs';
+import { readMarker } from './run-marker.mjs';
 
 export const LIMIT = 15;
 const WIDTH = 120;
@@ -40,17 +44,53 @@ export function dispatchRead(graph, n, all = false) {
   return capRead(`dispatch #${n}: ${bound.length} standing decision${s} bind${s ? '' : 's'} it`, items, `npm run digest -- dispatch ${n} --all`, all);
 }
 
-const MOMENTS = { dispatch: dispatchRead };
+// The frontier moment of spec n: the zero-slack tickets, and each start before a blocker's merge
+// commit that no standing row explains. What is ready to start stays with `npm run frontier`.
+export function frontierRead(graph, n, all = false) {
+  if (graph.spec !== n) return [`frontier #${n}: no ticket-graph snapshot of spec #${n}; run npm run frontier -- ${n} first`];
+  const slack = graph.slack();
+  const zero = slack.filter((s) => s.slack === 0);
+  const path = `zero slack (critical path of ${Math.max(0, ...zero.map((s) => s.earliest + 1))}): ${zero.map((s) => `#${s.ticket}`).join(' ')}`;
+  const early = graph.earlyStarts().filter((e) => !e.explainedBy.length);
+  const open = slack.length ? `${slack.length} open ticket${slack.length === 1 ? '' : 's'}` : 'every ticket merged';
+  if (!early.length) return [cut(`frontier #${n}: ${open}${slack.length ? `; ${path}` : ''}; no undocumented early start`)];
+  const items = early.map((e) => cut(`  early start #${e.ticket}: started at ${e.start}, before #${e.blocker} ${e.merged ? `merged (${e.merged})` : 'merged (not yet)'}`));
+  const s = early.length === 1 ? '' : 's';
+  const head = `frontier #${n}: ${open}${slack.length ? `, ${zero.length} with zero slack` : ''}, ${early.length} undocumented early start${s}`;
+  return capRead(head, [...(slack.length ? [cut(`  ${path}`)] : []), ...items], `npm run digest -- frontier ${n} --all`, all);
+}
+
+// The integration branch's merges as [{ ticket, ts, commit }]: each `Merge #<n>` commit reachable
+// from the run marker's branch (HEAD with no run marked), at its commit time. A ticket counts as
+// merged by this commit, not by GitHub's state (decision row 100). Outside a git repo, none.
+export function mergeCommits(root) {
+  const r = gitRun(root, 'log', '--merges', '--format=%H%x09%cI%x09%s', readMarker(root)?.branch ?? 'HEAD');
+  if (r.status !== 0) return [];
+  return r.stdout.split('\n').flatMap((line) => {
+    const [commit, date, subject] = line.split('\t');
+    const ticket = /^Merge #(\d+)\b/.exec(subject ?? '')?.[1];
+    return ticket ? [{ ticket: Number(ticket), ts: new Date(date).toISOString().replace('.000Z', 'Z'), commit }] : [];
+  });
+}
+
+// Each moment's read, and the ticket-graph snapshot it reads: the stream's latest for dispatch,
+// the latest of the spec for frontier.
+const MOMENTS = {
+  dispatch: { read: dispatchRead, of: () => true },
+  frontier: { read: frontierRead, of: (e, n) => e.spec === n },
+};
 
 cli(import.meta.url, {
-  usage: 'node factory/digest.mjs dispatch <ticket> [--all] [--root <repo>]',
+  usage: 'node factory/digest.mjs dispatch <ticket> | frontier <spec> [--all] [--root <repo>]',
   options: { all: 'flag', root: 'string' },
   positionals: true,
 }, ({ positionals: [moment, ticket, ...extra], all, root = defaultRoot() }) => {
   if (!Object.hasOwn(MOMENTS, moment ?? '')) throw new UsageError(moment ? `unknown moment: ${moment}` : 'missing moment');
-  const n = /^#?([1-9]\d*)$/.exec(ticket ?? '')?.[1];
-  if (!n) throw new UsageError(ticket ? `not a ticket number: ${ticket}` : 'missing ticket number');
+  const n = Number(/^#?([1-9]\d*)$/.exec(ticket ?? '')?.[1]);
+  if (!n) throw new UsageError(ticket ? `not an issue number: ${ticket}` : 'missing issue number');
   if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
-  const lines = MOMENTS[moment](buildGraph(readStream(root)), Number(n), all);
-  process.stdout.write(lines.join('\n') + '\n');
+  const events = readStream(root);
+  const snapshot = events.findLast((e) => e.type === 'ticket.graph' && MOMENTS[moment].of(e, n));
+  const graph = buildGraph(events, snapshot ? { ...snapshot, merges: mergeCommits(root) } : null);
+  process.stdout.write(MOMENTS[moment].read(graph, n, all).join('\n') + '\n');
 });

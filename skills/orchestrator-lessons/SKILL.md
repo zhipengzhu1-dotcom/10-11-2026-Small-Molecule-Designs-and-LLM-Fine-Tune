@@ -45,6 +45,7 @@ Every `Agent` launch's description follows `<role> #<n|-> <what>`: a lowercase r
 The digest (`npm run digest`, the **Digest** in `CONTEXT.md`) answers the questions you face at the moments you already act. Read it at those moments, not on a schedule:
 
 - **Dispatch**: before you write a worker's prompt, run `npm run digest -- dispatch <ticket>` and put the rows it lists into the prompt, by their `row:<N>` pointers, as the rules in force. Run `npm run frontier -- <spec>` first at each frontier step: the read finds blockers and the spec through the ticket-graph snapshot that the frontier logs.
+- **Frontier**: right after `npm run frontier -- <spec>`, run `npm run digest -- frontier <spec>`. Start the zero-slack tickets it lists first, since any delay to them delays the spec. For each early start it lists (a ticket dispatched before a blocker's `Merge #<n>` commit), either log a row naming both tickets (`#<ticket>` and `#<blocker>`) that says why, or stop the work.
 
 A read is one line when clean and at most about 15 lines, ending with `+N more: <command>` when cut; run that command only when the cut part matters to the action at hand.
 
