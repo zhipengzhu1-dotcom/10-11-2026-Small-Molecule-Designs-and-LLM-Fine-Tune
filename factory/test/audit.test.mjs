@@ -32,11 +32,11 @@ function git(root, ...args) {
 }
 
 // A repo with a committed two-row decision log, and the transcript of the session that logged it.
-function fixture() {
+function fixture(log = LOG) {
   const root = tempRoot();
   git(root, 'init', '-q');
   put(root, 'notes/source.md', 'line one\nline two\n');
-  put(root, 'factory/decisions.tsv', LOG);
+  put(root, 'factory/decisions.tsv', log);
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', 'log');
   const transcripts = join(root, 'transcripts');
@@ -63,6 +63,17 @@ t('show prints the row and its session since the session\'s previous row, each l
   assert.match(r.stdout, /transcript:sess-1@2026-10-11T09:48:30 user: the epochs question first came up/);
   assert.match(r.stdout, /transcript:sess-1@2026-10-11T09:55:12 user: use 3 epochs, not 5/);
   assert.match(r.stdout, /transcript:sess-1@2026-10-11T10:00:01 tool Bash: npm test/);
+  assert.doesNotMatch(r.stdout, /an old message|a later message/);
+});
+
+// npm run decide writes transcript:<session>@<iso> since spec #52; older rows keep the old form.
+t('show finds the session of a row whose evidence leads with a transcript:<session>@<iso> pointer, after an old-form row', () => {
+  const log = LOG.split('\n').slice(0, 2).join('\n') + '\n'
+    + row('2026-10-11T10:05:00Z', 'project/b', 'picked 3 epochs', 'the paper says 5',
+      'transcript:sess-1@2026-10-11T10:04:58; file:notes/source.md:2', 'adopted');
+  const r = audit(fixture(log), 'show', '3');
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /transcript:sess-1@2026-10-11T09:55:12 user: use 3 epochs, not 5/);
   assert.doesNotMatch(r.stdout, /an old message|a later message/);
 });
 

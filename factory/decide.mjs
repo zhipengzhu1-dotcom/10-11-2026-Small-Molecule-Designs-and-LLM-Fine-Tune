@@ -11,16 +11,20 @@
 //           cache keeps stale versions beside it, so never hard-code a cache path.
 // Session:  --run, else FACTORY_RUN, else the run marker's run (factory/run.json, run-marker.mjs).
 //           With none of them it refuses: the newest transcript can be a concurrent session's, so
-//           it is never taken as a guess. The pointer is
-//           "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z", the time of the transcript's
-//           latest entry.
-// Exit:     2 when the row cannot be logged (a bad argument, no pstack, no transcript, log.sh failed).
+//           it is never taken as a guess. The pointer is transcript:<session>@<ISO time>, in the
+//           pointer grammar (pointer.mjs), at the transcript's latest entry, to the second. Rows
+//           before spec #52 carry the older "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z".
+// Evidence: each "; "-separated item that starts with `<kind>:` is a pointer and must parse and
+//           resolve (pointer.mjs, the trail check's grammar); other items are prose.
+// Exit:     2 when the row cannot be logged (a bad argument, an evidence pointer that does not
+//           resolve, no pstack, no transcript, log.sh failed). Nothing is written then.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
+import { parsePointer, resolvePointer } from './pointer.mjs';
 import { defaultRun } from './run-marker.mjs';
 import { projectTranscripts, readTranscript } from './transcript.mjs';
 
@@ -37,13 +41,13 @@ function logScript(home = homedir()) {
   return script;
 }
 
-// The evidence pointer to a session transcript's latest entry, written with ~ for the home folder.
+// The transcript:<session>@<iso> pointer to a session transcript's latest entry, to the second.
 function transcriptPointer(dir, session) {
   const file = join(dir, `${session}.jsonl`);
   if (!existsSync(file)) throw new Error(`no transcript at ${file}`);
   const ts = readTranscript(file).findLast((e) => typeof e?.timestamp === 'string')?.timestamp;
   if (!ts) throw new Error(`${file} has no timestamped entry`);
-  return `~/.claude/projects/${basename(dir)}/${session}.jsonl @${ts.slice(11, 19)}Z`;
+  return `transcript:${session}@${ts.slice(0, 19)}`;
 }
 
 // Git Bash, not the WSL bash.exe that Windows puts first on PATH.
@@ -55,12 +59,22 @@ function bash() {
   return gitBash;
 }
 
+// Every pointer among the evidence cell's "; "-separated items must parse and resolve (pointer.mjs);
+// items with no `<kind>:` prefix are prose and pass as written. The log is append-only, so a bad
+// pointer is refused before log.sh runs, never fixed after.
+function checkEvidence(evidence, opts) {
+  const problems = evidence.split(';').map((s) => parsePointer(s.trim())).filter(Boolean)
+    .map((p) => resolvePointer(p, opts)?.problem).filter(Boolean);
+  if (problems.length) throw new Error(`evidence: ${problems.join('; ')}`);
+}
+
 function decide({ root, run, cells, home = homedir() }) {
   const script = logScript(home);
   const dir = projectTranscripts(root, home);
   const session = run || defaultRun(root);
   if (!session) throw new Error('no run: pass --run <session-id>, set FACTORY_RUN, or start a run marker (factory/run-marker.mjs)');
   const [phase, decision, why, evidence, result] = cells;
+  checkEvidence(evidence, { root, transcripts: dir, home });
   const pointer = transcriptPointer(dir, session);
   const log = join(root, 'factory', 'decisions.tsv').replace(/\\/g, '/');
   const r = spawnSync(bash(), [script.replace(/\\/g, '/'), log, phase, decision, why, evidence ? `${pointer}; ${evidence}` : pointer, result], {
