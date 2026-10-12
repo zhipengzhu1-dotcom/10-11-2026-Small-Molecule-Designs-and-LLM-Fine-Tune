@@ -38,6 +38,8 @@ export function dataChecks(main) {
     ticket: ['--body', 'docs/agents/ticket-template.md'],
     // Asks git what the pushed commit tracks under research/**/raw/.
     licenses: [],
+    // Every factory/stories/<spec>.tsv against the commit's check scripts and test files.
+    stories: [],
   };
 }
 
