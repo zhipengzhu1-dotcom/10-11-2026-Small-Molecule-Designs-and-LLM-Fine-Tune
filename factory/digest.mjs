@@ -35,6 +35,11 @@ export function capRead(head, items, command, all = false) {
 
 const cut = (line) => (line.length > WIDTH ? `${line.slice(0, WIDTH - 1)}…` : line);
 
+// A report's first line of substance: its status word, any parenthesis after it ("ISSUES (2 of
+// 3):") and the punctuation that follows are left out.
+const gist = (report) => (report ?? '').split('\n')
+  .map((l) => l.replace(/^\s*(PASS|ISSUES|BLOCKED)\b\s*(\([^)]*\))?[\s:.,-]*/, '').trim()).find(Boolean) ?? '';
+
 // The dispatch moment: which standing decisions bind ticket n.
 export function dispatchRead(graph, n, all = false) {
   const bound = graph.binding(n);
@@ -52,8 +57,8 @@ export function dispatchRead(graph, n, all = false) {
 }
 
 // The frontier moment of spec n: the zero-slack tickets, each start before a blocker's merge commit
-// that no standing row explains, and, over the agents of the spec's runs, the hand-backs no later
-// decision or dispatch acted on (ISSUES and BLOCKED first) and each orphaned or doubled stop. What
+// that no standing row explains, and, over the agents of the spec's runs, the hand-backs nothing
+// acted on (graph/causal.mjs; ISSUES and BLOCKED first) and each orphaned or doubled stop. What
 // is ready to start stays with `npm run frontier`.
 export function frontierRead(graph, n, all = false) {
   if (graph.spec !== n) return [`frontier #${n}: no ticket-graph snapshot of spec #${n}; run npm run frontier -- ${n} first`];
@@ -68,7 +73,6 @@ export function frontierRead(graph, n, all = false) {
   if (!early.length && !unacted.length && !stops.length) {
     return [cut(`frontier #${n}: ${open}; no early start, hand-back or stop to flag${slack.length ? `; ${path}` : ''}`)];
   }
-  const gist = (report) => (report ?? '').split('\n').map((l) => l.replace(/^\s*(PASS|ISSUES|BLOCKED)\b[\s:.,-]*/, '').trim()).find(Boolean) ?? '';
   const items = [
     ...(slack.length ? [cut(`  ${path}`)] : []),
     ...early.map((e) => cut(`  early start #${e.ticket}: started at ${e.start}, before #${e.blocker} ${e.merged ? `merged (${e.merged})` : 'merged (not yet)'}`)),
@@ -110,7 +114,6 @@ export function doneRead(graph, n, all = false) {
   const head = `done #${n}: residual doubt ${d.residual}: ${stories}, ${n_(d.challenges.length, 'open challenge')}, ${n_(d.undec.length, 'undec row')}, ${ended}`;
   const of = (status) => d.goals.filter((g) => g.status === status).map((g) => g.story).join(' ');
   const named = new Set(d.goals.flatMap((g) => g.doubts));
-  const gist = (text) => (text ?? '').split('\n').map((l) => l.replace(/^\s*(PASS|ISSUES|BLOCKED)\b[\s:.,-]*/, '').trim()).find(Boolean) ?? '';
   const { unmerged, gates } = d.completion;
   const items = [
     ...(d.listed ? [] : [`  story list: not in the snapshot; run npm run frontier -- ${n} so a story missing from the map shows`]),

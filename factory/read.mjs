@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Event reader. Merges every activity file under <root>/factory/agents/ and the decision log
-// <root>/factory/decisions.tsv into one stream ordered by ts. Tests and the dashboard read this.
+// <root>/factory/decisions.tsv into one stream, the files merged by ts with each file kept in its
+// own order (mergeByTs). Tests and the dashboard read this.
 //
 //   node factory/read.mjs [--root <repo>]      prints the stream as JSON lines
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -9,19 +10,19 @@ import { cli } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
 
 export function readStream(root = defaultRoot()) {
-  const events = [];
+  const files = [];
   const agentsDir = join(root, 'factory', 'agents');
   if (existsSync(agentsDir)) {
     for (const run of readdirSync(agentsDir, { withFileTypes: true })) {
       if (!run.isDirectory()) continue;
       for (const f of readdirSync(join(agentsDir, run.name))) {
-        if (f.endsWith('.jsonl')) events.push(...readActivity(join(agentsDir, run.name, f), run.name, f.slice(0, -6)));
+        if (f.endsWith('.jsonl')) files.push(readActivity(join(agentsDir, run.name, f), run.name, f.slice(0, -6)));
       }
     }
   }
   const decisions = join(root, 'factory', 'decisions.tsv');
-  if (existsSync(decisions)) events.push(...readDecisions(decisions));
-  return sortByTs(events);
+  if (existsSync(decisions)) files.push(readDecisions(decisions));
+  return mergeByTs(files);
 }
 
 // show-me-your-work format: header ts phase decision why evidence result, one row per decision.
@@ -73,11 +74,22 @@ function dropLegacy(e) {
   return rest;
 }
 
-function sortByTs(events) {
-  return events
-    .map((e, i) => ({ e, i, t: Date.parse(e.ts) }))
-    .sort((a, b) => a.t - b.t || a.i - b.i)
-    .map((x) => x.e);
+// Merges the files by ts, but never reorders a file: each one is append-only, so its own order is
+// the truth, and only the files' heads are compared. Order between files is for reading; the node
+// model takes order across agents from dispatches and receipts (graph/causal.mjs), and reads ts
+// only where one clock wrote both sides: the orchestrator's activity files and the decision log.
+function mergeByTs(files) {
+  const heads = files.map(() => 0);
+  const at = (f) => Date.parse(files[f][heads[f]].ts);
+  const out = [];
+  for (;;) {
+    let next = -1;
+    for (let f = 0; f < files.length; f++) {
+      if (heads[f] < files[f].length && (next < 0 || at(f) < at(next))) next = f;
+    }
+    if (next < 0) return out;
+    out.push(files[next][heads[next]++]);
+  }
 }
 
 cli(import.meta.url, { usage: 'node factory/read.mjs [--root <repo>]', options: { root: 'string' } }, ({ root = defaultRoot() }) => {

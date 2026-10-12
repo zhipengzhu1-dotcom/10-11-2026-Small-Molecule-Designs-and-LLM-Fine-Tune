@@ -108,7 +108,9 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
     for (const r of d.relations) if (r.kind !== 'closes' && byLine.has(r.line)) link(`row:${d.line}`, r.kind, `row:${r.line}`, { part: r.part });
   }
   const activities = [...nodes.values()].filter((n) => n.class === 'activity').map((n) => ({ id: n.id, e: n.event }));
-  const challenges = challengesOf(activities, decisions, provenanceOverlay({ nodes: [...nodes.values()] }).staleChecks());
+  const causal = causalOrder(stream, snapshot?.merges);
+  const provenance = provenanceOverlay({ nodes: [...nodes.values()], happensBefore: causal.happensBefore });
+  const challenges = challengesOf(activities, decisions, provenance.staleChecks());
   for (const c of challenges) {
     if (c.source === 'challenge') link(c.node, 'challenges', c.target);
     else for (const r of c.rows) link(c.node, 'challenges', `row:${r}`);
@@ -136,8 +138,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   graph.completion = () => replay().completion;
   graph.overdue = (now, opts) => overdue(events, now, opts);
   Object.assign(graph, assurance(graph, activities, challenges, label, snapshot));
-  Object.assign(graph, causalOrder(stream));
-  Object.assign(graph, provenanceOverlay(graph));
+  Object.assign(graph, causal, provenance);
   return graph;
 }
 

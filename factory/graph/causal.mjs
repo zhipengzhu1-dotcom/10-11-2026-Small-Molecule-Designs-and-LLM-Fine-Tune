@@ -1,38 +1,55 @@
 // The causal-order overlay of the node model (spec #52, stories 31, 32 and 38), behind
-// buildGraph's interface. Pure, with no imports, like graph.mjs.
+// buildGraph's interface. Pure: it imports only the pointer grammar's id rule.
 //
 // Workers talk only to the orchestrator O (a star), so happens-before needs two numbers per event
 // ([Mattern 1989] Thm. 11 on a star): `o`, O's count at the dispatch of the span the event is in,
-// and `own`, the event's count in its agent's history. Both are computed here at read time from
-// the stream's program order, and an agent's history runs across runs, since a resume can come in a
-// later session. `ts` is never read: decision rows record when they were written, not when O acted.
+// and `own`, the event's count in its agent's history. Both are computed here at read time, and an
+// agent's history runs across runs, since a resume can come in a later session.
 //
-// O's events are its activity events and the decision rows, in stream order. A worker's history
-// splits into spans at each agent.start; its k-th span pairs with its k-th dispatch (aligned from
-// the last one when the first dispatch on record is a resume, as for an agent launched before the
-// dispatch hook existed). Messages back to O are receipts, read from what O wrote:
+// Where order comes from (decision row 109). Across agents, never from `ts`: only dispatches and
+// receipts order one agent's events against another's. Within one agent, from its own sequence:
+// each activity file in its own order (readStream never reorders a file), and the files of one
+// agent merged by their `ts`, which one clock wrote. For O that is its activity files and the
+// decision log, written by the one orchestrator process; it is the only place a decision row's `ts`
+// is read, and it orders a row only against O's own events.
+//
+// A worker's history splits into spans at each agent.start; its k-th span pairs with its k-th
+// dispatch (aligned from the last one when the first dispatch on record is a resume, as for an
+// agent launched before the dispatch hook existed). Messages back to O are receipts, read from
+// what O wrote:
 //   - a resume dispatch of agent X receives all of X's history so far;
 //   - an `event:<run>/X:<n>` pointer receives up to that event;
 //   - `agent:X` or `agent-X` (a worktree branch, a subagent transcript), X's activity file, a path X
 //     logged as an artifact or a sha in X's check evidence receives X's history through the latest
 //     span dispatched before the citing event. Paths and shas count with or without their `file:`
 //     or `commit:` prefix, since spec #1's rows predate the pointer grammar.
-// A citation of an event O had not yet dispatched is evidence, not a cause, and is left out.
+// A citation of an event O had not yet dispatched is evidence, not a cause, and is left out. Ids
+// follow the pointer grammar's NAME rule, less a trailing sentence dot.
+//
+// A hand-back (`agent.stop`) is acted on only through (decision row 109):
+//   - a decision row citing it by `event:` or its agent by `agent:`, in any cell;
+//   - a dispatch whose Cause names it, or a resume of its agent;
+//   - a `Merge #<n>` commit of the ticket its span's dispatch served (`merges`). A merge has no
+//     place in the causal order, so it covers every hand-back for its ticket.
+// Every other receipt orders, but acts on nothing: an orchestrator check or challenge citing it,
+// or a row naming its branch, log, a file or a commit.
 //
 //   clock(id)            { agent, o, own } for an event:/row: id, or undefined
 //   happensBefore(a, b)  true when a happened before b
-//   unacted(spec?)       the hand-backs no later decision or dispatch acted on, ISSUES and BLOCKED
-//                        first: [{ id, agent, status, role, ticket, report }]
+//   unacted(spec?)       the hand-backs nothing above acted on, ISSUES and BLOCKED first:
+//                        [{ id, agent, status, role, ticket, report }]
 //   lifecycle(spec?)     each agent's start/stop token replay: a start adds a token, a stop takes
 //                        one. A stop with none to take is the only problem: orphaned before any
 //                        start, else doubled. Resumes, even one logged before the previous stop,
 //                        replay clean: [{ id, agent, kind }]
 // With `spec`, the two lists keep to agents with an event in a run that logged that spec's
 // ticket graph.
+import { NAME } from '../pointer-grammar.mjs';
 
 const O = 'orchestrator';
-const NAME = '[A-Za-z0-9][A-Za-z0-9_-]*';
-const AGENT_ID = new RegExp(`(?<![A-Za-z0-9_])agent[:-](${NAME})`, 'g');
+// An id as the pointer grammar has it, less a trailing dot that ends the sentence citing it.
+const ID = `${NAME}(?<!\\.)`;
+const AGENT_ID = new RegExp(`(?<![A-Za-z0-9_])agent([:-])(${ID})`, 'g');
 const AGENT_FILE = new RegExp(`agents/${NAME}/(${NAME})\\.jsonl`, 'g');
 const EVENT = new RegExp(`event:(${NAME})/(${NAME}):([1-9]\\d*)`, 'g');
 // A sha: 7 to 40 hex digits, at least one a letter and one a digit, not inside a word or an id
@@ -52,7 +69,8 @@ const names = (text, path) => {
 };
 
 // stream: [{ id, e }] in stream order, ids as graph.mjs names them (event:… and row:…).
-export function causalOrder(stream) {
+// merges: the snapshot's [{ ticket, ts, commit }], the integration branch's `Merge #<n>` commits.
+export function causalOrder(stream, merges = []) {
   const clocks = new Map();
   const position = new Map(stream.map((x, i) => [x.id, i]));
   const history = new Map(); // agent -> its [{ id, e }] in program order
@@ -102,23 +120,33 @@ export function causalOrder(stream) {
     const before = (spans.get(agent) ?? []).filter((s) => s.o < at && s.events.length);
     return before.length ? clocks.get(before.at(-1).events.at(-1).id).own : undefined;
   };
-  const receive = (agent, own, at) => {
-    if (agent !== O && own !== undefined) receipts.push({ agent, own, at });
+  // `acts` are the receipts that act on a hand-back (story 31): a decision row's `event:` or
+  // `agent:` citation, a dispatch's Cause and a resume. Anything else O wrote only orders.
+  const acts = [];
+  const receive = (agent, own, at, acting) => {
+    if (agent === O || own === undefined) return;
+    receipts.push({ agent, own, at });
+    if (acting) acts.push({ agent, own });
   };
   for (const { id, e } of ours) {
     const at = clocks.get(id).own;
-    if (e.type === 'dispatch' && e.resume && e.to) receive(e.to, latestBefore(e.to, at), at);
+    const row = e.type === 'decision';
+    if (e.type === 'dispatch' && e.resume && e.to) receive(e.to, latestBefore(e.to, at), at, true);
     const text = [e.decision, e.why, e.evidence, e.result, e.cause, e.target].filter((t) => typeof t === 'string').join(' ');
     for (const [, run, agent, line] of matches(EVENT, text)) {
       const c = clocks.get(`event:${run}/${agent}:${line}`);
-      if (c && c.o < at) receive(agent, c.own, at);
+      const cause = e.type === 'dispatch' && typeof e.cause === 'string' && e.cause.includes(`event:${run}/${agent}:${line}`);
+      if (c && c.o < at) receive(agent, c.own, at, row || cause);
     }
-    const cited = new Set([...matches(AGENT_ID, text), ...matches(AGENT_FILE, text)].map((m) => m[1]));
-    for (const [path, agents] of paths) if (names(text, path)) for (const a of agents) cited.add(a);
+    const cited = new Map(); // agent -> whether the citation acts on its hand-backs
+    const cite = (agent, acting) => cited.set(agent, cited.get(agent) || acting);
+    for (const [, sep, agent] of matches(AGENT_ID, text)) cite(agent, row && sep === ':');
+    for (const [, agent] of matches(AGENT_FILE, text)) cite(agent, false);
+    for (const [path, agents] of paths) if (names(text, path)) for (const a of agents) cite(a, false);
     for (const [sha] of matches(SHA, text)) {
-      for (const [theirs, agents] of shas) if (theirs.startsWith(sha) || sha.startsWith(theirs)) for (const a of agents) cited.add(a);
+      for (const [theirs, agents] of shas) if (theirs.startsWith(sha) || sha.startsWith(theirs)) for (const a of agents) cite(a, false);
     }
-    for (const agent of cited) if (history.has(agent)) receive(agent, latestBefore(agent, at), at);
+    for (const [agent, acting] of cited) if (history.has(agent)) receive(agent, latestBefore(agent, at), at, acting);
   }
 
   // The earliest count of O at which it has seen `agent`'s history through `own`.
@@ -138,17 +166,18 @@ export function causalOrder(stream) {
     return (agent) => history.get(agent).some((x) => runs.has(x.e.run));
   };
 
-  const ACTS = new Set(['decision', 'dispatch']);
+  const merged = new Set((merges ?? []).map((m) => m.ticket));
   const unacted = (spec) => {
     const keep = inScope(spec);
-    const lastActing = Math.max(0, ...ours.filter((x) => ACTS.has(x.e.type)).map((x) => clocks.get(x.id).own));
     const out = [];
     for (const [agent, list] of spans) {
       if (!keep(agent)) continue;
       for (const span of list) {
+        const d = span.dispatch?.e;
+        if (d?.ticket !== undefined && merged.has(d.ticket)) continue; // its ticket's Merge #<n>
         for (const { id, e } of span.events) {
-          if (e.type !== 'agent.stop' || seenAt(agent, clocks.get(id).own) <= lastActing) continue;
-          const d = span.dispatch?.e;
+          const own = clocks.get(id).own;
+          if (e.type !== 'agent.stop' || acts.some((a) => a.agent === agent && a.own >= own)) continue;
           out.push({ id, agent, status: e.status ?? 'unknown', role: d?.role ?? e.role, ticket: d?.ticket, report: e.report });
         }
       }

@@ -242,6 +242,26 @@ test('decide refuses an evidence item of an unknown pointer kind, or a malformed
   assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
 });
 
+test('decide takes event: and agent: pointers in the evidence when the stream holds them, and refuses one it does not', () => {
+  const s = setup();
+  const dir = join(s.root, 'factory', 'agents', 'run-1');
+  mkdirSync(dir, { recursive: true });
+  const line = (agent, type, fields) => JSON.stringify({ ts: '2026-10-12T02:00:00.000Z', run: 'run-1', agent, type, ...fields }) + '\n';
+  writeFileSync(join(dir, 'orchestrator.jsonl'), line('orchestrator', 'dispatch', { to: 'a7', role: 'implementer', ticket: 44, description: 'implementer #44 x' }));
+  writeFileSync(join(dir, 'a1.b.jsonl'), line('a1.b', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }) + line('a1.b', 'agent.stop', { role: 'general-purpose', status: 'ISSUES' }));
+  const evidence = (e) => [ROW[0], ROW[1], ROW[2], e, ROW[4]];
+
+  const ok = decide(s, ['--run', SESSION, ...evidence('event:run-1/a1.b:2; agent:a1.b; agent:a7; issue:44')]);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(cellsOf(s)[3].endsWith('event:run-1/a1.b:2; agent:a1.b; agent:a7; issue:44'), true);
+
+  const bad = decide(s, ['--run', SESSION, ...evidence('event:run-1/a1.b:3; agent:nobody; event:run-1/a1.b')]);
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /event:run-1\/a1\.b:3 is not in the stream/);
+  assert.match(bad.stderr, /agent:nobody is not in the stream/);
+  assert.match(bad.stderr, /event:run-1\/a1\.b is not an event; write event:<run>\/<agent>:<line>/);
+});
+
 const hasGit = spawnSync('git', ['--version']).status === 0;
 test('decide refuses with exit 2, and writes nothing, when a commit: pointer names no commit of the repo', { skip: !hasGit && 'git is not installed' }, () => {
   const s = setup();

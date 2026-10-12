@@ -65,7 +65,10 @@ story	kind	name
 29	test	the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec
 29	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 31	test	a hand-back no later decision or dispatch acted on is listed, ISSUES and BLOCKED before the rest
-31	test	a later row or dispatch acts on a hand-back by citing it: its event, agent, branch or log, a file it wrote, a commit it checked, or a resume
+31	test	a hand-back is acted on by a row citing its event or agent, a dispatch whose Cause names it, a resume, or its ticket's Merge commit
+31	test	only those count: an orchestrator check or challenge citing a hand-back, or a row naming its branch, log, file or commit, does not act on it
+31	test	decide takes event: and agent: pointers in the evidence when the stream holds them, and refuses one it does not
+38	test	an agent: or event: citation of a name with a dot still counts, as the pointer grammar allows
 31	test	for a spec, both lists keep to agents with an event in a run that logged its ticket graph, wherever the agent ran before
 31	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
 32	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
@@ -140,7 +143,6 @@ story	kind	name
 37	test	the snapshot lists the spec's user stories, the numbered items under its User Stories heading, so the done read sees a story missing from the map
 42	test	the done read on a clean fixture run prints one line
 36	test	a file written by two agents is reported with both writes; one agent rewriting its own file is not
-36	test	a check older than its artifact's last write is stale; a check re-run after the write is not
 36	test	a check naming no written file, or a file only as part of a longer path, is never stale
 36	test	both queries narrow to the given paths, which match an artifact logged by its absolute path too
 36	test	files written twice and stale checks among the changed files are listed, each on its line
@@ -172,3 +174,6 @@ story	kind	name
 26	test	a failed check attacks the rows of its ticket's phase and the rows citing it until a later pass: the #4 close with an open defeater
 27	test	a partial supersede takes over no whole-row attack, since attacks do not name parts
 37	test	a failed check attacks the rows of its ticket's phase and the rows citing it until a later pass: the #4 close with an open defeater
+38	test	through readStream, happens-before ignores ts across agents: each file keeps its own order, and only the orchestrator's activity file and decision log interleave by ts
+36	test	a check that provably ran before its artifact's last write is stale; a check re-run after the write is not
+36	test	a check concurrent with a write is not stale, whatever their ts: only happens-before counts

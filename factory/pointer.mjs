@@ -8,7 +8,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { gitRun } from './git.mjs';
 
-export { parsePointer, parseTarget } from './pointer-grammar.mjs';
+export { parseEvidence, parsePointer, parseTarget } from './pointer-grammar.mjs';
 
 // Why a file pointer's line range falls outside a file's text, or null. `text` is read lazily.
 export function lineProblem(p, text) {

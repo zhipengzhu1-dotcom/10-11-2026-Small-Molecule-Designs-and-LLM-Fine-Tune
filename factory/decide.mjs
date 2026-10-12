@@ -33,7 +33,8 @@
 //           pointer grammar (pointer.mjs), at the transcript's latest entry, to the second. Rows
 //           before spec #52 carry the older "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z".
 // Evidence: each "; "-separated item that starts with `<kind>:` is a pointer and must parse and
-//           resolve (pointer.mjs, the trail check's grammar); other items are prose.
+//           resolve (pointer.mjs, the trail check's grammar), or be an event:<run>/<agent>:<line>
+//           or agent:<id> that the stream holds; other items are prose.
 // Exit:     2 when the row cannot be logged (a bad argument, an evidence pointer that does not
 //           resolve, no pstack, no transcript, log.sh failed). Nothing is written then.
 import { spawnSync } from 'node:child_process';
@@ -45,7 +46,7 @@ import { cli, UsageError } from './cli.mjs';
 import { buildGraph } from './graph.mjs';
 import { createJudge } from './judge.mjs';
 import { challenged, defaultRoot, plainName } from './log.mjs';
-import { parsePointer, resolvePointer } from './pointer.mjs';
+import { parseEvidence, resolvePointer } from './pointer.mjs';
 import { precedentRead } from './precedent.mjs';
 import { readStream } from './read.mjs';
 import { defaultRun } from './run-marker.mjs';
@@ -83,11 +84,21 @@ function bash() {
 }
 
 // Every pointer among the evidence cell's "; "-separated items must parse and resolve (pointer.mjs);
-// items with no `<kind>:` prefix are prose and pass as written. The log is append-only, so a bad
-// pointer is refused before log.sh runs, never fixed after.
+// items with no `<kind>:` prefix are prose and pass as written. `event:<run>/<agent>:<line>` and
+// `agent:<id>` (parseEvidence) must name an event or agent of the stream, so a row can cite the
+// hand-back it acts on. The log is append-only, so a bad pointer is refused before log.sh runs,
+// never fixed after.
 function checkEvidence(evidence, opts) {
-  const problems = evidence.split(';').map((s) => parsePointer(s.trim())).filter(Boolean)
-    .map((p) => resolvePointer(p, opts)?.problem).filter(Boolean);
+  let events;
+  const inStream = (p) => {
+    events ??= readStream(opts.root);
+    const found = p.kind === 'agent'
+      ? events.some((e) => e.agent === p.agent || (e.type === 'dispatch' && e.to === p.agent))
+      : events.filter((e) => e.run === p.run && e.agent === p.agent).length >= p.line;
+    return found ? null : { problem: `${p.text} is not in the stream` };
+  };
+  const problems = evidence.split(';').map((s) => parseEvidence(s.trim())).filter(Boolean)
+    .map((p) => (!p.problem && ['event', 'agent'].includes(p.kind) ? inStream(p) : resolvePointer(p, opts))?.problem).filter(Boolean);
   if (problems.length) throw new Error(`evidence: ${problems.join('; ')}`);
 }
 

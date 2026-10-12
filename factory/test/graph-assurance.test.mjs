@@ -107,7 +107,8 @@ test('ISSUES, BLOCKED and unknown stops and fetch.failed are doubts until a late
 
 test('a check that ran before its file\'s last write is an open undercut doubt on its story, until the check runs again', () => {
   const write = (s, agent) => ev(s, 'r1', agent, 'artifact', { path: 'research/s1/brief.md', kind: 'notes' });
-  const events = [snap(0, { stories: [1] }), write(1, 'a1'), check(2, 'a1', 'brief', 'pass', { evidence: 'file:research/s1/brief.md: 67 rows' }), write(3, 'a2')];
+  // a1's own rewrite comes after its check in a1's own order, so the check provably ran before it.
+  const events = [snap(0, { stories: [1] }), write(1, 'a1'), check(2, 'a1', 'brief', 'pass', { evidence: 'file:research/s1/brief.md: 67 rows' }), write(3, 'a1')];
   const g = graphOf(events, { map: map([1, 'check', 'brief']), merges: [] });
   const stale = 'stale:event:r1/a1:2:file:research/s1/brief.md';
   assert.deepEqual(g.challenges(52).filter((c) => c.open).map((c) => [c.id, c.source, c.kind, c.target]), [[stale, 'stale', 'undercut', 'file:research/s1/brief.md']]);

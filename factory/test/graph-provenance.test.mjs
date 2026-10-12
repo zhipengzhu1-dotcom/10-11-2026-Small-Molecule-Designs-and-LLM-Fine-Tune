@@ -11,6 +11,8 @@ const T0 = Date.parse('2026-10-12T09:00:00Z');
 const ev = (s, agent, type, fields = {}) => ({ ts: new Date(T0 + s * 1000).toISOString(), run: 'r1', agent, type, ...fields });
 const wrote = (s, agent, path) => ev(s, agent, 'artifact', { path, kind: 'code' });
 const checked = (s, agent, name, evidence, result = 'pass') => ev(s, agent, 'check', { name, result, evidence });
+const dispatch = (s, to, fields = {}) => ev(s, 'orchestrator', 'dispatch', { to, role: 'implementer', ticket: 69, description: 'implementer #69 x', ...fields });
+const started = (s, agent) => ev(s, agent, 'agent.start', { role: 'general-purpose', parent: 'orchestrator' });
 
 test('a file written by two agents is reported with both writes; one agent rewriting its own file is not', () => {
   const graph = buildGraph([
@@ -26,42 +28,63 @@ test('a file written by two agents is reported with both writes; one agent rewri
   }]);
 });
 
-test('a check older than its artifact\'s last write is stale; a check re-run after the write is not', () => {
+test('a check that provably ran before its artifact\'s last write is stale; a check re-run after the write is not', () => {
   const graph = buildGraph([
-    wrote(1, 'impl', 'factory/x.mjs'),
-    checked(2, 'orchestrator', 'tests', 'file:factory/x.mjs: 3/3 pass'),
-    wrote(3, 'impl', 'factory/y.mjs'),
-    checked(4, 'merger', 'lint', 'factory/y.mjs:12 clean'),
-    wrote(5, 'impl', 'factory/x.mjs'),
-    wrote(6, 'impl', 'factory/y.mjs'),
-    checked(7, 'merger', 'lint', 'factory/y.mjs clean again'),
+    dispatch(1, 'impl'),
+    started(2, 'impl'),
+    wrote(3, 'impl', 'factory/x.mjs'),
+    wrote(4, 'impl', 'factory/y.mjs'),
+    checked(5, 'orchestrator', 'tests', 'file:factory/x.mjs: 3/3 pass'), // O read impl's x.mjs
+    checked(6, 'orchestrator', 'lint', 'factory/y.mjs:12 clean'),
+    dispatch(7, 'impl', { resume: true }), // so impl's next writes come after both checks
+    started(8, 'impl'),
+    wrote(9, 'impl', 'factory/x.mjs'),
+    wrote(10, 'impl', 'factory/y.mjs'),
+    checked(11, 'orchestrator', 'lint', 'factory/y.mjs clean again'),
   ]);
   assert.deepEqual(graph.staleChecks(), [{
-    check: 'event:r1/orchestrator:1',
+    check: 'event:r1/orchestrator:2',
     name: 'tests',
     result: 'pass',
     path: 'factory/x.mjs',
-    write: 'event:r1/impl:3',
+    write: 'event:r1/impl:5',
   }]);
+});
+
+test('a check concurrent with a write is not stale, whatever their ts: only happens-before counts', () => {
+  // impl was dispatched before the check and wrote after it by the clock, but nothing orders the two.
+  const events = [
+    dispatch(1, 'impl'),
+    checked(2, 'orchestrator', 'tests', 'file:factory/x.mjs: 3/3 pass'),
+    started(3, 'impl'),
+    wrote(4, 'impl', 'factory/x.mjs'),
+  ];
+  assert.deepEqual(buildGraph(events).staleChecks(), []);
+  const resumed = buildGraph([...events, dispatch(5, 'impl', { resume: true }), started(6, 'impl'), wrote(7, 'impl', 'factory/x.mjs')]);
+  assert.deepEqual(resumed.staleChecks().map((s) => [s.check, s.write]), [['event:r1/orchestrator:2', 'event:r1/impl:4']]);
 });
 
 test('a check naming no written file, or a file only as part of a longer path, is never stale', () => {
   const graph = buildGraph([
     checked(1, 'orchestrator', 'tests', 'commit:58e6b65 463/463 pass'),
     checked(2, 'orchestrator', 'notes', 'docs/factory/x.mjs and factory/x.mjsx'),
-    wrote(3, 'impl', 'factory/x.mjs'),
+    dispatch(3, 'impl'),
+    started(4, 'impl'),
+    wrote(5, 'impl', 'factory/x.mjs'),
   ]);
   assert.deepEqual(graph.staleChecks(), []);
 });
 
 test('both queries narrow to the given paths, which match an artifact logged by its absolute path too', () => {
   const graph = buildGraph([
-    wrote(1, 'a', 'C:/repo/factory/x.mjs'),
-    wrote(2, 'b', 'factory/x.mjs'),
-    checked(3, 'orchestrator', 'tests', 'factory/z.mjs ok'),
-    wrote(4, 'a', 'factory/z.mjs'),
-    wrote(5, 'a', 'factory/w.mjs'),
-    wrote(6, 'b', 'factory/w.mjs'),
+    checked(1, 'orchestrator', 'tests', 'factory/z.mjs ok'),
+    dispatch(2, 'a'),
+    started(3, 'a'),
+    wrote(4, 'a', 'C:/repo/factory/x.mjs'),
+    wrote(5, 'b', 'factory/x.mjs'),
+    wrote(6, 'a', 'factory/z.mjs'),
+    wrote(7, 'a', 'factory/w.mjs'),
+    wrote(8, 'b', 'factory/w.mjs'),
   ]);
   assert.deepEqual(graph.writtenTwice(['factory/x.mjs']).map((w) => [w.path, w.agents]), [['factory/x.mjs', ['a', 'b']]]);
   assert.deepEqual(graph.writtenTwice(['factory/z.mjs']), []);
