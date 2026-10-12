@@ -7,7 +7,7 @@ import { FACTORY, REPO, tempRoot } from './helpers.mjs';
 
 const GIT_CONFIG_HOOK = join(FACTORY, 'hooks', 'git-config.mjs');
 
-// The hook asks git which repo a write lands in, so its tests need git (the Docker CI image has it).
+// The hook asks git which repo a write lands in, so its tests need git (the CI image has it).
 const hasGit = spawnSync('git', ['--version']).status === 0;
 const test = (name, fn) => nodeTest(name, { skip: !hasGit && 'git is not installed' }, fn);
 

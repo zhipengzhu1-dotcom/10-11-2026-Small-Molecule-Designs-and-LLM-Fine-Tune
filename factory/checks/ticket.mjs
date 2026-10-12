@@ -6,8 +6,7 @@
 //   node factory/checks/ticket.mjs [--root <repo>] [--run <id>] [--agent <id>] [--body <ticket.md>]
 //
 // The body is read from --body, else from stdin (`gh issue view 46 --json body -q .body | node
-// factory/checks/ticket.mjs`). Run and agent default to FACTORY_RUN (else the marked run) and FACTORY_AGENT, else run
-// "manual" and agent "orchestrator".
+// factory/checks/ticket.mjs`). Run and agent default as in check.mjs.
 //
 // A refused name is a Markdown file whose name, split on anything but letters and digits, has a
 // word REFUSED matches: `summary.md`, `SUMMARY.md`, `summaries.md` and `final-report.md` fail;

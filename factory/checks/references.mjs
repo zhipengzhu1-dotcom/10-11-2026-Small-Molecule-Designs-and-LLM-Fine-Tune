@@ -6,8 +6,7 @@
 //                                      [--tex <main.tex>] [--catalog <catalog.tsv>]
 //
 // --tex defaults to <root>/research/s1/raw/arxiv/latex/main.tex and --catalog to
-// <root>/research/refs/catalog.tsv. Run and agent default to FACTORY_RUN (else the marked run) and FACTORY_AGENT,
-// else run "manual" and agent "orchestrator".
+// <root>/research/refs/catalog.tsv. Run and agent default as in check.mjs.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkCli, shown } from './check.mjs';

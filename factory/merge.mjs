@@ -42,7 +42,7 @@ function gitWithMessage(root, message, args, rest) {
 
 const trailers = (message = '') => message.split(/\r?\n/).filter((l) => /^Co-Authored-By:/i.test(l.trim())).map((l) => l.trim());
 
-// Commits the factory paths, and nothing else, when they have changes. Returns whether it committed.
+// Commits the factory paths, and nothing else, when they changed. Returns whether it committed.
 function commitFactory(root, run, coAuthors) {
   const paths = FACTORY_PATHS.filter((p) => existsSync(join(root, p)));
   if (!paths.length) return false;
