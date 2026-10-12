@@ -36,7 +36,8 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join } from 'node:path';
+import { projectTranscripts } from '../transcript.mjs';
 import { checkCli } from './check.mjs';
 
 const tsvLines = (text) => text.split(/\r?\n/).slice(1).filter((l) => l !== '').map((l) => l.split('\t'));
@@ -49,15 +50,6 @@ function readLog(text) {
 }
 
 const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
-
-// Claude Code keeps a project's transcripts under ~/.claude/projects/<main checkout's path, every
-// character other than a letter or digit turned into "-">. From a git worktree, the main checkout
-// is the folder holding the shared .git directory.
-function defaultTranscripts(root) {
-  const common = git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir');
-  const main = common.status === 0 ? dirname(common.stdout.trim()) : resolve(root);
-  return join(homedir(), '.claude', 'projects', resolve(main).replace(/[^A-Za-z0-9]/g, '-'));
-}
 
 // Transcripts run to megabytes and many pointers name the same one, so each is read once.
 const transcripts = new Map();
@@ -202,7 +194,7 @@ function rowProblems(row, treeRoot) {
 }
 
 function runCheck(opts) {
-  opts = { transcripts: defaultTranscripts(opts.root), ...opts };
+  opts = { transcripts: projectTranscripts(opts.root), ...opts };
   const auditDir = join(opts.root, 'factory', 'audit');
   const text = readFileSync(join(opts.root, 'factory', 'decisions.tsv'), 'utf8');
   const log = readLog(text);
