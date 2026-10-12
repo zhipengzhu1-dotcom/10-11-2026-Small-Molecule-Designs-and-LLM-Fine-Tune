@@ -41,12 +41,16 @@ export function hook(payload, extraEnv = {}, cwd = tempRoot()) {
   return spawnSync(process.execPath, [HOOK], { env: env(extraEnv), input, cwd, encoding: 'utf8' });
 }
 
-// Starts the fetch page CLI on a free port, the way a user would, and resolves once it prints
-// its URL. Call stop() when done.
+// Starts a server CLI (the fetch page or the viewer) on a free port, the way a user would, and
+// resolves once it prints its URL. Call stop() when done.
 export const FETCH_PAGE = join(FACTORY, 'fetch-page.mjs');
-export function startFetchPage(args = [], extraEnv = {}) {
+export const VIEWER = join(FACTORY, 'viewer.mjs');
+export const startFetchPage = (args = [], extraEnv = {}) => startServer(FETCH_PAGE, args, extraEnv);
+export const startViewer = (args = [], extraEnv = {}) => startServer(VIEWER, args, extraEnv);
+
+function startServer(script, args, extraEnv) {
   return new Promise((resolve, reject) => {
-    const p = spawn(process.execPath, [FETCH_PAGE, '--port', '0', ...args], { env: env(extraEnv) });
+    const p = spawn(process.execPath, [script, '--port', '0', ...args], { env: env(extraEnv) });
     let out = '';
     let err = '';
     p.stderr.on('data', (d) => (err += d));
@@ -55,7 +59,7 @@ export function startFetchPage(args = [], extraEnv = {}) {
       const m = /(http:\/\/127\.0\.0\.1:\d+)\//.exec(out);
       if (m) resolve({ url: m[1], stop: () => new Promise((r) => { p.on('close', r); p.kill(); }) });
     });
-    p.on('close', (status) => reject(new Error(`fetch page exited ${status}: ${err}`)));
+    p.on('close', (status) => reject(new Error(`${script} exited ${status}: ${err}`)));
   });
 }
 
