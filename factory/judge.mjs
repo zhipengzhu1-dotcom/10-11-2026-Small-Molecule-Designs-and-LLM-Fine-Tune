@@ -16,6 +16,9 @@
 export const JUDGE_MODEL = 'qwen3.5:4b';
 const HOST = 'http://127.0.0.1:11434';
 const VERDICTS = ['contradicts', 'consistent'];
+// A pair fits easily. Without it Ollama loads the model's full 262,144-token context: qwen3.5:4b
+// then takes 12.5 GiB (nvidia-smi delta), over the 8 GiB cap; at 2k it takes 3.9 GiB.
+const NUM_CTX = 4096;
 
 // Ollama structured output: the answer must be this JSON object.
 const FORMAT = {
@@ -48,7 +51,7 @@ export function createJudge({ model = JUDGE_MODEL, host, fetch = globalThis.fetc
           stream: false,
           think: false,
           format: FORMAT,
-          options: { temperature: 0 },
+          options: { temperature: 0, num_ctx: NUM_CTX },
         }),
         signal: AbortSignal.timeout(timeoutMs),
       });

@@ -89,9 +89,12 @@ story	kind	name
 45	test	precedents are the 3 nearest earlier rows that still stand: an out row is never one
 45	test	the judge sees only the 3 nearest rows that still stand, one call per pair, and never an out row
 45	test	a corrects pair is judged like any other but never reported as a contradiction
+45	test	each reviewed row is judged against its 3 nearest earlier rows that still stand, one call per pair, never a later or an out row
+45	test	a contradiction the later row already marks, a corrects pair among them, is judged but never flagged
 46	test	the graph module is pure: it, the pointer grammar and every module they import import no built-in or package, so no file, network or model code
 46	test	the judge asks local qwen3.5:4b about one pair per call, with thinking off, and returns its verdict and reason
 46	test	the judge takes its host from the option, else FACTORY_JUDGE_HOST, and throws on an HTTP error or a refused connection
+46	test	the review lists each flagged pair with the judge's label under a "reviewed by" line naming the judge
 51	test	each decision in the tree carries the graph module's label and relations
 51	test	the state counts the decisions in, out and undec
 51	test	GET /state serves each decision with its label and relations from the graph module
