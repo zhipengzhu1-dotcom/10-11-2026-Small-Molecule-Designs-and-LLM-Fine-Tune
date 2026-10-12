@@ -64,6 +64,9 @@ story	kind	name
 28	test	a corrects row leaves the row it corrects in, and superseding the correction changes nothing for that row
 29	test	the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec
 29	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
+33	test	an agent running past its role's bound from earlier runs is flagged; one whose role has no history is not
+33	test	a resumed agent is timed from its latest start, and history comes only from other runs
+33	test	with a run given, only that run's agents are flagged: an earlier run's agent that never stopped is left out
 39	test	the dispatch read prints one line when no standing decision binds the ticket
 34	test	on spec #1's replaced rows, each recorded supersede or withdraw names its target as the rank-1 earlier neighbour
 34	test	similarity is exact cosine: a text scores 1 against itself, 0 against a text sharing no term, and ranks highest first
@@ -77,6 +80,8 @@ story	kind	name
 40	test	decide prints the precedent check before it writes the row, flagging a standing row the judge finds contradicted
 40	test	decide still writes the row when the judge is unreachable, and says so
 40	test	decide --dry-run prints the precedent check and writes nothing
+41	test	an agent running well past its role's earlier sojourns adds one line naming it, its role and ticket
+41	test	the meter's output is unchanged when no agent is overdue: a running agent whose role has no history adds nothing
 42	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 42	test	the dispatch read prints one line when no standing decision binds the ticket
 43	test	the digest never writes: the factory root is the same after a read
