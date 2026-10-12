@@ -13,26 +13,12 @@
 // word in REFUSED: `summary.md`, `SUMMARY.md` and `final-report.md` fail; `notes.md`, `scout.md`
 // and `review-a.md` pass. Each one is named with its line.
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { defaultRoot, writeEvent } from '../log.mjs';
+import { checkCli } from './check.mjs';
 
 // Report-like words Claude Code refuses in a subagent's .md writes. `summary` was refused for all
 // 10 readers of #10 (run 14c93a90, see skills/orchestrator-lessons); the rest are the other
 // report-like kinds Claude Code's subagent instructions name beside it.
 export const REFUSED = ['summary', 'report', 'findings', 'analysis'];
-
-function parseArgs(argv, env = process.env) {
-  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator' };
-  for (let i = 0; i < argv.length; i++) {
-    const name = argv[i].replace(/^--/, '');
-    if (!['root', 'run', 'agent', 'body'].includes(name) || i + 1 >= argv.length) {
-      throw new Error(`unknown or incomplete argument: ${argv[i]}`);
-    }
-    opts[name] = argv[++i];
-  }
-  return opts;
-}
 
 // A Markdown file path as a ticket writes it: anything up to `.md` that isn't a space, quote,
 // bracket or table pipe.
@@ -53,24 +39,13 @@ export function refusedNames(text) {
 
 export function runCheck(opts) {
   const text = readFileSync(opts.body ?? 0, 'utf8');
-  const found = refusedNames(text);
-  const result = found.length ? 'fail' : 'pass';
+  const problems = refusedNames(text).map((f) => `line ${f.line}: ${f.path} is refused to subagents ("${f.word}"); name it notes.md or <role>.md`);
   const where = opts.body ? opts.body.replace(/\\/g, '/') : 'stdin';
-  const evidence = found.length
-    ? `${where}: ${found.map((f) => `line ${f.line}: ${f.path} is refused to subagents ("${f.word}"); name it notes.md or <role>.md`).join('; ')}`
-    : `${where}: no refused deliverable name`;
-  writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields: { name: 'ticket', result, evidence } });
-  return { result, evidence };
+  return { evidence: `${where}: ${problems.length ? problems.join('; ') : 'no refused deliverable name'}`, problems };
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  try {
-    const { result, evidence } = runCheck(parseArgs(process.argv.slice(2)));
-    process.stdout.write(`ticket: ${result}: ${evidence}\n`);
-    process.exit(result === 'pass' ? 0 : 1);
-  } catch (err) {
-    process.stderr.write(`ticket.mjs: ${err.message}\n`);
-    process.exit(2);
-  }
-}
+checkCli(import.meta.url, {
+  name: 'ticket',
+  usage: 'node factory/checks/ticket.mjs [--root <repo>] [--run <id>] [--agent <id>] [--body <ticket.md>]',
+  options: { body: 'string' },
+}, runCheck);

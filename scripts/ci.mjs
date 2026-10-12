@@ -15,6 +15,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cli, UsageError } from '../factory/cli.mjs';
 
 // The full Debian image, not alpine: it ships git, which the trail check's tests need.
 const IMAGE = 'node:24.15.0';
@@ -95,23 +96,20 @@ function checkCommit(rev) {
   }
 }
 
-function main(argv) {
+function main({ rev, 'pre-push': prePush }) {
+  if (rev !== undefined && prePush) throw new UsageError('--rev and --pre-push do not go together');
   let problems;
-  if (argv[0] === '--pre-push') {
+  if (prePush) {
     const revs = [...new Set(pushedCommits(readFileSync(0, 'utf8')))];
     problems = revs.flatMap(checkCommit);
-  } else if (argv[0] === '--rev' && argv[1]) {
-    problems = checkCommit(argv[1]);
-  } else if (!argv.length) {
-    problems = runTests(repo);
+  } else if (rev !== undefined) {
+    problems = checkCommit(rev);
   } else {
-    console.error('usage: node scripts/ci.mjs [--rev <commit> | --pre-push]');
-    return 2;
+    problems = runTests(repo);
   }
   for (const p of problems) console.error(`ci: ${p}`);
   console.log(problems.length ? 'ci: FAIL' : 'ci: PASS');
   return problems.length ? 1 : 0;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) process.exit(main(process.argv.slice(2)));
+cli(import.meta.url, { usage: 'node scripts/ci.mjs [--rev <commit> | --pre-push]', options: { rev: 'string', 'pre-push': 'flag' } }, main);
