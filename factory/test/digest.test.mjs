@@ -136,7 +136,7 @@ test('the frontier read is one line when every early start has a standing row th
   const dir = frontierRoot({ ...SPEC52, rows: [['project/implement-spec/ticket-67', 'started #67 before #63 merged: its interface is fixed', 'adopted']] });
   const r = digest(dir, 'frontier', '52');
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(r.stdout, 'frontier #52: 2 open tickets; zero slack (critical path of 2): #67 #70; no undocumented early start\n');
+  assert.equal(r.stdout, 'frontier #52: 2 open tickets; no early start, hand-back or stop to flag; zero slack (critical path of 2): #67 #70\n');
 });
 
 test('the frontier read says so when spec has no ticket-graph snapshot, or every ticket merged', () => {
@@ -207,6 +207,64 @@ test('the done read lists stories with no evidence, open challenges, undec rows 
     '  c1 undercut challenge on file:factory/graph.mjs: the graph changed after the last test run',
     '  undec row:2: option A',
     '  undec row:3: option B',
+    '',
+  ].join('\n'));
+});
+
+// A factory root whose activity files hold `events` (each filed under its own run and agent) and
+// whose decision log holds `rows` ([decision, evidence], from line 2).
+function streamRoot(events, rows = []) {
+  const dir = tempRoot();
+  const files = new Map();
+  for (const e of events) {
+    const file = join(dir, 'factory', 'agents', e.run, `${e.agent}.jsonl`);
+    files.set(file, (files.get(file) ?? '') + JSON.stringify(e) + '\n');
+  }
+  for (const [file, text] of files) {
+    mkdirSync(join(file, '..'), { recursive: true });
+    writeFileSync(file, text);
+  }
+  const lines = rows.map(([decision, evidence], i) => [`2026-10-12T10:${String(i).padStart(2, '0')}:00Z`, 'project/x', decision, 'w', evidence, 'adopted'].join('\t'));
+  writeFileSync(join(dir, 'factory', 'decisions.tsv'), [HEADER, ...lines, ''].join('\n'));
+  return dir;
+}
+const at = (s) => `2026-10-12T09:${String(s).padStart(2, '0')}:00.000Z`;
+const o = (s, type, fields) => ({ ts: at(s), run: 'r1', agent: 'orchestrator', type, ...fields });
+const a = (s, agent, type, fields) => ({ ts: at(s), run: 'r1', agent, type, ...fields });
+const snapshot = o(0, 'ticket.graph', { spec: 52, tickets: [{ number: 66, state: 'OPEN', status: 'ready', blockers: [] }] });
+
+test('the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean', () => {
+  const dir = streamRoot([
+    snapshot,
+    o(1, 'dispatch', { to: 'a1', role: 'implementer', ticket: 66, description: 'implementer #66 causal order' }),
+    a(2, 'a1', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    a(3, 'a1', 'agent.stop', { role: 'general-purpose', status: 'PASS', report: 'PASS: done' }),
+  ], [['merged #66', 'worktree-agent-a1']]);
+  const r = digest(dir, 'frontier', '52');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, 'frontier #52: 1 open ticket; no early start, hand-back or stop to flag; zero slack (critical path of 1): #66\n');
+});
+
+test('the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops', () => {
+  const dir = streamRoot([
+    snapshot,
+    o(1, 'dispatch', { to: 'a1', role: 'implementer', ticket: 66, description: 'implementer #66 causal order' }),
+    o(2, 'dispatch', { to: 'a2', role: 'audit', description: 'audit #- trail rows' }),
+    a(3, 'a2', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    a(4, 'a2', 'agent.stop', { role: 'general-purpose', status: 'PASS', report: 'PASS\nall rows audited' }),
+    a(5, 'a2', 'agent.stop', { role: 'general-purpose', status: 'PASS' }), // a stop from before reports were logged
+    a(6, 'a1', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    a(7, 'a1', 'agent.stop', { role: 'general-purpose', status: 'ISSUES', report: 'ISSUES: the merge test fails on Windows\nmore' }),
+  ]);
+  const r = digest(dir, 'frontier', '52');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, [
+    'frontier #52: 1 open ticket, 1 with zero slack, 3 hand-backs not acted on, 1 orphaned or doubled stop',
+    '  zero slack (critical path of 1): #66',
+    '  event:r1/a1:2 ISSUES, implementer #66: the merge test fails on Windows',
+    '  event:r1/a2:2 PASS, audit #-: all rows audited',
+    '  event:r1/a2:3 PASS, audit #-',
+    '  event:r1/a2:3 doubled stop of agent a2',
     '',
   ].join('\n'));
 });

@@ -64,9 +64,18 @@ story	kind	name
 28	test	a corrects row leaves the row it corrects in, and superseding the correction changes nothing for that row
 29	test	the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec
 29	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
+31	test	a hand-back no later decision or dispatch acted on is listed, ISSUES and BLOCKED before the rest
+31	test	a later row or dispatch acts on a hand-back by citing it: its event, agent, branch or log, a file it wrote, a commit it checked, or a resume
+31	test	for a spec, both lists keep to agents with an event in a run that logged its ticket graph, wherever the agent ran before
+31	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
+32	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
+32	test	an orphaned stop and a doubled stop are reported, and nothing else
+32	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
 33	test	an agent running past its role's bound from earlier runs is flagged; one whose role has no history is not
 33	test	a resumed agent is timed from its latest start, and history comes only from other runs
 33	test	with a run given, only that run's agents are flagged: an earlier run's agent that never stopped is left out
+38	test	happens-before comes from dispatches and citations, never from ts: inverted timestamps order correctly
+38	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
 39	test	the dispatch read prints one line when no standing decision binds the ticket
 34	test	on spec #1's replaced rows, each recorded supersede or withdraw names its target as the rank-1 earlier neighbour
 34	test	similarity is exact cosine: a text scores 1 against itself, 0 against a text sharing no term, and ranks highest first
@@ -74,6 +83,7 @@ story	kind	name
 34	test	a contradicted row the new row does not mark is flagged with the judge's reason and the flags that would mark it
 34	test	a contradiction the new row already marks with --supersedes or --withdraws is no flag
 34	test	when the judge cannot be reached, the check says so and lists the nearest standing rows unjudged, asking no more
+39	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 39	test	a long dispatch read stops at 15 lines, the last one naming the command for the rest
 39	test	a long decision is cut so each line stays short
 39	test	a clean check is one line naming the rows judged
@@ -84,14 +94,18 @@ story	kind	name
 41	test	the meter's output is unchanged when no agent is overdue: a running agent whose role has no history adds nothing
 42	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 42	test	the dispatch read prints one line when no standing decision binds the ticket
+42	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 43	test	the digest never writes: the factory root is the same after a read
 44	none	-
 45	test	precedents are the 3 nearest earlier rows that still stand: an out row is never one
 45	test	the judge sees only the 3 nearest rows that still stand, one call per pair, and never an out row
 45	test	a corrects pair is judged like any other but never reported as a contradiction
+45	test	each reviewed row is judged against its 3 nearest earlier rows that still stand, one call per pair, never a later or an out row
+45	test	a contradiction the later row already marks, a corrects pair among them, is judged but never flagged
 46	test	the graph module is pure: it, the pointer grammar and every module they import import no built-in or package, so no file, network or model code
 46	test	the judge asks local qwen3.5:4b about one pair per call, with thinking off, and returns its verdict and reason
 46	test	the judge takes its host from the option, else FACTORY_JUDGE_HOST, and throws on an HTTP error or a refused connection
+46	test	the review lists each flagged pair with the judge's label under a "reviewed by" line naming the judge
 51	test	each decision in the tree carries the graph module's label and relations
 51	test	the state counts the decisions in, out and undec
 51	test	GET /state serves each decision with its label and relations from the graph module
@@ -115,3 +129,18 @@ story	kind	name
 37	test	the done read names the gap when the snapshot lists no stories, and an unmerged ticket as an improper end
 37	test	the snapshot lists the spec's user stories, the numbered items under its User Stories heading, so the done read sees a story missing from the map
 42	test	the done read on a clean fixture run prints one line
+36	test	a file written by two agents is reported with both writes; one agent rewriting its own file is not
+36	test	a check older than its artifact's last write is stale; a check re-run after the write is not
+36	test	a check naming no written file, or a file only as part of a longer path, is never stale
+36	test	both queries narrow to the given paths, which match an artifact logged by its absolute path too
+36	test	files written twice and stale checks among the changed files are listed, each on its line
+35	test	a hand-back report contradicting a standing decision is reported with the judge's reason
+35	test	the judge sees each report against its 3 nearest rows that still stand, one call per pair, as a report
+35	test	the reports judged are the latest of each agent dispatched for the ticket, or of the agent the branch names
+35	test	a later text of kind report is put to the judge as a hand-back report against the standing decision
+35	test	an unreachable judge is named, its reports listed unjudged, and the provenance lines still shown
+39	test	a clean read is one line
+39	test	a long read is cut to 15 lines, the last naming the command that prints it all
+40	test	npm run merge prints the merge read and still merges when the judge is unreachable, saying so
+40	test	npm run merge prints a clean merge read as one line before it merges
+40	test	npm run merge --read prints the read of a branch's changed files and merges and commits nothing

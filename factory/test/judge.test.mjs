@@ -32,11 +32,31 @@ test('the judge asks local qwen3.5:4b about one pair per call, with thinking off
   assert.deepEqual(body.format.properties.verdict.enum, ['contradicts', 'consistent']);
 });
 
+// With no num_ctx, Ollama 0.40.3 loads qwen3.5:4b at its full 262,144-token context: 12.5 GiB by
+// nvidia-smi, over the 8 GiB cap (issue #65's real run). The research measured 3.9 GiB at 2k.
+test('the judge loads its model at a 4k context, inside the 8 GiB cap', async () => {
+  const { fetch, requests } = fakeOllama('{"verdict":"consistent","why":"-"}');
+  await createJudge({ fetch })(EARLIER, LATER);
+  assert.equal(requests[0].body.options.num_ctx, 4096);
+});
+
 // The writer filters corrects pairs after the judge, so the prompt never names a relation.
 test('the prompt names no relation between the rows', async () => {
   const { fetch, requests } = fakeOllama('{"verdict":"consistent","why":"-"}');
   await createJudge({ fetch })(EARLIER, LATER);
   assert.doesNotMatch(requests[0].body.messages[0].content, /\b(supersedes|withdraws|corrects)\b/);
+});
+
+// The merge read (issue #69) asks about a worker's hand-back report rather than a new row.
+test('a later text of kind report is put to the judge as a hand-back report against the standing decision', async () => {
+  const { fetch, requests } = fakeOllama('{"verdict":"contradicts","why":"the report used Claude"}');
+  const report = { text: 'PASS. Graded the disagreements with Claude.', kind: 'report' };
+  assert.deepEqual(await createJudge({ fetch })(EARLIER, report), { verdict: 'contradicts', why: 'the report used Claude' });
+  const prompt = requests[0].body.messages[0].content;
+  assert.match(prompt, /hand-back report/);
+  assert.doesNotMatch(prompt, /NEW decision/);
+  for (const s of [EARLIER.text, EARLIER.why, report.text]) assert.ok(prompt.includes(s), s);
+  assert.ok(prompt.indexOf(EARLIER.text) < prompt.indexOf(report.text), 'the standing decision comes first');
 });
 
 test('an answer that is not a verdict reads as unclear, never as consistent', async () => {

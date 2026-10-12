@@ -54,9 +54,10 @@ export function marker(args, extraEnv = {}) {
   return spawnSync(process.execPath, [MARKER, ...args], { env: env(extraEnv), encoding: 'utf8' });
 }
 
-// Runs the merge script, as a merger does in the main checkout.
+// Runs the merge script, as a merger does in the main checkout. Its merge read's judge points at
+// a port nothing should listen on unless the test names one, so no test reaches a real Ollama.
 export function merge(args, extraEnv = {}) {
-  return spawnSync(process.execPath, [MERGE, ...args], { env: env(extraEnv), encoding: 'utf8' });
+  return spawnSync(process.execPath, [MERGE, ...args], { env: env({ FACTORY_JUDGE_HOST: 'http://127.0.0.1:9', ...extraEnv }), encoding: 'utf8' });
 }
 
 // Starts a server CLI (the fetch page or the viewer) on a free port, the way a user would, and
