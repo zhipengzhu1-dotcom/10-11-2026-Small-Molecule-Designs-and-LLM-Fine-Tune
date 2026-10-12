@@ -4,7 +4,7 @@
 //
 // Adds --root, --run and --agent to the check's own options. Run and agent default to FACTORY_RUN
 // and FACTORY_AGENT, else run "manual" and agent "orchestrator". run(opts) returns the findings:
-//   summary    what was checked, the start of the evidence
+//   evidence   what was checked and what failed, as the event records it
 //   problems   one string per failure; any problem fails the check
 //   unchecked  what could not be checked; with no problems, the verdict is inconclusive
 //   lines      report lines printed before the result
@@ -26,10 +26,10 @@ export function checkCli(url, { name, usage, options = {} }, run) {
   });
 }
 
-function report(name, opts, { summary, problems = [], unchecked = [], lines = [] }) {
+// The check output's tail: the one place that turns findings into the event, the printed result
+// and the exit code.
+function report(name, opts, { evidence, problems = [], unchecked = [], lines = [] }) {
   const verdict = problems.length ? 'fail' : unchecked.length ? 'inconclusive' : 'pass';
-  const details = verdict === 'inconclusive' ? [`check by hand: ${unchecked.join('; ')}`] : problems;
-  const evidence = [summary, ...details].join('; ');
   const fields = { name, result: verdict === 'pass' ? 'pass' : 'fail', evidence };
   if (verdict === 'inconclusive') fields.verdict = verdict;
   writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields });

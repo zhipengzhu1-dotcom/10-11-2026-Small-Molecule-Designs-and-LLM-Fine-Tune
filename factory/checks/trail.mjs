@@ -22,7 +22,9 @@
 //   - a committed version of the log is not a prefix of the working copy (append-only)
 //   - a decision row has no verdict, or a verdict names no row or the wrong ts
 //   - an ok verdict has no pointers, or a file, commit or transcript pointer does not resolve
-//     (issue: and url: need the network and are taken as given)
+//     (issue: and url: need the network and are taken as given). A repo file: pointer whose file
+//     was deleted or shortened since resolves at the commit that added its audit row, and the
+//     evidence names that commit
 //   - a file pointer names a gitignored path, which only one checkout has
 //   - a superseded verdict names no later row
 //   - there is no audit, an audit has no review, or the reviewer is a Claude model
@@ -64,35 +66,61 @@ function transcript(file) {
   return transcripts.get(file);
 }
 
-// Why one audit pointer does not resolve, or null when it does. issue: and url: need the network,
-// so they are taken as given.
-function pointerProblem(p, opts) {
+// Why a file pointer's line range falls outside a file's text, or null. `text` is read lazily.
+function lineProblem(p, from, to, text) {
+  if (!from) return null;
+  const lines = text().replace(/\r?\n$/, '').split(/\r?\n/).length;
+  return Number(to ?? from) > lines ? `${p} is past the end of the file (${lines} lines)` : null;
+}
+
+// The commit that added audit verdict `v`: the oldest commit of its audit file holding its line.
+// Null when the row was never committed.
+function addedIn(opts, v) {
+  const rel = `factory/audit/${v.audit}`;
+  const log = git(opts.root, 'log', '--format=%h', '--reverse', '--', rel);
+  if (log.status !== 0) return null;
+  return log.stdout.split('\n').filter(Boolean).find((sha) => {
+    const old = git(opts.root, 'show', `${sha}:${rel}`);
+    return old.status === 0 && old.stdout.split(/\r?\n/).includes(v.text);
+  }) ?? null;
+}
+
+// Whether one audit pointer of verdict `v` resolves: { problem } when it does not, { note } when it
+// resolves only at the commit that added `v` (a cited file deleted or shortened since), else null.
+// issue: and url: need the network, so they are taken as given.
+function pointerProblem(p, v, opts) {
   const colon = p.indexOf(':');
   const kind = p.slice(0, colon);
   const value = p.slice(colon + 1);
+  const fail = (problem) => ({ problem });
   if (kind === 'file') {
     const [, path, from, to] = /^(.*?)(?::(\d+)(?:-(\d+))?)?$/.exec(value);
-    const full = path.startsWith('~/') ? join(homedir(), path.slice(2)) : join(opts.root, path);
-    if (!existsSync(full)) return `${p} does not exist`;
-    if (!path.startsWith('~/') && git(opts.root, 'check-ignore', '-q', path).status === 0) {
-      return `${p} is gitignored; cite a tracked file, commit or transcript instead`;
+    const home = path.startsWith('~/');
+    const full = home ? join(homedir(), path.slice(2)) : join(opts.root, path);
+    if (existsSync(full) && !home && git(opts.root, 'check-ignore', '-q', path).status === 0) {
+      return fail(`${p} is gitignored; cite a tracked file, commit or transcript instead`);
     }
-    if (!from) return null;
-    const lines = readFileSync(full, 'utf8').replace(/\r?\n$/, '').split(/\r?\n/).length;
-    return Number(to ?? from) > lines ? `${p} is past the end of the file (${lines} lines)` : null;
+    const now = existsSync(full) ? lineProblem(p, from, to, () => readFileSync(full, 'utf8')) : `${p} does not exist`;
+    if (!now) return null;
+    const sha = home ? null : addedIn(opts, v);
+    const old = sha && git(opts.root, 'show', `${sha}:${path}`);
+    if (old?.status === 0 && !lineProblem(p, from, to, () => old.stdout)) {
+      return { note: `${p} resolved at ${sha}, the commit that added its audit row` };
+    }
+    return fail(now);
   }
   if (kind === 'commit') {
     return /^[0-9a-f]{7,40}$/.test(value) && git(opts.root, 'cat-file', '-e', `${value}^{commit}`).status === 0
-      ? null : `${p} is not a commit`;
+      ? null : fail(`${p} is not a commit`);
   }
   if (kind === 'transcript') {
     const [session, at] = value.split('@');
     const file = join(opts.transcripts, `${session}.jsonl`);
-    if (!existsSync(file)) return `${p} does not exist`;
-    return at && !transcript(file).includes(`"timestamp":"${at}`) ? `${p} has no line at that time` : null;
+    if (!existsSync(file)) return fail(`${p} does not exist`);
+    return at && !transcript(file).includes(`"timestamp":"${at}`) ? fail(`${p} has no line at that time`) : null;
   }
   if (kind === 'issue' || kind === 'url') return null;
-  return `unknown pointer ${p}`;
+  return fail(`unknown pointer ${p}`);
 }
 
 // Append-only: every committed version of the log must be a prefix of the working copy. Reports
@@ -130,18 +158,24 @@ function reviewOf(auditDir, file) {
   return CLAUDE.test(reviewer) ? { reviewer, problem: `${shown}: reviewed by ${reviewer}, the same family as the orchestrator` } : { reviewer };
 }
 
-// What is wrong with one audit verdict on decision row `row`. An ok row needs pointers that
-// resolve; a superseded row needs a later row in the log that replaces it.
+// What is wrong with one audit verdict on decision row `row`, plus notes on pointers that resolved
+// only in history. An ok row needs pointers that resolve; a superseded row needs a later row in
+// the log that replaces it.
 function verdictProblems(v, row, log, opts) {
   const problems = [];
+  const notes = [];
   if (v.ts !== row.ts) problems.push(`audit ts ${v.ts} does not match`);
   if (v.verdict === 'ok') {
     if (!v.pointers.length) problems.push('ok with no pointers');
-    for (const p of v.pointers) problems.push(pointerProblem(p, opts));
+    for (const p of v.pointers) {
+      const r = pointerProblem(p, v, opts);
+      if (r?.problem) problems.push(r.problem);
+      if (r?.note) notes.push(r.note);
+    }
   } else if (v.verdict === 'superseded') {
     if (!(v.by > row.line && log.some((r) => r.line === v.by))) problems.push('superseded with no later row replacing it');
   } else problems.push(`invalid verdict "${v.verdict}"`);
-  return problems.filter(Boolean);
+  return { problems, notes };
 }
 
 const COLUMNS = ['ts', 'phase', 'decision', 'why', 'evidence', 'result'];
@@ -175,10 +209,13 @@ export function runCheck(opts) {
   const history = historyCheck(opts, text);
   const audits = existsSync(auditDir) ? readdirSync(auditDir).filter((f) => f.endsWith('.tsv')) : [];
   const verdicts = audits.flatMap((f) => tsvLines(readFileSync(join(auditDir, f), 'utf8'))
-    .map(([line, ts, verdict, by, pointers = '']) => ({
-      line: Number(line), ts, verdict, by: Number(by),
-      pointers: pointers.split(';').map((p) => p.trim()).filter(Boolean),
-    })));
+    .map((cells) => {
+      const [line, ts, verdict, by, pointers = ''] = cells;
+      return {
+        line: Number(line), ts, verdict, by: Number(by), audit: f, text: cells.join('\t'),
+        pointers: pointers.split(';').map((p) => p.trim()).filter(Boolean),
+      };
+    }));
   const reviews = audits.map((f) => reviewOf(auditDir, f));
 
   const problems = history.problem ? [history.problem] : [];
@@ -188,6 +225,7 @@ export function runCheck(opts) {
     if (!log.some((r) => r.line === v.line)) problems.push(`audit line ${v.line}: no such decision row`);
   }
   const treeRoot = log.map((r) => r.cells[1]).find((p) => p && p !== 'start')?.split('/')[0];
+  const notes = [];
   let ok = 0;
   let superseded = 0;
   for (const r of log) {
@@ -197,11 +235,15 @@ export function runCheck(opts) {
     if (!mine.length) problems.push(`${at}: no audit verdict`);
     else if (mine.some((v) => v.verdict === 'superseded')) superseded++;
     else ok++;
-    for (const v of mine) problems.push(...verdictProblems(v, r, log, opts).map((p) => `${at}: ${p}`));
+    for (const v of mine) {
+      const found = verdictProblems(v, r, log, opts);
+      problems.push(...found.problems.map((p) => `${at}: ${p}`));
+      notes.push(...found.notes.map((n) => `${at}: ${n}`));
+    }
   }
 
-  const summary = `factory/decisions.tsv: append-only across ${history.commits} commits; ${log.length} decision rows audited (${ok} ok, ${superseded} superseded); reviewed by ${reviews.map((r) => r.reviewer).filter(Boolean).join(', ') || 'no one'}`;
-  return { summary, problems };
+  const where = `factory/decisions.tsv: append-only across ${history.commits} commits; ${log.length} decision rows audited (${ok} ok, ${superseded} superseded); reviewed by ${reviews.map((r) => r.reviewer).filter(Boolean).join(', ') || 'no one'}`;
+  return { evidence: [where, ...notes, ...problems].join('; '), problems };
 }
 
 checkCli(import.meta.url, {

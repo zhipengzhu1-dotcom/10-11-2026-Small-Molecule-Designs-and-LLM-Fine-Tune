@@ -298,7 +298,8 @@ export function runCheck({ tex, notes }) {
   }
   // Unparsed tables make the verdict INCONCLUSIVE, never a pass, and only when nothing failed outright.
   const summary = `${notes.join(',')}: ${units.length} tables and figures checked, ${compared} rows with numbers compared`;
-  return { summary, problems, unchecked: unparsed, lines };
+  const details = problems.length ? problems : unparsed.length ? [`INCONCLUSIVE, check by hand: ${unparsed.join('; ')}`] : [];
+  return { evidence: [summary, ...details].join('; '), problems, unchecked: unparsed, lines };
 }
 
 // ---------- CLI ----------

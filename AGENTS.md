@@ -16,8 +16,14 @@ CI runs in a Docker container on this machine (Docker Desktop), never on GitHub 
 | No decision row for a push or PR | `npm run check:trail` |
 | Agent worktrees start at the orchestrator's branch, with the source data | `worktree.baseRef` in `.claude/settings.json`, `.worktreeinclude` |
 | Long text goes through the Write tool and `--body-file`, not a heredoc | PreToolUse hook `factory/hooks/long-heredoc.mjs` |
+| A ticket names its deliverables so subagent writes pass (`notes.md`, never a summary or report file) | `npm run check:ticket -- --body <file>` (or stdin); CI runs it on `docs/agents/ticket-template.md` |
+| Subagents don't write shared git config: `git config` writes need `--worktree`; anything else is reported for approval | PreToolUse hook `factory/hooks/git-config.mjs` (Bash and PowerShell) |
 
 ## Agent skills
+
+### Spec pipeline
+
+Feature work runs `grilling` → `to-spec` → `to-tickets` → `implement` (one ticket) or `implement-spec` (a whole spec). The spec is the GitHub issue `to-spec` opens, and it lives only there: no copy in the repo to drift. When `brainstorming` fires on feature work, switch to `grilling`.
 
 ### Issue tracker
 

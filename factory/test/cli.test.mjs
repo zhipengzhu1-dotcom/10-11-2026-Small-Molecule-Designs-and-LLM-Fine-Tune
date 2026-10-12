@@ -14,6 +14,8 @@ const CLIS = [
   { script: 'factory/checks/references.mjs', takesRoot: true, dangling: '--catalog' },
   { script: 'factory/checks/tables.mjs', takesRoot: true, dangling: '--notes' },
   { script: 'factory/checks/trail.mjs', takesRoot: true, dangling: '--transcripts' },
+  { script: 'factory/checks/ticket.mjs', takesRoot: true, dangling: '--body' },
+  { script: 'factory/run-marker.mjs', takesRoot: true, positionals: true, dangling: '--branch' },
   { script: 'scripts/catalog-refs.mjs', takesRoot: true, dangling: '--latex' },
   { script: 'scripts/fetch-s1.mjs', takesRoot: true, dangling: '--base-url' },
   { script: 'scripts/rules.mjs', takesRoot: true },

@@ -33,6 +33,8 @@ export function dataChecks(main) {
     references: ['--tex', tex],
     brief: [],
     trail: [],
+    // Ticket bodies live on GitHub; CI checks the template they start from.
+    ticket: ['--body', 'docs/agents/ticket-template.md'],
   };
 }
 

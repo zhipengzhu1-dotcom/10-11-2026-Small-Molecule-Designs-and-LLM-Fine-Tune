@@ -51,7 +51,7 @@ export function runCheck(opts) {
     if (!STATUSES.includes(r.status)) problems.push(`line ${r.line} (${r.key}): invalid status "${r.status ?? ''}"`);
   }
   const where = `${shown(opts.root, catalog)} vs ${keys.length} keys cited in ${shown(opts.root, tex)}`;
-  return { summary: problems.length ? where : `${where}; all present with valid statuses`, problems };
+  return { evidence: [where, ...(problems.length ? problems : ['all present with valid statuses'])].join('; '), problems };
 }
 
 checkCli(import.meta.url, {

@@ -4,10 +4,12 @@
 //   factory/agents/<session_id>/<agent_id>.jsonl under CLAUDE_PROJECT_DIR (the main checkout).
 // The run id is the orchestrator's session_id. A field the payload lacks is recorded as "unknown".
 // On SubagentStart it also tells the subagent its ids and the command to write its own events.
+// It acts only in the orchestrated run named by the run marker (factory/run-marker.mjs).
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { UNKNOWN, activityFile, defaultRoot, writeEvent } from '../log.mjs';
+import { readMarker } from '../run-marker.mjs';
 
 const ROLE_PARENT = 'orchestrator'; // subagents are spawned by the orchestrator session
 
@@ -91,6 +93,11 @@ function main() {
   const run = id(payload.session_id);
   const agent = id(payload.agent_id);
   const role = payload.agent_type || undefined;
+  // Only the orchestrated run the marker names is logged (factory/run-marker.mjs). Other sessions
+  // in this repo, such as reflect or review, write nothing. A payload with no session id can't be
+  // told apart, so it is recorded under run "unknown" while any run is marked.
+  const marker = readMarker(root);
+  if (!marker || (payload.session_id && run !== id(marker.run))) return;
 
   switch (payload.hook_event_name) {
     case 'SubagentStart': {
