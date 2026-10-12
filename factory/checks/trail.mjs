@@ -4,7 +4,7 @@
 //
 //   node factory/checks/trail.mjs [--root <repo>] [--run <id>] [--agent <id>] [--transcripts <dir>]
 //
-// Run and agent default to FACTORY_RUN and FACTORY_AGENT, else run "manual" and agent
+// Run and agent default to FACTORY_RUN (else the marked run) and FACTORY_AGENT, else run "manual" and agent
 // "orchestrator". --transcripts defaults to the main checkout's Claude Code transcripts folder, also
 // when run from a git worktree.
 //

@@ -4,7 +4,7 @@
 //
 //   node factory/checks/brief.mjs [--root <repo>] [--run <id>] [--agent <id>] [--brief <brief.md>]
 //
-// --brief defaults to <root>/research/s1/brief.md. Run and agent default to FACTORY_RUN and
+// --brief defaults to <root>/research/s1/brief.md. Run and agent default to FACTORY_RUN (else the marked run) and
 // FACTORY_AGENT, else run "manual" and agent "orchestrator".
 //
 // A parameter table is a Markdown table whose first header cell is "ID". It must also have the

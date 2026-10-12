@@ -27,6 +27,13 @@ export function readMarker(root) {
   return m;
 }
 
+// The run an event is filed under when no --run is passed: FACTORY_RUN, else the marked run, so
+// events written during an orchestrated run land in the folder the merge script commits.
+// Undefined when neither is set.
+export function defaultRun(root, env = process.env) {
+  return env.FACTORY_RUN || readMarker(root)?.run;
+}
+
 cli(import.meta.url, {
   usage: 'node factory/run-marker.mjs start --run <run-id> --branch <branch> [--root <repo>] | stop [--root <repo>]',
   options: { root: 'string', run: 'string', branch: 'string' },

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { transcriptsDir } from '../transcript.mjs';
-import { FACTORY, tempRoot } from './helpers.mjs';
+import { FACTORY, marker, tempRoot } from './helpers.mjs';
 
 const DECIDE = join(FACTORY, 'decide.mjs');
 const SESSION = '5e55f0c1-0000-4000-8000-000000000001';
