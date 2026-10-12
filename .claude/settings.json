@@ -3,35 +3,9 @@
     "baseRef": "head"
   },
   "enabledPlugins": {
-    "superpowers@claude-plugins-official": false,
-    "code-review@claude-plugins-official": false,
-    "code-simplifier@claude-plugins-official": false,
-    "frontend-design@claude-plugins-official": false,
-    "ralph-loop@claude-plugins-official": false,
-    "context7@claude-plugins-official": false,
-    "microsoft-docs@claude-plugins-official": false,
-    "pdf-viewer@synced": false,
-    "cowork-plugin-management@synced": false
+    "mattpocock-skills@claude-plugins-official": false
   },
   "disableClaudeAiConnectors": true,
-  "skillOverrides": {
-    "brainstorming": "off",
-    "test-driven-development": "off",
-    "systematic-debugging": "off",
-    "verification-before-completion": "off",
-    "banner-design": "off",
-    "brand": "off",
-    "design": "off",
-    "design-system": "off",
-    "slides": "off",
-    "ui-styling": "off",
-    "ui-ux-pro-max": "off",
-    "docx": "off",
-    "agent-browser": "off",
-    "migrate-to-shoehorn": "off",
-    "scaffold-exercises": "off",
-    "setup-pre-commit": "off"
-  },
   "hooks": {
     "SubagentStart": [
       {
