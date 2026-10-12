@@ -61,7 +61,7 @@ const HEADER = 'story\tkind\tname';
 const KINDS = ['check', 'test', 'none'];
 
 // A map's header and its rows, with their line numbers.
-function readMap(file) {
+export function readMap(file) {
   const [header, ...lines] = readFileSync(file, 'utf8').split(/\r?\n/);
   const rows = lines.map((text, i) => {
     const [story, kind, name] = text.split('\t');

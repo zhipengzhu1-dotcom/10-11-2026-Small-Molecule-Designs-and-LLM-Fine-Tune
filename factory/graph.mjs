@@ -11,7 +11,8 @@
 //                                 row:<N>, file:<path>, issue:<n>
 //   graph.edges                   { from, rel, to }: wasAssociatedWith, wasAttributedTo,
 //                                 wasGeneratedBy, blockedBy, subIssueOf, and the row relations
-//                                 supersedes, withdraws, corrects (with `part`)
+//                                 supersedes, withdraws, corrects (with `part`); challenges (a
+//                                 challenge event to its target) and closes (a row to a challenge)
 //   graph.decisions, .decision(N) the rows in line order, each with label (in|out|undec), parts
 //                                 ([{ by, label }]), relations, text and state (claim.mjs)
 //   graph.binding(n)              the standing decisions that bind ticket n: [{ row, because }]
@@ -26,10 +27,18 @@
 //   (the last three: the workflow net in graph/workflow.mjs; merges come in as snapshot.merges,
 //    [{ ticket, ts, commit }], the integration branch's `Merge #<n>` commits)
 //   graph.overdue(now, { run? })  running agents past their role's usual time (graph/sojourn.mjs)
+//   graph.challenges(spec?), .goals(), .done(spec)
+//                                 the assurance case (graph/assurance.mjs): doubts, the spec's
+//                                 stories with their evidence, and the done read's residual doubt;
+//                                 the story map and test results come in as snapshot.map and
+//                                 snapshot.results, the story list as the snapshot's `stories`.
+//                                 Challenges are arguments in the labelling: one on `row:<N>`
+//                                 attacks that row, and what eliminates it attacks the challenge
 //
 // Overlays (argumentation here, the others in graph/) live here or in sibling files, without
 // changing the interface.
 import { claimState, parseRelations } from './claim.mjs';
+import { assurance, challengesOf } from './graph/assurance.mjs';
 import { ticketsNamed } from './graph/names.mjs';
 import { overdue } from './graph/sojourn.mjs';
 import { textOverlay } from './graph/text.mjs';
@@ -85,7 +94,13 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   for (const d of decisions) {
     for (const r of d.relations) if (r.kind !== 'closes' && byLine.has(r.line)) link(`row:${d.line}`, r.kind, `row:${r.line}`, { part: r.part });
   }
-  const label = grounded(attacks(decisions, byLine));
+  const activities = [...nodes.values()].filter((n) => n.class === 'activity').map((n) => ({ id: n.id, e: n.event }));
+  const challenges = challengesOf(activities, decisions);
+  for (const c of challenges) {
+    if (c.source === 'challenge') link(c.node, 'challenges', c.target);
+    for (const d of decisions) if (d.relations.some((r) => r.kind === 'closes' && r.challenge === c.id)) link(`row:${d.line}`, 'closes', c.node);
+  }
+  const label = grounded(attacks(decisions, byLine, challenges));
   for (const d of decisions) {
     d.label = label.get(d.line);
     d.parts = [...label].filter(([a]) => partOf(a) === d.line).map(([a, l]) => ({ by: partBy(a), label: l }));
@@ -106,6 +121,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   graph.slack = () => replay().slack;
   graph.completion = () => replay().completion;
   graph.overdue = (now, opts) => overdue(events, now, opts);
+  Object.assign(graph, assurance(graph, activities, challenges, label, snapshot));
   return graph;
 }
 
@@ -142,7 +158,7 @@ const latest = (events, type) => events.findLast((e) => e.type === type);
 // is its own argument, `N/M`.
 const ATTACKS = new Set(['supersedes', 'withdraws']);
 const part = (line, by) => `${line}/${by}`;
-const partOf = (a) => (typeof a === 'string' ? Number(a.split('/')[0]) : null);
+const partOf = (a) => (/^\d+\/\d+$/.test(a) ? Number(a.split('/')[0]) : null);
 const partBy = (a) => Number(a.split('/')[1]);
 
 // Each argument's attackers, all of them rows. `withdraws` is a plain attack, so reinstatement
@@ -150,8 +166,9 @@ const partBy = (a) => Number(a.split('/')[1]);
 // replacement never brings back what the replacement replaced. A partial relation attacks only the
 // part it names; it takes over nothing, since a row's own relations belong to the whole row, which
 // still stands and keeps making them. An attack on a row is an attack on each of its parts.
-// `corrects` is no attack. Relations naming no row are left out.
-function attacks(decisions, byLine) {
+// `corrects` is no attack. Relations naming no row are left out. Each challenge (graph/assurance.mjs)
+// is an argument too, attacked by what eliminates it; one whose target is a row attacks that row.
+function attacks(decisions, byLine, challenges) {
   const rel = (d) => d.relations.filter((r) => ATTACKS.has(r.kind) && byLine.has(r.line));
   const made = new Map(); // row -> the arguments it attacks, its own and those taken over
   const madeBy = (line, seen = new Set()) => {
@@ -172,6 +189,11 @@ function attacks(decisions, byLine) {
       if (!attackers.has(t)) attackers.set(t, []);
       attackers.get(t).push(d.line);
     }
+  }
+  for (const c of challenges) {
+    attackers.set(c.arg, c.by);
+    for (const b of c.by) if (!attackers.has(b)) attackers.set(b, []);
+    if (attackers.has(c.row)) attackers.get(c.row).push(c.arg);
   }
   for (const [a, by] of attackers) if (partOf(a) !== null) by.push(...attackers.get(partOf(a)));
   return attackers;

@@ -26,6 +26,7 @@ import { readMarker } from './run-marker.mjs';
 const QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $number) {
+      body
       subIssues(first: 100) {
         nodes {
           number title state
@@ -57,7 +58,8 @@ function statusOf(c) {
 
 // gh(args) runs the gh CLI and returns its stdout. With a factory root whose run marker names an
 // orchestrated run, it also writes one `ticket.graph` event as the orchestrator: each child's
-// state, status and open blockers, so the graph can be rebuilt from the logs without GitHub.
+// state, status and open blockers, and the spec's user stories (`stories`, when it lists any), so
+// the graph can be rebuilt from the logs without GitHub.
 export function frontier({ number, remote, gh, root }) {
   const { owner, repo } = repoOf(remote);
   const out = gh(['api', 'graphql', '-f', `query=${QUERY}`, '-f', `owner=${owner}`, '-f', `repo=${repo}`, '-F', `number=${number}`]);
@@ -78,9 +80,20 @@ export function frontier({ number, remote, gh, root }) {
   const run = root && readMarker(root)?.run;
   if (run) {
     const tickets = children.map((c) => ({ number: c.number, state: c.state, status: c.status, blockers: c.openBlockers }));
-    writeEvent({ root, run, agent: 'orchestrator', type: 'ticket.graph', fields: { spec: number, tickets } });
+    const stories = userStories(issue.body ?? '');
+    writeEvent({ root, run, agent: 'orchestrator', type: 'ticket.graph', fields: { spec: number, tickets, ...(stories.length ? { stories } : {}) } });
   }
   return { children, ready: children.filter((c) => c.status === 'ready').map((c) => c.number) };
+}
+
+// The spec's user stories: the numbers of the numbered items under its `## User Stories` heading,
+// up to the next `## ` heading (its `### ` groups stay inside), for the assurance case's goals.
+export function userStories(body) {
+  const lines = body.split(/\r?\n/);
+  const start = lines.findIndex((l) => /^##\s+User Stories\s*$/i.test(l));
+  if (start < 0) return [];
+  const end = lines.findIndex((l, i) => i > start && /^##\s/.test(l));
+  return lines.slice(start + 1, end < 0 ? undefined : end).flatMap((l) => /^(\d+)\.\s/.exec(l)?.[1] ?? []).map(Number);
 }
 
 function gh(args) {
