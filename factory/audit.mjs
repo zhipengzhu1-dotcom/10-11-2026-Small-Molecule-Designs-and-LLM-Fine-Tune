@@ -2,8 +2,9 @@
 // Audit of the decision log (pstack show-me-your-work): the steps an auditor repeats for every row,
 // so no run hand-builds audit rows or hunts transcript timestamps.
 //
-//   npm run audit -- show <line>...    the row, then its session's digest for the 15 minutes before
-//                                      it, each line led by a ready-to-paste transcript pointer
+//   npm run audit -- show <line>...    the row, then its session's digest since the session's
+//                                      previous row, each line led by a ready-to-paste transcript
+//                                      pointer
 //   npm run audit -- add <line> ok --pointers "<p>; <p>" --note <text>
 //   npm run audit -- add <line> superseded --by <later line> --note <text>
 //                                      appends the verdict to factory/audit/<session>.tsv, with the
@@ -26,8 +27,6 @@ import { MODEL, review as askQwen } from './review-qwen.mjs';
 import { defaultRun } from './run-marker.mjs';
 import { digest, projectTranscripts } from './transcript.mjs';
 
-const WINDOW_MS = 15 * 60 * 1000;
-
 // The decision row on `line` of the log, or a UsageError.
 function rowAt(log, line) {
   const r = log.find((x) => x.line === Number(line));
@@ -35,9 +34,12 @@ function rowAt(log, line) {
   return r;
 }
 
+// The session named by row `r`'s evidence, or undefined.
+const namedSession = (r) => /([^/\\\s]+)\.jsonl @/.exec(r.cells[4] ?? '')?.[1];
+
 // The session whose transcript logged row `r`: --run, else the one its evidence names.
 function sessionOf(r, run) {
-  const s = run ?? /([^/\\\s]+)\.jsonl @/.exec(r.cells[4] ?? '')?.[1];
+  const s = run ?? namedSession(r);
   if (!s) throw new UsageError(`line ${r.line} names no transcript in its evidence; pass --run <session>`);
   return s;
 }
@@ -48,15 +50,19 @@ function transcriptFile(opts, session) {
   return file;
 }
 
+// The row, then its session's digest from the session's previous row (or the session's start) up
+// to the row, so the lead-up to the decision and anything decided but never logged both show.
 function show(opts, log, line) {
   const r = rowAt(log, line);
   const session = sessionOf(r, opts.run);
+  const prev = log.findLast((x) => x.line < r.line && namedSession(x) === session);
+  const from = prev ? Date.parse(prev.ts) : -Infinity;
   const to = Date.parse(r.ts);
   const out = [`line ${r.line}\t${r.text}`];
   for (const l of digest(transcriptFile(opts, session))) {
     const at = l.slice(0, l.indexOf(' '));
     const ms = Date.parse(at);
-    if (ms >= to - WINDOW_MS && ms <= to) out.push(`transcript:${session}@${at.slice(0, 19)} ${l.slice(at.length + 1)}`);
+    if (ms > from && ms <= to) out.push(`transcript:${session}@${at.slice(0, 19)} ${l.slice(at.length + 1)}`);
   }
   return out.join('\n');
 }
