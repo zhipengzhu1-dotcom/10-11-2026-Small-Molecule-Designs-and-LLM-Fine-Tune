@@ -3,10 +3,14 @@
 
 // The decision log as a graph. Tree links join a root, one node per phase folder and one dot
 // per decision, each to its parent. Cross-links join what the rows themselves cite:
-//   supersedes  a decision to the earlier row it replaces ("supersedes line 15")
+//   supersedes, withdraws, corrects
+//               a decision to the earlier row a relation of it names, from the `relations` the
+//               server took from the graph module (factory/graph.mjs); `part` marks a partial one
 //   mentions    a decision to the ticket-N phase of a ticket it names (#N), outside its own phase
 //   evidence    an evidence node, for a source cited in two or more phases, to each citing decision
 // Links hold node indexes and a kind.
+const ROWS = ['supersedes', 'withdraws', 'corrects'];
+
 export function buildGraph(tree) {
   const nodes = [{ id: '', kind: 'root', label: 'decisions', count: tree.count }];
   const links = [];
@@ -29,9 +33,9 @@ export function buildGraph(tree) {
   const text = (d) => [d.decision, d.why, d.result].join(' ');
   const byLine = new Map(dots.map(([j, d]) => [d.line, j]));
   for (const [j, d] of dots) {
-    for (const m of text(d).matchAll(/supersedes line (\d+)/g)) {
-      const k = byLine.get(Number(m[1]));
-      if (k !== undefined && k !== j) link(j, k, 'supersedes');
+    for (const r of d.relations ?? []) {
+      const k = byLine.get(r.line);
+      if (ROWS.includes(r.kind) && k !== undefined && k !== j) links.push({ source: j, target: k, kind: r.kind, part: r.part });
     }
   }
   const tickets = new Map();
@@ -117,9 +121,9 @@ export function buildCrew(crew) {
 }
 
 const CHARGE = { root: -300, phase: -150, decision: -35, evidence: -60, hub: -90, agent: -45 };
-const LENGTH = { tree: { root: 60, phase: 48, decision: 16 }, supersedes: 24, mentions: 110, evidence: 70, dispatched: 45, ticket: 18, builds: 40, files: 40 };
+const LENGTH = { tree: { root: 60, phase: 48, decision: 16 }, supersedes: 24, withdraws: 24, corrects: 24, mentions: 110, evidence: 70, dispatched: 45, ticket: 18, builds: 40, files: 40 };
 // Cross-links pull gently so the phase tree keeps the shape and cross-links read as bridges.
-const STRENGTH = { tree: 1, supersedes: 0.3, mentions: 0.015, evidence: 0.01, dispatched: 1, ticket: 0.5, builds: 0.15, files: 0.1 };
+const STRENGTH = { tree: 1, supersedes: 0.3, withdraws: 0.3, corrects: 0.3, mentions: 0.015, evidence: 0.01, dispatched: 1, ticket: 0.5, builds: 0.15, files: 0.1 };
 // Every node is pulled to the centre; run hubs harder, so the runs sit together instead of
 // their agents pushing them apart.
 const GRAVITY = { hub: 0.08 };

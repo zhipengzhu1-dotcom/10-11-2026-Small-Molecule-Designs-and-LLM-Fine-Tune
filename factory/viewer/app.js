@@ -77,7 +77,7 @@ function render(s) {
     return o;
   }).reverse());
   $('checks').replaceChildren(...s.checks.map((c) => h('span', { class: 'chip ' + c.result, title: c.evidence }, c.name)));
-  $('dcount').textContent = '(' + s.tree.count + ')';
+  $('dcount').textContent = '(' + s.tree.count + ': ' + s.labels.in + ' in, ' + s.labels.out + ' out, ' + s.labels.undec + ' undec)';
   const members = allRuns ? s.crew : s.crew.filter((c) => c.run === s.run);
   $('ccount').textContent = count(members);
   renderAgents();
@@ -120,7 +120,7 @@ function branch(n, top) {
   const d = h('details', { class: top ? 'top' : null },
     h('summary', null, n.name, ' ', h('span', { class: 'n' }, n.count)),
     n.decisions.map((x) => h('div', { class: 'dec', title: x.evidence },
-      h('div', null, h('code', null, clock(x.ts)), ' ', x.decision),
+      h('div', null, h('code', null, clock(x.ts) + ' · ' + x.label), ' ', x.decision),
       h('div', { class: 'why' }, x.why),
       h('div', { class: 'res' }, x.result))),
     n.children.map((c) => branch(c, false)));
