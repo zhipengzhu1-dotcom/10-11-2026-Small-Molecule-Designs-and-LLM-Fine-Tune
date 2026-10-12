@@ -70,8 +70,8 @@ function runChecks(tree, main) {
   for (const [name, args] of Object.entries(dataChecks(main))) {
     const r = spawnSync(process.execPath, [join(tree, 'factory', 'checks', `${name}.mjs`), '--root', tree, ...args],
       { cwd: tree, env, encoding: 'utf8' });
-    const out = (r.stdout + r.stderr).trim();
-    console.log(`ci: ${out.length > 300 ? out.slice(0, 300) + '…' : out}`);
+    const out = (r.stdout + r.stderr).trim().split('\n').pop().replace(new RegExp(`^${name}: `), '');
+    console.log(`ci: ${name}: ${out.length > 300 ? out.slice(0, 300) + '…' : out}`);
     if (r.status !== 0) problems.push(`check ${name} failed`);
   }
   return problems;
