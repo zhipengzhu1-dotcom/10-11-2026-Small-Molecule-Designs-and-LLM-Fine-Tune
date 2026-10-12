@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { UNKNOWN, activityFile, defaultRoot, writeEvent } from '../log.mjs';
-import { readMarker } from '../run-marker.mjs';
+import { inMarkedRun } from '../run-marker.mjs';
 
 // The payload has no parent field. Claude Code fires these hooks only for agents the orchestrator
 // session spawns, never for one a subagent spawns, so every agent recorded here is its child.
@@ -98,10 +98,9 @@ function main() {
   const agent = safeId(payload.agent_id);
   const role = payload.agent_type || undefined;
   // Only the orchestrated run the marker names is logged (factory/run-marker.mjs). Other sessions
-  // in this repo, such as reflect or review, write nothing. A payload with no session id can't be
-  // told apart, so it is recorded under run "unknown" while any run is marked.
-  const marker = readMarker(root);
-  if (!marker || (payload.session_id && run !== safeId(marker.run))) return;
+  // in this repo, such as reflect or review, write nothing. A payload with no session id is
+  // recorded under run "unknown" while any run is marked.
+  if (!inMarkedRun(root, payload.session_id)) return;
 
   switch (payload.hook_event_name) {
     case 'SubagentStart': {
