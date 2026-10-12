@@ -409,6 +409,8 @@ async function main(parsed) {
   if (opts['arxiv-base']) arxivBase = opts['arxiv-base'].replace(/\/$/, '');
   const keys = citedKeys(readFileSync(join(opts.latex, 'main.tex'), 'utf8'));
   const bib = parseBib(readFileSync(join(opts.latex, 'reference.bib'), 'utf8'));
+  const unbibbed = keys.filter((k) => !bib[k]);
+  if (unbibbed.length) throw new Error(`reference.bib has no entry for cited key ${unbibbed.join(', ')}`);
   const curation = new Map(readCatalog(readFileSync(join(opts.root, 'research', 'refs', 'curation.tsv'), 'utf8')).map((r) => [r.key, r]));
   const cache = existsSync(opts.cache) ? JSON.parse(readFileSync(opts.cache, 'utf8')) : {};
   const catalogPath = join(opts.root, 'research', 'refs', 'catalog.tsv');
@@ -421,10 +423,6 @@ async function main(parsed) {
     const entry = bib[key];
     const cur = curation.get(key);
     if (!cur) throw new Error(`curation.tsv has no row for cited key ${key}`);
-    if (!entry) {
-      rows.push(merge(prior.get(key), { key, status: 'closed', oa_source: 'none', note: 'key missing from reference.bib' }, cur));
-      continue;
-    }
     const look = await lookup(key, entry, cache);
     save();
     process.stderr.write(`${key}: ${look.source}\n`);
