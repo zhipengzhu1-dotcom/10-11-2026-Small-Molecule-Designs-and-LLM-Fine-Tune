@@ -33,8 +33,13 @@
 //     one tree
 //   - a row from 2026-10-12 on records a push or PR (phase ending /push or /pr): git and GitHub
 //     hold that record, and the row would land in a commit after the push
+//   - a row from CLAIM_RULES_FROM (factory/claim.mjs) on has a result that does not start with a
+//     claim state, or a decision cell that starts with a relation word but is not a well-formed
+//     relation prefix ("<relation> line N[ (part)]: ", "closes challenge <id>: "), or names a line
+//     that is not an earlier decision row
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { CLAIM_RULES_FROM, claimState, parseRelations } from '../claim.mjs';
 import { gitRun as git } from '../git.mjs';
 import { lineProblem, parsePointer, resolvePointer } from '../pointer.mjs';
 import { projectTranscripts } from '../transcript.mjs';
@@ -151,6 +156,22 @@ function rowProblems(row, treeRoot) {
   else if (phase.split('/')[0] !== treeRoot) problems.push(`phase "${phase}" is not under ${treeRoot}/`);
   if (REMOTE.test(phase) && row.ts >= REMOTE_RULE_FROM) {
     problems.push(`phase "${phase}" records a push or PR; git and GitHub hold that record, so log no decision row for it`);
+  }
+  return [...problems, ...claimProblems(row)];
+}
+
+// From CLAIM_RULES_FROM on, result starts with a claim state and the decision's relations are
+// well formed and name earlier rows (claim.mjs, the decision writer's grammar). Earlier rows,
+// such as the "supersedes line N:" rows of the s1 log, stay valid as written.
+function claimProblems(row) {
+  if (row.ts < CLAIM_RULES_FROM) return [];
+  const problems = [];
+  const { problem } = claimState(row.cells[5]);
+  if (problem) problems.push(`result: ${problem}`);
+  const parsed = parseRelations(row.cells[2] ?? '');
+  if (parsed.problem) problems.push(parsed.problem);
+  for (const r of parsed.relations.filter((x) => x.kind !== 'closes')) {
+    if (r.line < 2 || r.line >= row.line) problems.push(`${r.kind} line ${r.line} is not an earlier decision row`);
   }
   return problems;
 }

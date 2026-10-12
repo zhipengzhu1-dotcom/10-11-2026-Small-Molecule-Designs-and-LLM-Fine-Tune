@@ -291,6 +291,36 @@ t('a push or PR row fails, since its commit always lands after the push it recor
   assert.doesNotMatch(ev, /line 7 /);
 });
 
+// Rows from 2026-10-13 on lead result with a claim state and write relations as the decision
+// writer does (factory/claim.mjs); every row before that stays valid as written.
+test('from the claim-rules cutoff, a row needs a claim state first in result and well-formed relations to earlier rows; rows before it pass as written', { skip: !hasGit && 'git is not installed' }, () => {
+  const rows = [
+    row('2026-10-12T23:59:59Z', 'project/c', 'supersedes 2: kept 5 epochs', 'paper', 'notes/source.md', 'merged'),
+    row('2026-10-13T00:00:00Z', 'project/c', 'supersedes line 3 (part), closes challenge judge-vram: kept 5 epochs', 'paper', 'notes/source.md', 'adopted: merged in abc1234'),
+    row('2026-10-13T00:01:00Z', 'project/c', 'withdraws line 4: dropped the rerun', 'paper', 'notes/source.md', 'open'),
+    row('2026-10-13T00:02:00Z', 'project/c', 'merged #9', 'ready', 'notes/source.md', 'merged; trail pass'),
+    row('2026-10-13T00:03:00Z', 'project/c', 'ran the trail check', 'gate', 'notes/source.md', 'pass'),
+    row('2026-10-13T00:04:00Z', 'project/c', 'replaced row 3', 'stale', 'notes/source.md', 'defeated'),
+    row('2026-10-13T00:05:00Z', 'project/c', 'supersedes 2: kept 5 epochs', 'paper', 'notes/source.md', 'adopted'),
+    row('2026-10-13T00:06:00Z', 'project/c', 'withdraws line 12: dropped it', 'paper', 'notes/source.md', 'given'),
+    row('2026-10-13T00:07:00Z', 'project/c', 'corrects line 1: fixed the cite', 'paper', 'notes/source.md', 'cited'),
+    row('2026-10-13T00:08:00Z', 'project/c', 'closes line 2: answered it', 'paper', 'notes/source.md', 'adopted'),
+  ];
+  const audit = AUDIT_HEADER + GOOD_AUDIT.join('')
+    + rows.map((r, i) => row(String(i + 4), r.split('\t')[0], 'ok', '', 'file:notes/source.md', 'x')).join('');
+  const r = check(fixture({ history: [HEADER + ROWS.join('') + rows.join('')], audit }));
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  const ev = r.events[0].evidence;
+  for (const ok of [4, 5, 6]) assert.doesNotMatch(ev, new RegExp(`line ${ok} \\(`), `line ${ok}`);
+  assert.match(ev, /line 7 \(2026-10-13T00:02:00Z\): result: unknown claim state "merged"; one of adopted, open, assumed, given, cited/);
+  assert.match(ev, /line 8 \(2026-10-13T00:03:00Z\): result: "pass" is a check result, not a claim state/);
+  assert.match(ev, /line 9 \(2026-10-13T00:04:00Z\): result: "defeated" is derived from later rows, never written/);
+  assert.match(ev, /line 10 \(2026-10-13T00:05:00Z\): decision starts with "supersedes" but not "<relation> line <N>\[ \(part\)\]: " or "closes challenge <id>: "/);
+  assert.match(ev, /line 13 \(2026-10-13T00:08:00Z\): decision starts with "closes" but not/);
+  assert.match(ev, /line 11 \(2026-10-13T00:06:00Z\): withdraws line 12 is not an earlier decision row/);
+  assert.match(ev, /line 12 \(2026-10-13T00:07:00Z\): corrects line 1 is not an earlier decision row/);
+});
+
 t('a log that only grew across its commits passes and says how many versions it compared', () => {
   const r = check(fixture({ history: [HEADER + ROWS[0], HEADER + ROWS.join('')] }));
   assert.equal(r.status, 0, r.stderr + r.stdout);

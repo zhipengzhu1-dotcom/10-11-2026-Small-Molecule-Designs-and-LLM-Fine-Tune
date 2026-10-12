@@ -26,8 +26,19 @@ function setup({ plugins } = {}) {
   const transcripts = transcriptsDir(root, home);
   mkdirSync(transcripts, { recursive: true });
   copyFileSync(join(FACTORY, 'test', 'fixtures', 'transcript-session.jsonl'), join(transcripts, `${SESSION}.jsonl`));
+  writeFileSync(join(root, 'factory', 'decisions.tsv'), LOG);
   return { home, root };
 }
+
+// A decision log whose last row is line 4 (the header is line 1).
+const LOG = ['ts\tphase\tdecision\twhy\tevidence\tresult',
+  '2026-10-12T01:00:00Z\tproject/a\tpicked 3 epochs\tthe paper says 3\tissue:4\tadopted',
+  '2026-10-12T01:01:00Z\tproject/a\tchose qwen3.5:4b as judge\tit fits 8 GB\tissue:4\topen',
+  '2026-10-12T01:02:00Z\tproject/b\tfetched the source\ttables need it\tissue:4\tadopted',
+].join('\n') + '\n';
+
+// The cells log.sh got, after the log path.
+const cellsOf = (s) => readFileSync(join(s.root, 'factory', 'log.sh.args'), 'utf8').trimEnd().split('\n').slice(1);
 
 function decide({ home, root }, args, extraEnv = {}) {
   const env = { ...process.env, HOME: home, USERPROFILE: home, ...extraEnv };
@@ -35,7 +46,121 @@ function decide({ home, root }, args, extraEnv = {}) {
   return spawnSync(process.execPath, [DECIDE, '--root', root, ...args], { env, encoding: 'utf8' });
 }
 
-const ROW = ['project/frontier/next', 'took #44 next', 'it blocks #14', 'issue:44', 'started'];
+const ROW = ['project/frontier/next', 'took #44 next', 'it blocks #14', 'issue:44', 'open: started'];
+
+// A challenge event (issue #58) in the fixture repo's stream, so --closes has an id to name.
+function challenge(s, id) {
+  const dir = join(s.root, 'factory', 'agents', 'run-1');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'orchestrator.jsonl'), JSON.stringify({
+    ts: '2026-10-12T02:00:00.000Z', run: 'run-1', agent: 'orchestrator', type: 'challenge', id, target: 'row:3', kind: 'rebut', why: 'the judge was never measured',
+  }) + '\n');
+}
+
+test('each row relation flag puts "<relation> line N: " at the start of the decision cell, with " (part)" for a partial one', () => {
+  for (const [flag, value, prefix] of [
+    ['--supersedes', '2', 'supersedes line 2: '],
+    ['--withdraws', '3', 'withdraws line 3: '],
+    ['--corrects', '4', 'corrects line 4: '],
+    ['--supersedes', '2 (part)', 'supersedes line 2 (part): '],
+    ['--withdraws', '3(part)', 'withdraws line 3 (part): '],
+  ]) {
+    const s = setup();
+    const r = decide(s, ['--run', SESSION, flag, value, ...ROW]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(cellsOf(s)[1], `${prefix}took #44 next`, `${flag} ${value}`);
+  }
+});
+
+test('--closes <id> puts "closes challenge <id>: " at the start of the decision cell', () => {
+  const s = setup();
+  challenge(s, 'judge-vram');
+  const r = decide(s, ['--run', SESSION, '--closes', 'judge-vram', ...ROW]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(cellsOf(s)[1], 'closes challenge judge-vram: took #44 next');
+});
+
+test('--closes refuses with exit 2, and writes nothing, an id with no challenge event in the stream', () => {
+  const s = setup();
+  challenge(s, 'judge-vram');
+  for (const [id, message] of [
+    ['judge-cpu', /--closes judge-cpu: no challenge event with id judge-cpu in the stream/],
+    ['3', /--closes 3: no challenge event with id 3 in the stream/],
+    ['bad id', /--closes bad id: a challenge id must be a plain name; bad id is not a plain name/],
+  ]) {
+    const r = decide(s, ['--run', SESSION, '--closes', id, ...ROW]);
+    assert.equal(r.status, 2, id);
+    assert.match(r.stderr, message);
+  }
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+});
+
+test('several relation flags join in one prefix, separated by ", ", in the order supersedes, withdraws, corrects, closes', () => {
+  const s = setup();
+  challenge(s, 'c1');
+  const r = decide(s, ['--run', SESSION, '--closes', 'c1', '--withdraws', '4', '--supersedes', '2 (part)', '--withdraws', '3', ...ROW]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(cellsOf(s)[1], 'supersedes line 2 (part), withdraws line 4, withdraws line 3, closes challenge c1: took #44 next');
+});
+
+test('a relation pointing past the last row, at the header, or written as malformed text is refused with exit 2 before anything is written', () => {
+  const s = setup();
+  for (const [args, message] of [
+    [['--supersedes', '5'], /--supersedes 5: line 5 is past the last row \(4\)/],
+    [['--withdraws', '1'], /--withdraws 1: line 1 is the header, not a decision row/],
+    [['--corrects', 'two'], /--corrects two: write a line number, optionally followed by \(part\)/],
+    [['--corrects', '3 (half)'], /--corrects 3 \(half\): write a line number, optionally followed by \(part\)/],
+  ]) {
+    const r = decide(s, ['--run', SESSION, ...args, ...ROW]);
+    assert.equal(r.status, 2, args.join(' '));
+    assert.match(r.stderr, message);
+  }
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+});
+
+// The flags exist so the relation phrase can't be misspelled, so a hand-written one is refused.
+test('a decision that already starts with a relation word is refused, pointing at the flag', () => {
+  const s = setup();
+  const r = decide(s, ['--run', SESSION, ROW[0], 'supersedes line 2: took #44 next', ROW[2], ROW[3], ROW[4]]);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /decision starts with "supersedes"; pass --supersedes instead of writing the phrase/);
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+});
+
+test('--state puts the claim state first in result, as "<state>: <result>", or alone when result is left out', () => {
+  const s = setup();
+  assert.equal(decide(s, ['--run', SESSION, '--state', 'adopted', ROW[0], ROW[1], ROW[2], ROW[3], 'merged in 1945810']).status, 0);
+  assert.equal(cellsOf(s)[4], 'adopted: merged in 1945810');
+  for (const state of ['open', 'assumed', 'given', 'cited']) {
+    const r = decide(s, ['--run', SESSION, '--state', state, ...ROW.slice(0, 4)]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(cellsOf(s)[4], state);
+  }
+});
+
+test('an unknown --state word, a check result or "defeated" is refused with exit 2 before anything is written', () => {
+  const s = setup();
+  for (const [state, message] of [
+    ['merged', /unknown claim state "merged"; one of adopted, open, assumed, given, cited/],
+    ['pass', /"pass" is a check result, not a claim state; one of adopted, open, assumed, given, cited/],
+    ['defeated', /"defeated" is derived from later rows, never written; one of adopted, open, assumed, given, cited/],
+  ]) {
+    const r = decide(s, ['--run', SESSION, '--state', state, ...ROW]);
+    assert.equal(r.status, 2, state);
+    assert.match(r.stderr, message);
+  }
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+});
+
+test('with no --state, result must already start with a claim state, else the row is refused', () => {
+  const s = setup();
+  const r = decide(s, ['--run', SESSION, ...ROW.slice(0, 4), 'merged in 1945810']);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /unknown claim state "merged"; one of adopted, open, assumed, given, cited; pass --state <state>/);
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+  assert.equal(decide(s, ['--run', SESSION, ...ROW]).status, 0);
+  assert.equal(cellsOf(s)[4], 'open: started');
+});
 
 test('decide calls the installed pstack log.sh on the decision log, with a transcript:<session>@<iso> pointer to the session first in the evidence', () => {
   const s = setup();
@@ -46,7 +171,7 @@ test('decide calls the installed pstack log.sh on the decision log, with a trans
   assert.deepEqual(args.slice(1), [
     'project/frontier/next', 'took #44 next', 'it blocks #14',
     `transcript:${SESSION}@2026-10-12T04:40:09; issue:44`,
-    'started',
+    'open: started',
   ]);
 });
 
