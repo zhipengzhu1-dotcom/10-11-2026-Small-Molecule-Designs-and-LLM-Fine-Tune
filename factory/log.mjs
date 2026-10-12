@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRun } from './run-marker.mjs';
 
-// The API contract from issue #1. Dashboards depend on it.
+// The API contract from issue #1. Dashboards depend on it. Optional fields pass through as given:
+// the lifecycle hook adds `report` and `report_truncated` to agent.stop (spec #52, CONTEXT.md).
 const SCHEMA = {
   'agent.start': { required: ['role', 'parent'] },
   'agent.stop': { required: ['role', 'status'], enums: { status: ['PASS', 'ISSUES', 'BLOCKED'] } },
