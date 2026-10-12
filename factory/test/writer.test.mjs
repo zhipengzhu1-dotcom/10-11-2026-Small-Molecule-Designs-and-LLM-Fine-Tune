@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readStream } from '../read.mjs';
-import { tempRoot, write } from './helpers.mjs';
+import { marker, tempRoot, write } from './helpers.mjs';
 
 // Independent copy of the API contract in issue #1, with one valid example per type.
 const VALID = {
@@ -71,6 +71,12 @@ for (const missing of ['run', 'agent']) {
   });
 }
 
+test('the error for a missing run names every place a run comes from, the run marker too', () => {
+  const r = write(['--root', tempRoot(), '--agent', 'worker-a', 'artifact', ...kv(VALID.artifact)]);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /missing field: run \(pass --run, set FACTORY_RUN, or mark the run with factory\/run-marker\.mjs start\)/);
+});
+
 test('a status or result outside its allowed values is rejected with an error naming the field', () => {
   const root = tempRoot();
   const a = write(['--root', root, '--run', 'run-1', '--agent', 'w', 'agent.stop', 'role=r', 'status=DONE']);
@@ -99,4 +105,22 @@ test('run and agent can come from FACTORY_RUN and FACTORY_AGENT, and root from C
   const [e] = readStream(root);
   assert.equal(e.run, 'run-env');
   assert.equal(e.agent, 'orchestrator');
+});
+
+// Events written without a run during an orchestrated run land in that run's folder, which the
+// merge script commits (issue #17).
+test('with no --run and no FACTORY_RUN, the run comes from the run marker', () => {
+  const root = tempRoot();
+  assert.equal(marker(['start', '--root', root, '--run', 'run-marked', '--branch', 'integ']).status, 0);
+  const r = write(['--root', root, '--agent', 'w', 'artifact', ...kv(VALID.artifact)]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(readStream(root).map((e) => e.run), ['run-marked']);
+});
+
+test('FACTORY_RUN still wins over the run marker', () => {
+  const root = tempRoot();
+  assert.equal(marker(['start', '--root', root, '--run', 'run-marked', '--branch', 'integ']).status, 0);
+  const r = write(['--root', root, '--agent', 'w', 'artifact', ...kv(VALID.artifact)], { FACTORY_RUN: 'run-env' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(readStream(root).map((e) => e.run), ['run-env']);
 });

@@ -6,13 +6,15 @@
 //
 // Root:  --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else the repo this script lives in.
 //        Never the cwd: subagents run in worktrees, but activity files live in the main checkout.
-// Run:   --run, else FACTORY_RUN.     Agent: --agent, else FACTORY_AGENT.
+// Run:   --run, else FACTORY_RUN, else the run marker's run.     Agent: --agent, else FACTORY_AGENT.
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cli, UsageError } from './cli.mjs';
+import { defaultRun } from './run-marker.mjs';
 
 // The API contract from issue #1. Dashboards depend on it.
-export const SCHEMA = {
+const SCHEMA = {
   'agent.start': { required: ['role', 'parent'] },
   'agent.stop': { required: ['role', 'status'], enums: { status: ['PASS', 'ISSUES', 'BLOCKED'] } },
   artifact: { required: ['path', 'kind'] },
@@ -24,7 +26,7 @@ export const UNKNOWN = 'unknown';
 const STAMPED = ['ts', 'run', 'agent', 'type'];
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-export class EventError extends Error {}
+class EventError extends Error {}
 
 export function defaultRoot(env = process.env) {
   return env.FACTORY_ROOT || env.CLAUDE_PROJECT_DIR || resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -72,37 +74,35 @@ export function writeEvent({ root, run, agent, type, fields = {}, fillUnknown = 
   return event;
 }
 
+// Where each id can come from, for the error when it is missing.
+const SOURCES = {
+  run: 'pass --run, set FACTORY_RUN, or mark the run with factory/run-marker.mjs start',
+  agent: 'pass --agent or set FACTORY_AGENT',
+};
+
 function checkId(name, v) {
-  if (!v) throw new EventError(`missing field: ${name} (pass --${name} or set FACTORY_${name.toUpperCase()})`);
+  if (!v) throw new EventError(`missing field: ${name} (${SOURCES[name]})`);
   if (!ID.test(v)) throw new EventError(`invalid ${name}: ${v} (letters, digits, '.', '_', '-' only)`);
 }
 
-export function parseArgs(argv, env = process.env) {
-  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN, agent: env.FACTORY_AGENT, fields: {} };
-  const rest = [];
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--root' || a === '--run' || a === '--agent') {
-      if (i + 1 >= argv.length) throw new EventError(`${a} needs a value`);
-      opts[a.slice(2)] = argv[++i];
-    } else rest.push(a);
-  }
-  opts.type = rest.shift();
-  for (const kv of rest) {
+// A rejected event is the caller's mistake, like a bad argument: usage and exit 2.
+cli(import.meta.url, {
+  usage: 'node factory/log.mjs --run <run-id> --agent <agent-id> [--root <repo>] <type> key=value ...',
+  options: { root: 'string', run: 'string', agent: 'string' },
+  positionals: true,
+}, ({ positionals: [type, ...pairs], ...opts }) => {
+  const env = process.env;
+  const fields = {};
+  for (const kv of pairs) {
     const eq = kv.indexOf('=');
-    if (eq <= 0) throw new EventError(`expected key=value, got: ${kv}`);
-    opts.fields[kv.slice(0, eq)] = kv.slice(eq + 1);
+    if (eq <= 0) throw new UsageError(`expected key=value, got: ${kv}`);
+    fields[kv.slice(0, eq)] = kv.slice(eq + 1);
   }
-  return opts;
-}
-
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
   try {
-    const event = writeEvent(parseArgs(process.argv.slice(2)));
+    const root = opts.root ?? defaultRoot(env);
+    const event = writeEvent({ root, run: defaultRun(root, env), agent: env.FACTORY_AGENT, ...opts, type, fields });
     process.stdout.write(JSON.stringify(event) + '\n');
   } catch (err) {
-    process.stderr.write(`log.mjs: ${err.message}\n`);
-    process.exit(err instanceof EventError ? 2 : 1);
+    throw err instanceof EventError ? new UsageError(err.message) : err;
   }
-}
+});

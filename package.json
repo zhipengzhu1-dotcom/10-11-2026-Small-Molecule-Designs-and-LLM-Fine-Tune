@@ -9,6 +9,11 @@
     "test": "node --test \"factory/**/*.test.mjs\"",
     "ci": "node scripts/ci.mjs",
     "fetch-page": "node factory/fetch-page.mjs",
+    "decide": "node factory/decide.mjs",
+    "frontier": "node factory/frontier.mjs",
+    "transcript": "node factory/transcript.mjs",
+    "review:qwen": "node factory/review-qwen.mjs",
+    "merge": "node factory/merge.mjs",
     "viewer": "node factory/viewer.mjs",
     "fetch:s1": "node scripts/fetch-s1.mjs",
     "hooks:install": "git config core.hooksPath .githooks",
@@ -19,6 +24,8 @@
     "check:references": "node factory/checks/references.mjs",
     "check:brief": "node factory/checks/brief.mjs",
     "check:trail": "node factory/checks/trail.mjs",
+    "check:ticket": "node factory/checks/ticket.mjs",
+    "check:licenses": "node factory/checks/licenses.mjs",
     "check:tables": "node factory/checks/tables.mjs --tex research/s1/raw/arxiv/latex/main.tex --notes research/s1/tables --notes research/s1/figures"
   }
 }

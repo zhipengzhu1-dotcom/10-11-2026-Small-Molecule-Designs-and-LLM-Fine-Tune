@@ -4,8 +4,8 @@
 //
 //   node factory/read.mjs [--root <repo>]      prints the stream as JSON lines
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { cli } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
 
 export function readStream(root = defaultRoot()) {
@@ -71,9 +71,6 @@ function sortByTs(events) {
     .map((x) => x.e);
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  const i = process.argv.indexOf('--root');
-  const root = i > 0 ? process.argv[i + 1] : defaultRoot();
+cli(import.meta.url, { usage: 'node factory/read.mjs [--root <repo>]', options: { root: 'string' } }, ({ root = defaultRoot() }) => {
   for (const e of readStream(root)) process.stdout.write(JSON.stringify(e) + '\n');
-}
+});

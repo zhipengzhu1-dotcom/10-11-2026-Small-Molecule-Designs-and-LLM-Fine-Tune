@@ -111,3 +111,10 @@ test('a table the check cannot parse is INCONCLUSIVE and never recorded as a pas
   assert.match(e.evidence, /tab:toy/);
   assert.doesNotMatch(e.evidence, /tab:budget/);
 });
+
+test('the report ends with the line every check prints: tables: <verdict>: <the evidence its event records>', () => {
+  const pass = check(sample());
+  assert.equal(pass.stdout.trim().split('\n').pop(), `tables: pass: ${pass.events[0].evidence}`);
+  const unsure = check(sample([['paper.tex', '\\begin{tabular}{lrr}', '\\begin{tabular}{lrQ}']]));
+  assert.equal(unsure.stdout.trim().split('\n').pop(), `tables: inconclusive: ${unsure.events[0].evidence}`);
+});

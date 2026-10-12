@@ -2,6 +2,10 @@
   "worktree": {
     "baseRef": "head"
   },
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": false
+  },
+  "disableClaudeAiConnectors": true,
   "hooks": {
     "SubagentStart": [
       {
@@ -25,6 +29,28 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/context-meter.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/context-meter.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -32,6 +58,16 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/long-heredoc.mjs\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/git-config.mjs\"",
             "timeout": 10
           }
         ]

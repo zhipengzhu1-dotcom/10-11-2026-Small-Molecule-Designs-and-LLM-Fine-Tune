@@ -12,7 +12,7 @@ const LIMIT = 40;
 
 // Lines of heredoc text in a shell command: everything between a `<<WORD` (or `<<'WORD'`,
 // `<<-WORD`) line and the line holding only WORD.
-export function heredocLines(command) {
+function heredocLines(command) {
   let total = 0;
   let end = null;
   for (const line of command.split(/\r?\n/)) {

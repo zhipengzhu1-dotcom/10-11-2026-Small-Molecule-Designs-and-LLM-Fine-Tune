@@ -16,7 +16,7 @@ When a merger reports ISSUES, the ticket stays open and the fix goes to the orig
 
 ## Context budget (after step 6)
 
-At every frontier step, check context use against the spec's budget, estimating from the conversation's length when no meter shows it. Once it's over budget, finish the merges in flight, post the status note and hand off.
+At every frontier step, check context use against the spec's budget. While the run marker names your session, the context meter (`factory/hooks/context-meter.mjs`) adds a `Context meter: N tokens in context` line after each prompt and tool call: use that N. Estimate from the conversation's length only when no meter line shows. Once it's over budget, finish the merges in flight, post the status note and hand off.
 
 ## Binding constraints
 
@@ -25,6 +25,8 @@ Keep every binding constraint in one shared **brief**, in the user's exact words
 ## Shared notes (step 2)
 
 Agent worktrees branch from the orchestrator's checkout (`worktree.baseRef: head` in `.claude/settings.json`), so keep the main checkout on the integration branch while agents run. `.worktreeinclude` copies gitignored source data into each new worktree, so agents use repo-relative paths. Data an agent needs that the file doesn't list gets a line there before the fan-out. Notes go in a fixed folder outside the session scratchpad, linked from the status note.
+
+The lifecycle hooks log only the run the marker names. Before the fan-out, run `node factory/run-marker.mjs start --run <session-id> --branch <integration branch>` in the main checkout, and run `node factory/run-marker.mjs stop` at close-out.
 
 ## Push asks (step 3)
 
@@ -39,6 +41,8 @@ A push or PR gets no decision row: its commit would land after the push and stra
 ## Merges (step 5)
 
 - Run one merger at a time in the main checkout.
+- The merger writes the merge message (subject `Merge #<n>: <title>`, then the Co-Authored-By trailer) to a file with the Write tool and merges with `npm run merge -- <branch> -F <file>`, the **Merge script** in `CONTEXT.md`. A multi-line `-m` loses its newlines through npm on Windows. If the merge conflicts, the merger resolves it and commits.
+- At close-out, run `npm run merge -- --factory-only -F <file>` (the file holds the trailer) before `run-marker.mjs stop`. It commits the last merger's `agent.stop` and the final decision rows.
 - The merger re-runs every generator the branch touches, twice, and diffs the output. Any difference counts as ISSUES.
 - If the merger finds a bug, the ticket stays open until the fix merges.
 

@@ -12,6 +12,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cli } from '../factory/cli.mjs';
 
 const LIVE_DATA = [
   /\breadStream\(\s*REPO\b/,
@@ -24,7 +25,7 @@ export function liveDataUses(text) {
   return text.split(/\r?\n/).map((t, i) => ({ line: i + 1, text: t.trim() })).filter((l) => LIVE_DATA.some((re) => re.test(l.text)));
 }
 
-export function breaches(root) {
+function breaches(root) {
   const out = [];
   if (existsSync(join(root, '.github', 'workflows'))) {
     out.push('.github/workflows/ exists: CI runs in Docker on this machine (npm run ci), never on a hosted runner; delete it');
@@ -38,12 +39,9 @@ export function breaches(root) {
   return out;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  const args = process.argv.slice(2);
-  const root = args[0] === '--root' && args[1] ? args[1] : resolve(dirname(fileURLToPath(import.meta.url)), '..');
-  const found = breaches(root);
+cli(import.meta.url, { usage: 'node scripts/rules.mjs [--root <repo>]', options: { root: 'string' } }, (opts) => {
+  const found = breaches(opts.root ?? resolve(dirname(fileURLToPath(import.meta.url)), '..'));
   for (const b of found) console.error(`rules: ${b}`);
   console.log(found.length ? `rules: fail (${found.length})` : 'rules: pass');
-  process.exit(found.length ? 1 : 0);
-}
+  return found.length ? 1 : 0;
+});

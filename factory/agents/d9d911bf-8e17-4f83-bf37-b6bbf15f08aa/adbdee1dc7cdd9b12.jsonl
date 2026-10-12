@@ -1,0 +1,8 @@
+{"ts":"2026-10-12T05:13:51.158Z","run":"d9d911bf-8e17-4f83-bf37-b6bbf15f08aa","agent":"adbdee1dc7cdd9b12","type":"agent.start","role":"general-purpose","parent":"orchestrator"}
+{"ts":"2026-10-12T05:26:30.812Z","run":"d9d911bf-8e17-4f83-bf37-b6bbf15f08aa","agent":"adbdee1dc7cdd9b12","type":"check","name":"npm-test-after-21","result":"pass","evidence":"83dda25"}
+{"ts":"2026-10-12T05:26:30.875Z","run":"d9d911bf-8e17-4f83-bf37-b6bbf15f08aa","agent":"adbdee1dc7cdd9b12","type":"check","name":"npm-test-after-15","result":"pass","evidence":"fb50ba0"}
+{"ts":"2026-10-12T05:26:30.940Z","run":"d9d911bf-8e17-4f83-bf37-b6bbf15f08aa","agent":"adbdee1dc7cdd9b12","type":"check","name":"git-config-hook-probe","result":"pass","evidence":"fb50ba0"}
+{"ts":"2026-10-12T05:26:31.008Z","run":"d9d911bf-8e17-4f83-bf37-b6bbf15f08aa","agent":"adbdee1dc7cdd9b12","type":"check","name":"npm-test-after-44","result":"pass","evidence":"855ae5d"}
+{"ts":"2026-10-12T05:26:31.073Z","run":"d9d911bf-8e17-4f83-bf37-b6bbf15f08aa","agent":"adbdee1dc7cdd9b12","type":"check","name":"merge-14","result":"fail","evidence":"conflict factory/test/transcript.test.mjs imports; aborted"}
+{"ts":"2026-10-12T05:26:31.138Z","run":"d9d911bf-8e17-4f83-bf37-b6bbf15f08aa","agent":"adbdee1dc7cdd9b12","type":"check","name":"context-meter-fixture","result":"pass","evidence":"worktree-agent-a8de1f8e60bbd533d"}
+{"ts":"2026-10-12T05:26:41.304Z","run":"d9d911bf-8e17-4f83-bf37-b6bbf15f08aa","agent":"adbdee1dc7cdd9b12","type":"agent.stop","role":"general-purpose","status":"ISSUES"}
