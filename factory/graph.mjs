@@ -23,11 +23,13 @@
 //   graph.completion()            { proper, sink, unmerged, gates } for the done read
 //   (the last three: the workflow net in graph/workflow.mjs; merges come in as snapshot.merges,
 //    [{ ticket, ts, commit }], the integration branch's `Merge #<n>` commits)
+//   graph.overdue(now, { run? })  running agents past their role's usual time (graph/sojourn.mjs)
 //
-// Overlays (argumentation here, the workflow net in graph/) live here or in sibling files, without
+// Overlays (argumentation here, the others in graph/) live here or in sibling files, without
 // changing the interface.
 import { claimState, parseRelations } from './claim.mjs';
 import { ticketsNamed } from './graph/names.mjs';
+import { overdue } from './graph/sojourn.mjs';
 import { workflow } from './graph/workflow.mjs';
 
 export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
@@ -99,6 +101,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   graph.earlyStarts = () => replay().earlyStarts;
   graph.slack = () => replay().slack;
   graph.completion = () => replay().completion;
+  graph.overdue = (now, opts) => overdue(events, now, opts);
   return graph;
 }
 
