@@ -13,6 +13,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseDescription } from '../description.mjs';
 import { activityFile, defaultRoot, safeId, writeEvent } from '../log.mjs';
+import { parseTarget } from '../pointer.mjs';
 import { inMarkedRun } from '../run-marker.mjs';
 
 const ORCHESTRATOR = 'orchestrator';
@@ -60,6 +61,7 @@ function sendFields(root, call) {
 
 // What prompted the call (spec #52, story 6): a line `Cause: <pointer>` in the prompt or message,
 // such as `Cause: row:94`. The tools have no field for it, so the orchestrator writes it there.
+// It is checked against the challenge-target grammar (parseTarget, factory/pointer.mjs).
 const CAUSE = /^Cause: (\S+)[ \t]*\r?$/m;
 const causeOf = (text) => (typeof text === 'string' ? CAUSE.exec(text)?.[1] : undefined);
 
@@ -76,7 +78,13 @@ function main() {
   if (!out) return;
   const [type, fields] = out;
   const cause = causeOf(call.tool_name === 'Agent' ? call.tool_input?.prompt : call.tool_input?.message);
-  writeEvent({ root, run, agent: ORCHESTRATOR, type, fields: { ...fields, tool_use_id: call.tool_use_id, cause }, fillUnknown: true });
+  // The call already happened, so a cause the target grammar rejects is kept and flagged.
+  const target = cause === undefined ? undefined : parseTarget(cause);
+  const causeInvalid = cause !== undefined && (!target || target.problem) ? true : undefined;
+  writeEvent({
+    root, run, agent: ORCHESTRATOR, type, fillUnknown: true,
+    fields: { ...fields, tool_use_id: call.tool_use_id, cause, cause_invalid: causeInvalid },
+  });
 }
 
 try {

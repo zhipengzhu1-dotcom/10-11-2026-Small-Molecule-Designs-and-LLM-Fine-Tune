@@ -162,6 +162,22 @@ test('a Cause: line in the prompt or message becomes the event\'s cause', () => 
     ['dispatch', 'event:a52ce0ba-2c32-4437-97c2-3fc66317e832/a6e1a77aba05053f2:4'],
     ['message', 'row:95'],
   ]);
+  assert.ok(readStream(root).every((e) => !('cause_invalid' in e)));
+});
+
+// The launch already happened, so a PostToolUse hook can't refuse it: a cause that the target
+// grammar (parseTarget in factory/pointer.mjs) rejects is kept as written and flagged.
+test('a cause that isn\'t a valid target is still written, flagged cause_invalid', () => {
+  const root = runRoot(LAUNCH_MERGER.session_id);
+  const launch = payload(LAUNCH_MERGER, { tool_input: { ...LAUNCH_MERGER.tool_input, description: 'merger #48 origin main', prompt: 'Cause: row:ninety-four' } });
+  const queued = payload({ ...QUEUED, session_id: LAUNCH_MERGER.session_id }, { tool_input: { ...QUEUED.tool_input, message: 'Cause: the-merge-failure\nRetry.' } });
+  const resume = payload(RESUMES[0], { tool_input: { ...RESUMES[0].tool_input, message: 'Cause: transcript:a52ce0ba-2c32-4437-97c2-3fc66317e832@2026-10-12T06:09:00Z' } });
+  for (const p of [launch, queued, resume]) assert.equal(runHook(p, root).status, 0);
+  assert.deepEqual(readStream(root).map((e) => [e.type, e.cause, e.cause_invalid]), [
+    ['dispatch', 'row:ninety-four', true],
+    ['message', 'the-merge-failure', true],
+    ['dispatch', 'transcript:a52ce0ba-2c32-4437-97c2-3fc66317e832@2026-10-12T06:09:00Z', undefined],
+  ]);
 });
 
 test('outside an orchestrated run (no marker, or a marker naming another run) nothing is written', () => {
