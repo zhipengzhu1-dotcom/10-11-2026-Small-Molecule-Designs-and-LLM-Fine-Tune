@@ -7,6 +7,7 @@
   },
   "scripts": {
     "test": "node --test \"factory/**/*.test.mjs\"",
+    "test:results": "node factory/test-results.mjs",
     "ci": "node scripts/ci.mjs",
     "fetch-page": "node factory/fetch-page.mjs",
     "decide": "node factory/decide.mjs",
