@@ -36,6 +36,8 @@ A push or PR gets no decision row: its commit would land after the push and stra
 
 ## Fan-out (steps 4 and 6)
 
+Every `Agent` launch's description follows `<role> #<n|-> <what>`: a lowercase role word, the ticket it serves (`#-` when it serves none), then the work, such as `implementer #53 pointer grammar`, `merger #53 into integration` or `audit #- trail rows 77-87`. During an orchestrated run, the description hook (`factory/hooks/agent-description.mjs`) refuses any other form, and the dispatch prompt you give each worker tells it to name its own subagents the same way.
+
 **Smoke-test** each new kind of deliverable. Run one agent, confirm its write reached disk, then launch the rest. Claude Code refuses subagent writes to report-like files: `summary.md` was refused, while `notes.md`, `scout.md` and `review-a.md` went through. When a write is refused, rename the deliverable for the whole batch. If renaming fails, have one writer subagent take the bodies, so they stay out of the orchestrator's context.
 
 ## Merges (step 5)
