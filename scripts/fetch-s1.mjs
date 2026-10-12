@@ -82,7 +82,7 @@ function present(hashes, path, file) {
   return true;
 }
 
-export async function fetchS1({ root, baseUrl }) {
+async function fetchS1({ root, baseUrl }) {
   const raw = join(root, 'research', 's1', 'raw');
   const out = join(raw, 'arxiv');
   const hashes = recordedHashes(raw);

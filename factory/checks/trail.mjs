@@ -201,7 +201,7 @@ function rowProblems(row, treeRoot) {
   return problems;
 }
 
-export function runCheck(opts) {
+function runCheck(opts) {
   opts = { transcripts: defaultTranscripts(opts.root), ...opts };
   const auditDir = join(opts.root, 'factory', 'audit');
   const text = readFileSync(join(opts.root, 'factory', 'decisions.tsv'), 'utf8');
@@ -229,13 +229,13 @@ export function runCheck(opts) {
   let ok = 0;
   let superseded = 0;
   for (const r of log) {
-    const mine = verdicts.filter((v) => v.line === r.line);
+    const rowVerdicts = verdicts.filter((v) => v.line === r.line);
     const at = `line ${r.line} (${r.ts})`;
     problems.push(...rowProblems(r, treeRoot).map((p) => `${at}: ${p}`));
-    if (!mine.length) problems.push(`${at}: no audit verdict`);
-    else if (mine.some((v) => v.verdict === 'superseded')) superseded++;
+    if (!rowVerdicts.length) problems.push(`${at}: no audit verdict`);
+    else if (rowVerdicts.some((v) => v.verdict === 'superseded')) superseded++;
     else ok++;
-    for (const v of mine) {
+    for (const v of rowVerdicts) {
       const found = verdictProblems(v, r, log, opts);
       problems.push(...found.problems.map((p) => `${at}: ${p}`));
       notes.push(...found.notes.map((n) => `${at}: ${n}`));

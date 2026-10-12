@@ -10,11 +10,11 @@ import { cli, UsageError } from './cli.mjs';
 import { defaultRoot, writeEvent } from './log.mjs';
 import { readStream } from './read.mjs';
 
-export const AGENT = 'fetch-page';
+const AGENT = 'fetch-page';
 
 // A fetch.failed event is open until an artifact event for the same ref follows it: one with
 // a matching ref field, or a path inside research/refs/<ref>/raw/.
-export function openFailures(root) {
+function openFailures(root) {
   const open = new Map();
   for (const e of readStream(root)) {
     if (e.type === 'fetch.failed') open.set(e.ref, e);
@@ -32,7 +32,7 @@ const SAFE_REF = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/;
 
 // Reduces whatever name the browser sent to a plain file name: last path segment only, no
 // leading or trailing dots, a safe character set, never a Windows device name.
-export function safeName(raw) {
+function safeName(raw) {
   let name = String(raw ?? '').split(/[\\/]/).pop();
   name = name.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+|\.+$/g, '').slice(0, 150);
   if (/^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i.test(name)) name = `_${name}`;
@@ -54,7 +54,7 @@ function saveNew(dir, name, body) {
   }
 }
 
-export function createFetchPage({ root = defaultRoot() } = {}) {
+function createFetchPage({ root = defaultRoot() } = {}) {
   return createServer((req, res) =>
     handle(root, req, res).catch((err) => {
       if (!res.headersSent) send(res, 500, 'text/plain', err.message);
@@ -63,7 +63,7 @@ export function createFetchPage({ root = defaultRoot() } = {}) {
 }
 
 // The request handler on its own, so the factory dashboard can mount it later.
-export async function handle(root, req, res) {
+async function handle(root, req, res) {
   const url = new URL(req.url, 'http://127.0.0.1');
   // Bound to 127.0.0.1, so only this machine connects. A web page in the user's browser still
   // can: refuse any Host but this one (DNS rebinding) and any cross-site Origin on a drop.
@@ -92,7 +92,7 @@ export async function handle(root, req, res) {
 
 // One row per open ref: { ref, title, url, reason, run, ts }. The title comes from the
 // fetch.failed event's optional title field, else research/refs/catalog.tsv, else is empty.
-export function openRefs(root) {
+function openRefs(root) {
   const titles = catalogTitles(root);
   return [...openFailures(root).values()].map((e) => ({
     ref: e.ref, title: e.title || titles.get(e.ref) || '', url: e.url, reason: e.reason, run: e.run, ts: e.ts,

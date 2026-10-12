@@ -48,7 +48,7 @@ function readOrWorktree(args) {
 
 // The commands in a shell command line that write the git config every checkout shares: a
 // `git config` write without --worktree, or the npm script that sets core.hooksPath.
-export function sharedConfigWrites(command) {
+function sharedConfigWrites(command) {
   return command.replace(/\d*>>?(&\d+|\s*\S+)/g, '').split(/\r?\n|&&|\|\||[;|&]/).map((s) => s.trim()).filter((s) => {
     if (/^npm\s+(run|run-script)\s+hooks:install\b/.test(s)) return true;
     const args = configArgs(words(s));
