@@ -58,7 +58,8 @@ function statusOf(c) {
 
 // gh(args) runs the gh CLI and returns its stdout. With a factory root whose run marker names an
 // orchestrated run, it also writes one `ticket.graph` event as the orchestrator: each child's
-// state, status and open blockers, and the spec's user stories (`stories`, when it lists any), so
+// title (the ticket's text node, graph/text.mjs), state, status and open blockers, and the spec's
+// user stories (`stories`, when it lists any), so
 // the graph can be rebuilt from the logs without GitHub.
 export function frontier({ number, remote, gh, root }) {
   const { owner, repo } = repoOf(remote);
@@ -79,7 +80,7 @@ export function frontier({ number, remote, gh, root }) {
   });
   const run = root && readMarker(root)?.run;
   if (run) {
-    const tickets = children.map((c) => ({ number: c.number, state: c.state, status: c.status, blockers: c.openBlockers }));
+    const tickets = children.map((c) => ({ number: c.number, title: c.title, state: c.state, status: c.status, blockers: c.openBlockers }));
     const stories = userStories(issue.body ?? '');
     writeEvent({ root, run, agent: 'orchestrator', type: 'ticket.graph', fields: { spec: number, tickets, ...(stories.length ? { stories } : {}) } });
   }

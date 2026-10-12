@@ -3,7 +3,7 @@
 // (research/argumentation:research/orchestration/argumentation.md, section 4).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { buildGraph } from '../graph.mjs';
 import { FACTORY } from './helpers.mjs';
@@ -141,7 +141,11 @@ test('the graph module is pure: it, the pointer grammar and every module they im
   };
   walk(join(FACTORY, 'graph.mjs'));
   walk(join(FACTORY, 'pointer-grammar.mjs')); // the pointer parsers the graph may use
-  walk(join(FACTORY, 'graph', 'distortion.mjs')); // the views' distortion scores
+  // Every file in factory/graph/, imported by graph.mjs or not (the views' distortion scores and
+  // text scatter), so a new overlay is covered the day it lands.
+  const overlays = readdirSync(join(FACTORY, 'graph')).filter((f) => f.endsWith('.mjs'));
+  for (const f of overlays) walk(join(FACTORY, 'graph', f));
+  assert.ok(overlays.includes('scatter.mjs') && overlays.includes('distortion.mjs'));
   assert.ok(seen.size >= 3, 'graph.mjs imports the claim grammar');
 });
 

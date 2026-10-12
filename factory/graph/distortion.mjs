@@ -4,6 +4,7 @@
 //   euclidean(points)                      -> n x n distance matrix
 //   neighbourhoods(full, view, ks?)        -> { T: { k: score }, C: { k: score } }
 //   eigenmap(n, links, d?)                 -> n points in R^d (Laplacian eigenmaps)
+//   hops(n, links)                         -> n x n shortest-path distances in links
 //   jacobi(a)                              -> { values, vectors } of a symmetric matrix (a is overwritten)
 //
 // Trustworthiness T(k) and continuity C(k) are Venna and Kaski's M1 and M2 (WSOM 2005, section 2.1,
@@ -64,6 +65,24 @@ function ranks(dist) {
     const r = new Int32Array(n);
     order.forEach((j, p) => { r[j] = p + 1; });
     return r;
+  });
+}
+
+// The graph's own distances: hops on a shortest path (breadth-first), Infinity between nodes no
+// path joins. The yardstick for a graph whose eigenmap is degenerate: in a star (a run's hub and
+// its agents) the leaves share one eigenspace, so their eigenmap coordinates are an arbitrary
+// basis of it, not structure. `links` are [a, b] index pairs, as for eigenmap.
+export function hops(n, links) {
+  const next = Array.from({ length: n }, () => []);
+  for (const [a, b] of links) if (a !== b) next[a].push(b), next[b].push(a);
+  return Array.from({ length: n }, (_, s) => {
+    const d = new Float64Array(n).fill(Infinity);
+    d[s] = 0;
+    for (const queue = [s]; queue.length;) {
+      const u = queue.shift();
+      for (const v of next[u]) if (d[v] === Infinity) d[v] = d[u] + 1, queue.push(v);
+    }
+    return d;
   });
 }
 

@@ -203,20 +203,27 @@ function handbackTranscript(message) {
   return file;
 }
 
+// The stop event a hand-back of `length` characters writes. The two tests below have static
+// names, so the story map can name them (story 8).
 const CAP = 64 * 1024;
-for (const [label, length, truncated] of [['at', CAP, false], ['over', CAP + 5000, true]]) {
-  test(`a report ${label} the 64k-character cap is ${truncated ? 'cut to the cap and flagged report_truncated' : 'kept whole'}`, () => {
-    const root = runRoot();
-    const text = 'PASS ' + 'r'.repeat(length - 5);
-    const r = hook(stop({ last_assistant_message: '', agent_transcript_path: handbackTranscript(text) }), { CLAUDE_PROJECT_DIR: root });
-    assert.equal(r.status, 0, r.stderr);
-    const [e] = readStream(root);
-    assert.equal(e.status, 'PASS');
-    assert.equal(e.report, text.slice(0, CAP));
-    if (truncated) assert.equal(e.report_truncated, true);
-    else assert.equal('report_truncated' in e, false);
-  });
+function stopWithReport(length) {
+  const root = runRoot();
+  const text = 'PASS ' + 'r'.repeat(length - 5);
+  const r = hook(stop({ last_assistant_message: '', agent_transcript_path: handbackTranscript(text) }), { CLAUDE_PROJECT_DIR: root });
+  assert.equal(r.status, 0, r.stderr);
+  const [e] = readStream(root);
+  assert.equal(e.status, 'PASS');
+  assert.equal(e.report, text.slice(0, CAP));
+  return e;
 }
+
+test('a report at the 64k-character cap is kept whole', () => {
+  assert.equal('report_truncated' in stopWithReport(CAP), false);
+});
+
+test('a report over the 64k-character cap is cut to the cap and flagged report_truncated', () => {
+  assert.equal(stopWithReport(CAP + 5000).report_truncated, true);
+});
 
 test('a payload missing the agent id or session id still records the event, as unknown', () => {
   const root = runRoot();

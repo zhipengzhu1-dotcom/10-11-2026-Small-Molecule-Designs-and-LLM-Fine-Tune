@@ -13,7 +13,7 @@ story	kind	name
 7	test	on recorded calls, each dispatch's agent is the agent_id of the agent.start it caused
 8	test	a stop that handed back through SubagentHandback logs its full text as report
 8	test	a stop with no report text anywhere writes no report field
-9	test	in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its state and open blockers
+9	test	in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its title, state and open blockers
 9	test	with no run marked, the frontier writes nothing
 10	test	a check run for a ticket records the ticket number on its event
 10	test	a check event written with ticket=#59 records ticket 59; a ticket that is no issue number is rejected
@@ -178,3 +178,9 @@ story	kind	name
 36	test	a check that provably ran before its artifact's last write is stale; a check re-run after the write is not
 36	test	a check concurrent with a write is not stale, whatever their ts: only happens-before counts
 41	test	when the stream will not read, the meter says the overdue check failed instead of staying silent
+8	test	a report at the 64k-character cap is kept whole
+8	test	a report over the 64k-character cap is cut to the cap and flagged report_truncated
+22	test	a test declared through a wrapper of test() is named like any other; a helper that only takes a string is not
+49	test	the state carries the agent network's T(k) and C(k) at k = 5 and 10, its settled force layout against the crew graph's shortest-path hops
+49	test	hop distances count the links on a shortest path, and a node out of reach is infinitely far
+9	test	the text nodes are decision rows (decision and why), hand-back reports and tickets (their titles)

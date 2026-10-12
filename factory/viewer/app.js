@@ -84,9 +84,10 @@ function render(s) {
   }).reverse());
   $('checks').replaceChildren(...s.checks.map((c) => h('span', { class: 'chip ' + c.result, title: c.evidence }, c.name)));
   $('dcount').textContent = '(' + s.tree.count + ': ' + s.labels.in + ' in, ' + s.labels.out + ' out, ' + s.labels.undec + ' undec)';
-  $('dscore').replaceChildren(...scores(s.disk));
+  $('dscore').replaceChildren(...scores(s.disk, diskAgainst(s.disk)));
   $('scount').textContent = '(' + s.scatter.n + ' rows, ' + s.scatter.method.toUpperCase() + ')';
-  $('sscore').replaceChildren(...scatterScores(s.scatter));
+  $('sscore').replaceChildren(...scores(s.scatter, scatterAgainst(s.scatter)));
+  $('cscore').replaceChildren(...scores(s.network, networkAgainst(s.network)));
   $('swarn').textContent = s.scatter.warning ?? '';
   renderStories(s.stories);
   const members = allRuns ? s.crew : s.crew.filter((c) => c.run === s.run);
@@ -100,20 +101,17 @@ function render(s) {
   else $('tree').replaceChildren(...s.tree.children.map((n) => branch(n, true)));
 }
 
-// "T(5) 0.92 C(5) 0.89 · T(10) 0.85 C(10) 0.84", how far the disk distorts the full graph (see
-// diskView in viewer.mjs); a k too large for the log shows a dash.
-function scores(d) {
+// "T(5) 0.92 C(5) 0.89 · T(10) 0.85 C(10) 0.84", how far a view distorts its full space (see
+// diskView, networkView and textScatter in viewer.mjs), then what it was scored against; a k too
+// large for the view shows a dash.
+function scores(d, against) {
   const f = (v) => (v == null ? '–' : v.toFixed(2));
   return [h('b', null, [5, 10].map((k) => 'T(' + k + ') ' + f(d.T[k]) + ' C(' + k + ') ' + f(d.C[k])).join(' · ')),
-    ' against ' + d.against.method + ' (d = ' + d.against.d + ') of the full graph, ' + d.n + ' nodes · 1 is faithful, about 0.5 is random · every edge is ' + d.tau.toFixed(2) + ' long, so one hop from the centre is near the rim'];
+    ' ' + against + ' · 1 is faithful, about 0.5 is random'];
 }
-
-// The same for the text scatter, against the full TF-IDF space.
-function scatterScores(d) {
-  const f = (v) => (v == null ? '–' : v.toFixed(2));
-  return [h('b', null, [5, 10].map((k) => 'T(' + k + ') ' + f(d.T[k]) + ' C(' + k + ') ' + f(d.C[k])).join(' · ')),
-    ' of ' + d.method.toUpperCase() + ' against the ' + d.against.metric + ' distances of the full ' + d.against.space + ' vectors, ' + d.n + ' rows · 1 is faithful, about 0.5 is random'];
-}
+const diskAgainst = (d) => 'against ' + d.against.method + ' (d = ' + d.against.d + ') of the full graph, ' + d.n + ' nodes · every edge is ' + d.tau.toFixed(2) + ' long, so one hop from the centre is near the rim';
+const scatterAgainst = (d) => 'of ' + d.method.toUpperCase() + ' against the ' + d.against.metric + ' distances of the full ' + d.against.space + ' vectors, ' + d.n + ' rows';
+const networkAgainst = (d) => 'of the layout of every run against the crew graph\'s ' + d.against.method + ', ' + d.n + ' nodes';
 
 // Each story of the spec as a node: filled when supported, grey when unrun or with no evidence,
 // an outline when failing or undeveloped, with its count of residual doubts; the title lists them.

@@ -89,6 +89,23 @@ test('a malformed map fails, naming the header or each bad row', () => {
   assert.match(e, /2\.tsv:5: story 9: a none row's name is -/);
 });
 
+test('a test declared through a wrapper of test() is named like any other; a helper that only takes a string is not', () => {
+  const root = repo({ '52.tsv': HEADER + '23\ttest\ta wrapped test\n24\ttest\ta wrapped function test\n25\ttest\tnot a test\n' });
+  writeFileSync(join(root, 'factory', 'test', 'wrapped.test.mjs'), [
+    "import { test } from 'node:test';",
+    "const t = (name, fn) => test(name, { skip: false }, fn);",
+    "function wrapped(title, fn) { return test(title, fn); }",
+    "const u = (s) => s.length;",
+    "t('a wrapped test', () => {});",
+    "wrapped('a wrapped function test', () => {});",
+    "u('not a test');",
+  ].join('\n'));
+  const r = check(root);
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  assert.doesNotMatch(r.events[0].evidence, /52\.tsv:[23]:/);
+  assert.match(r.events[0].evidence, /52\.tsv:4: story 25: test "not a test" is declared in no/);
+});
+
 test('a generated test name is not stable, so the map cannot name it', () => {
   const r = check(repo({ '52.tsv': HEADER + '22\ttest\tgenerated 1\n' }));
   assert.equal(r.status, 1, r.stderr + r.stdout);
