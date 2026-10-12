@@ -60,8 +60,17 @@ function readActivity(file, run, agent) {
     }
     if (e.agent !== agent) throw new Error(`${where}: event agent ${e.agent} does not match its file`);
     if (e.run !== run) throw new Error(`${where}: event run ${e.run} does not match its folder`);
-    return e;
+    return dropLegacy(e);
   });
+}
+
+// agent.stop events written before issue #21 also carry `transcript`, the subagent's transcript
+// path. It isn't in the contract and follows from run and agent, so the stream leaves it out
+// (issue #62). The activity files keep it: they are append-only.
+function dropLegacy(e) {
+  if (e.type !== 'agent.stop' || !('transcript' in e)) return e;
+  const { transcript: _, ...rest } = e;
+  return rest;
 }
 
 function sortByTs(events) {

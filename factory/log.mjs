@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRun } from './run-marker.mjs';
 
-// The API contract from issue #1. Dashboards depend on it.
+// The API contract from issue #1. Dashboards depend on it. Its deliberate departures (parent,
+// decision run, legacy transcript) are listed under "Event contract choices" in CONTEXT.md.
 const SCHEMA = {
   'agent.start': { required: ['role', 'parent'] },
   'agent.stop': { required: ['role', 'status'], enums: { status: ['PASS', 'ISSUES', 'BLOCKED'] } },

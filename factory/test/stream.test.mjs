@@ -93,3 +93,22 @@ test('events from all agents and runs come back in ts order', () => {
     '2026-10-11T10:00:01.000Z', '2026-10-11T10:00:02.500Z', '2026-10-11T10:00:03.000Z', '2026-10-11T10:00:04.000Z',
   ]);
 });
+
+// agent.stop events written before issue #21 also carry a `transcript` field (the subagent's
+// transcript path). The contract lists only role and status, and the path follows from run and
+// agent, so the stream leaves the field out and no consumer can come to depend on it (issue #62).
+test('the reader leaves the legacy transcript field out of agent.stop events, and only there', () => {
+  const root = tempRoot();
+  const dir = join(root, 'factory', 'agents', 'run-1');
+  mkdirSync(dir, { recursive: true });
+  appendFileSync(join(dir, 'worker-a.jsonl'), [
+    { ts: '2026-10-11T10:00:01.000Z', run: 'run-1', agent: 'worker-a', type: 'artifact', path: 'notes.md', kind: 'notes', transcript: 'kept' },
+    { ts: '2026-10-11T10:00:02.000Z', run: 'run-1', agent: 'worker-a', type: 'agent.stop', role: 'general-purpose', status: 'PASS',
+      transcript: 'C:/Users/me/.claude/projects/p/run-1/subagents/agent-worker-a.jsonl' },
+  ].map((e) => JSON.stringify(e) + '\n').join(''));
+
+  assert.deepEqual(readStream(root), [
+    { ts: '2026-10-11T10:00:01.000Z', run: 'run-1', agent: 'worker-a', type: 'artifact', path: 'notes.md', kind: 'notes', transcript: 'kept' },
+    { ts: '2026-10-11T10:00:02.000Z', run: 'run-1', agent: 'worker-a', type: 'agent.stop', role: 'general-purpose', status: 'PASS' },
+  ]);
+});
