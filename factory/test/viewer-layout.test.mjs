@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGraph, createSimulation, swimlanes } from '../viewer/layout.js';
+import { buildCrew, buildGraph, createSimulation, swimlanes } from '../viewer/layout.js';
 import { summarize } from '../viewer.mjs';
 
 const at = (mm, ss = '00') => `2026-10-11T10:${mm}:${ss}Z`;
@@ -112,7 +112,60 @@ test('the simulation cools down and can be reheated', () => {
   assert.equal(sim.settled(), false);
 });
 
+// Crew
+
+const member = (run, agent, mm, extra = {}) => ({
+  run, agent, role: 'general-purpose', task: null, tickets: [], mentions: [], status: 'PASS', live: false,
+  start: at(mm), stop: null, first: at(mm), last: at(mm), files: [], ...extra,
+});
+const crew = buildCrew([
+  member('r1', 'a', '01', { task: 'Implement #2', tickets: ['2'] }),
+  member('r1', 'b', '02', { task: 'Merge #2', tickets: ['2'], files: ['x.md'] }),
+  member('r1', 'c', '03', { task: 'Implement #3', tickets: ['3'], mentions: ['2', '9'], files: ['x.md', 'y.md'] }),
+  member('r2', 'd', '10', { task: 'Redo #2', tickets: ['2'], status: 'running', live: true, files: ['y.md'] }),
+  member('r2', 'e', '11', { task: null, start: null, first: at('11') }),
+]);
+const ends = (g, kind) => g.links.filter((l) => l.kind === kind).map((l) => [g.nodes[l.source].id, g.nodes[l.target].id]);
+
+test('the crew graph has an orchestrator hub per run and a node per agent, each dispatched by its hub', () => {
+  assert.deepEqual(crew.nodes.map((n) => [n.id, n.kind, n.label]), [
+    ['run:r1', 'hub', 'orchestrator'], ['r1/a', 'agent', 'Implement #2'], ['r1/b', 'agent', 'Merge #2'], ['r1/c', 'agent', 'Implement #3'],
+    ['run:r2', 'hub', 'orchestrator'], ['r2/d', 'agent', 'Redo #2'], ['r2/e', 'agent', 'general-purpose'],
+  ]);
+  assert.deepEqual(ends(crew, 'dispatched'), [['run:r1', 'r1/a'], ['run:r1', 'r1/b'], ['run:r1', 'r1/c'], ['run:r2', 'r2/d'], ['run:r2', 'r2/e']]);
+  assert.deepEqual(crew.nodes.filter((n) => n.live).map((n) => n.id), ['r2/d']);
+  assert.equal(crew.nodes[1].member.task, 'Implement #2');
+});
+
+test('agents on the same ticket are chained in the order they started', () => {
+  assert.deepEqual(ends(crew, 'ticket'), [['r1/a', 'r1/b'], ['r1/b', 'r2/d']]);
+});
+
+test("an agent that names another agent's ticket builds on the latest one that started before it", () => {
+  assert.deepEqual(ends(crew, 'builds'), [['r1/c', 'r1/b']]);
+});
+
+test('agents that wrote the same file are linked once per pair, with the files', () => {
+  assert.deepEqual(ends(crew, 'files'), [['r1/b', 'r1/c'], ['r1/c', 'r2/d']]);
+  assert.deepEqual(crew.links.filter((l) => l.kind === 'files').map((l) => l.files), [['x.md'], ['y.md']]);
+});
+
+test('the crew layout settles with every agent near its hub', () => {
+  const { nodes } = settled(crew);
+  for (const n of nodes) assert.ok([n.x, n.y, n.z].every(Number.isFinite), n.id);
+  const hub = Object.fromEntries(nodes.filter((n) => n.kind === 'hub').map((n) => [n.id, n]));
+  for (const n of nodes.filter((m) => m.kind === 'agent')) assert.ok(dist(n, hub['run:' + n.member.run]) < 150, n.id);
+});
+
 // Swimlanes
+
+test("a lane is labelled with the agent's task, else its role", () => {
+  const s = swimlanes(summarize([
+    ev('01', 'r1', 'a', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    ev('02', 'r1', 'b', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+  ], undefined, (run, agent) => (agent === 'a' ? { task: 'Implement #2', tickets: ['2'], mentions: [] } : null)), Date.parse(at('03')));
+  assert.deepEqual(s.lanes.map((l) => l.label), ['Implement #2', 'general-purpose']);
+});
 
 test('lanes put the orchestrator first, then each agent by start time, with bars from start to stop', () => {
   const state = summarize([
@@ -144,6 +197,14 @@ test('in the newest run a running agent\'s bar reaches now; in an older run it e
   assert.equal(fresh.t1, now);
   const old = swimlanes(summarize(events, 'old'), now);
   assert.deepEqual(old.lanes.find((l) => l.agent === 'a').bar, { start: Date.parse(at('01')), end: Date.parse(at('02')), status: 'running', running: false });
+});
+
+test('a check run by hand after the session does not stop its running bars', () => {
+  const s = swimlanes(summarize([
+    ev('01', 's', 'a', 'agent.start', { role: 'reader', parent: 'orchestrator' }),
+    ev('02', 'manual', 'orchestrator', 'check', { name: 'trail', result: 'pass', evidence: 'ok' }),
+  ]), Date.parse(at('20')));
+  assert.equal(s.lanes.find((l) => l.agent === 'a').bar.running, true);
 });
 
 test('decisions and checks become marks on the timeline', () => {

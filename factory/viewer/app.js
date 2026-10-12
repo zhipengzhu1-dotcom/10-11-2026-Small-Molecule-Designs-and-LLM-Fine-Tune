@@ -1,4 +1,4 @@
-// The viewer page: polls /state, draws the lists, and hands the state to the two three.js
+// The viewer page: polls /state, draws the lists, and hands the state to the three.js
 // diagrams. If three.js cannot load (offline), the diagrams say so and the lists still work.
 import { clock, h, short, span } from './ui.js';
 
@@ -9,7 +9,8 @@ let agentFilter = null;  // agent whose events the timeline shows; null shows al
 let last = null;
 let state;
 const open = new Set();  // tree paths opened in the fallback list
-let lanes = null, graph = null;
+let lanes = null, graph = null, crew = null;
+let allRuns = true;      // the agent network shows every run, or only the picked one
 
 function selectAgent(agent) {
   agentFilter = agent && agent !== agentFilter ? agent : null;
@@ -28,6 +29,7 @@ function applyTheme() {
   $('theme').textContent = 'theme: ' + theme;
   lanes?.recolor();
   graph?.recolor();
+  crew?.recolor();
 }
 $('theme').addEventListener('click', () => {
   theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
@@ -37,7 +39,21 @@ $('theme').addEventListener('click', () => {
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 applyTheme();
 
-$('run').addEventListener('change', (e) => { picked = e.target.value || null; agentFilter = null; last = null; poll(); });
+$('run').addEventListener('change', (e) => {
+  picked = e.target.value || null; agentFilter = null; last = null;
+  if (!allRuns) crew?.refit();
+  poll();
+});
+$('all-runs').addEventListener('change', (e) => { allRuns = e.target.checked; crew?.refit(); if (state) render(state); });
+
+// Full screen for a diagram's panel; the stage grows to fill it.
+for (const b of document.querySelectorAll('[data-full]')) {
+  b.addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : $(b.dataset.full).requestFullscreen()));
+}
+document.addEventListener('fullscreenchange', () => {
+  for (const b of document.querySelectorAll('[data-full]')) b.textContent = document.fullscreenElement?.id === b.dataset.full ? 'exit full screen' : 'full screen';
+  requestAnimationFrame(() => { graph?.fit(); crew?.fit(); }); // after the stage has its new size
+});
 
 async function poll() {
   try {
@@ -62,18 +78,31 @@ function render(s) {
   }).reverse());
   $('checks').replaceChildren(...s.checks.map((c) => h('span', { class: 'chip ' + c.result, title: c.evidence }, c.name)));
   $('dcount').textContent = '(' + s.tree.count + ')';
+  const members = allRuns ? s.crew : s.crew.filter((c) => c.run === s.run);
+  $('ccount').textContent = count(members);
   renderAgents();
   renderTimeline();
   if (lanes) { lanes.update(s); lanes.setSelected(agentFilter); }
+  crew?.update(members);
   if (graph) graph.update(s.tree);
   else $('tree').replaceChildren(...s.tree.children.map((n) => branch(n, true)));
+}
+
+// "15 agents · 3 running · 12 stopped (9 PASS, 2 ISSUES, 1 BLOCKED / unknown)"
+function count(members) {
+  const live = members.filter((m) => m.live).length;
+  const by = (st) => members.filter((m) => !m.live && m.status === st).length;
+  const stopped = members.length - live;
+  const out = stopped - by('PASS') - by('ISSUES');
+  const parts = [[by('PASS'), 'PASS'], [by('ISSUES'), 'ISSUES'], [out, 'BLOCKED / unknown']].filter(([n]) => n).map(([n, l]) => n + ' ' + l);
+  return members.length + ' agents · ' + live + ' running · ' + stopped + ' stopped' + (parts.length ? ' (' + parts.join(', ') + ')' : '');
 }
 
 function renderAgents() {
   $('no-agents').hidden = state.agents.length > 0;
   $('agents').replaceChildren(...state.agents.map((a) => {
     const tr = h('tr', { class: a.agent === agentFilter ? 'sel' : null, title: a.agent + (a.parent ? ' (parent ' + a.parent + ')' : '') },
-      h('td', null, a.role || 'unknown role', ' ', a.role === a.agent ? null : h('code', null, short(a.agent))),
+      h('td', null, a.task || a.role || 'unknown role', ' ', a.role === a.agent ? null : h('code', null, short(a.agent))),
       h('td', null, h('span', { class: 'st ' + a.status }, a.status)),
       h('td', { 'data-start': a.start, 'data-stop': a.stop }, span(a.start, a.stop)),
       h('td', null, a.events));
@@ -102,7 +131,8 @@ function branch(n, top) {
 
 function roleOf(id) {
   const a = state?.agents.find((x) => x.agent === id);
-  return (a?.role && a.role !== id ? a.role + ' ' : '') + short(id);
+  const name = a?.task ?? a?.role;
+  return (name && name !== id ? name + ' ' : '') + short(id);
 }
 
 function describe(e) {
@@ -132,16 +162,20 @@ function renderTimeline() {
 
 async function loadDiagrams() {
   try {
-    const [{ createSwimlane }, { createGraph }] = await Promise.all([import('./swimlane.js'), import('./graph.js')]);
+    const [{ createSwimlane }, { createGraph }, { createCrew }] = await Promise.all([import('./swimlane.js'), import('./graph.js'), import('./crew.js')]);
     lanes = createSwimlane({ labels: $('lane-labels'), plot: $('lane-plot'), axis: $('axis'), tip: $('lane-tip') }, { onSelect: selectAgent, roleOf });
     graph = createGraph({ stage: $('graph'), labels: $('graph-labels'), tip: $('graph-tip'), card: $('card') });
+    crew = createCrew({ stage: $('crew'), labels: $('crew-labels'), tip: $('crew-tip'), card: $('crew-card') });
     for (const box of document.querySelectorAll('#layers input')) box.addEventListener('change', () => graph.setLayer(box.dataset.kind, box.checked));
+    for (const box of document.querySelectorAll('#crew-layers input[data-kind]')) box.addEventListener('change', () => crew.setLayer(box.dataset.kind, box.checked));
     if (state) render(state);
   } catch (err) {
     const note = 'three.js could not load (' + err.message + '), so the diagrams are off. The lists below still work.';
     $('lanes').replaceChildren(h('p', { class: 'nothree' }, note));
     $('graph').replaceWith(h('p', { class: 'nothree' }, note));
+    $('crew').replaceWith(h('p', { class: 'nothree' }, note));
     $('layers').hidden = true;
+    $('crew-layers').hidden = true;
     $('tree').hidden = false;
     if (state) render(state);
   }

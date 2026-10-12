@@ -1,5 +1,5 @@
-// Geometry for the viewer's two diagrams, with no three.js and no DOM so that node:test can
-// run it: the decision graph and its 3-D force layout, and the swimlane timeline.
+// Geometry for the viewer's diagrams, with no three.js and no DOM so that node:test can run it:
+// the decision graph, the crew graph, their 3-D force layout, and the swimlane timeline.
 
 // The decision log as a graph. Tree links join a root, one node per phase folder and one dot
 // per decision, each to its parent. Cross-links join what the rows themselves cite:
@@ -68,10 +68,61 @@ export function buildGraph(tree) {
   return { nodes, links };
 }
 
-const CHARGE = { root: -300, phase: -150, decision: -35, evidence: -60 };
-const LENGTH = { tree: { root: 60, phase: 48, decision: 16 }, supersedes: 24, mentions: 110, evidence: 70 };
+// The crew (see summarize in viewer.mjs) as a graph: a hub per run for its orchestrator and a
+// node per agent, joined by
+//   dispatched  the hub to each agent it started (the orchestrator is every subagent's parent)
+//   ticket      agents asked to work the same ticket, chained in the order they started
+//   builds      an agent whose instructions name another ticket, to the latest agent on that
+//               ticket that started before it
+//   files       two agents that wrote the same file, once per pair; `files` lists the files
+export function buildCrew(crew) {
+  const nodes = [];
+  const links = [];
+  const hubs = new Map();
+  for (const m of crew) {
+    if (!hubs.has(m.run)) hubs.set(m.run, nodes.push({ id: `run:${m.run}`, kind: 'hub', label: 'orchestrator', run: m.run, count: 0 }) - 1);
+    const hub = hubs.get(m.run);
+    nodes[hub].count++;
+    const i = nodes.push({ id: `${m.run}/${m.agent}`, kind: 'agent', label: m.task ?? m.role ?? m.agent, count: 1, live: m.live, member: m }) - 1;
+    links.push({ source: hub, target: i, kind: 'dispatched' });
+  }
+  const started = (i) => Date.parse(nodes[i].member.start ?? nodes[i].member.first);
+  const members = nodes.flatMap((n, i) => (n.kind === 'agent' ? [i] : [])).sort((a, b) => started(a) - started(b));
+  const pairs = new Map(); // `kind a-b` → link
+  const once = (a, b, kind) => {
+    const k = `${kind} ${Math.min(a, b)}-${Math.max(a, b)}`;
+    if (!pairs.has(k)) pairs.set(k, links[links.push({ source: a, target: b, kind }) - 1]);
+    return pairs.get(k);
+  };
+  const group = (key) => {
+    const by = new Map();
+    for (const i of members) for (const k of nodes[i].member[key]) by.set(k, [...(by.get(k) ?? []), i]);
+    return by;
+  };
+  const onTicket = group('tickets');
+  for (const chain of onTicket.values()) for (let k = 1; k < chain.length; k++) once(chain[k - 1], chain[k], 'ticket');
+  for (const i of members) {
+    for (const t of nodes[i].member.mentions) {
+      const before = (onTicket.get(t) ?? []).filter((j) => j !== i && started(j) < started(i)).at(-1);
+      if (before !== undefined) once(i, before, 'builds');
+    }
+  }
+  for (const [file, who] of group('files')) {
+    for (let k = 1; k < who.length; k++) {
+      const l = once(who[k - 1], who[k], 'files');
+      (l.files ??= []).push(file);
+    }
+  }
+  return { nodes, links };
+}
+
+const CHARGE = { root: -300, phase: -150, decision: -35, evidence: -60, hub: -90, agent: -45 };
+const LENGTH = { tree: { root: 60, phase: 48, decision: 16 }, supersedes: 24, mentions: 110, evidence: 70, dispatched: 45, ticket: 18, builds: 40, files: 40 };
 // Cross-links pull gently so the phase tree keeps the shape and cross-links read as bridges.
-const STRENGTH = { tree: 1, supersedes: 0.3, mentions: 0.015, evidence: 0.01 };
+const STRENGTH = { tree: 1, supersedes: 0.3, mentions: 0.015, evidence: 0.01, dispatched: 1, ticket: 0.5, builds: 0.15, files: 0.1 };
+// Every node is pulled to the centre; run hubs harder, so the runs sit together instead of
+// their agents pushing them apart.
+const GRAVITY = { hub: 0.08 };
 
 // A small d3-force-3d style simulation: springs on links, repulsion between every pair, a pull
 // to the centre. No randomness, so the same graph always settles the same way. A node with
@@ -116,9 +167,10 @@ export function createSimulation(nodes, links, { alphaMin = 0.001, decay = 0.6 }
         a.vx += dx * fa; a.vy += dy * fa; a.vz += dz * fa;
         b.vx -= dx * fb; b.vy -= dy * fb; b.vz -= dz * fb;
       }
-      a.vx -= a.x * 0.01 * alpha;
-      a.vy -= a.y * 0.01 * alpha;
-      a.vz -= a.z * 0.01 * alpha;
+      const g = (GRAVITY[a.kind] ?? 0.01) * alpha;
+      a.vx -= a.x * g;
+      a.vy -= a.y * g;
+      a.vz -= a.z * g;
     }
     for (const n of nodes) {
       for (const [p, v, f] of AXES) {
@@ -141,7 +193,7 @@ export function createSimulation(nodes, links, { alphaMin = 0.001, decay = 0.6 }
 // it. In the newest run a running agent's bar reaches `now`; in an older run nothing is live,
 // so it ends at the agent's last event.
 export function swimlanes(state, now) {
-  const live = state.run !== null && state.run === state.runs.at(-1);
+  const live = state.run !== null && state.run === state.newest;
   const marks = [...state.timeline].reverse()
     .filter((e) => e.type === 'decision' || e.type === 'check')
     .map((e) => ({ kind: e.type, t: Date.parse(e.ts), result: e.result, event: e }));
@@ -154,7 +206,7 @@ export function swimlanes(state, now) {
   for (const { a, start } of workers) {
     const running = a.status === 'running' && live;
     const end = a.stop ? Date.parse(a.stop) : running ? now : Date.parse(a.last);
-    lanes.push({ agent: a.agent, label: a.role ?? 'unknown role', status: a.status, bar: { start, end, status: a.status, running } });
+    lanes.push({ agent: a.agent, label: a.task ?? a.role ?? 'unknown role', status: a.status, bar: { start, end, status: a.status, running } });
   }
   const times = [...lanes.flatMap((l) => (l.bar ? [l.bar.start, l.bar.end] : [])), ...marks.map((m) => m.t)];
   if (!times.length) return { lanes, marks, t0: now - 60_000, t1: now };

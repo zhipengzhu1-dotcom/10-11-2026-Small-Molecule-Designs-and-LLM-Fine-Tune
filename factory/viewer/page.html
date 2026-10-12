@@ -47,9 +47,6 @@ select { font: inherit; color: inherit; background: var(--panel); border: 1px so
 .chip.fail { border-style: dashed; }
 .chip.fail::before { content: "✕ "; }
 main { display: grid; gap: 16px; padding: 16px; }
-.row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
-@media (max-width: 1000px) { .row { grid-template-columns: minmax(0, 1fr); } }
-.col { display: grid; gap: 16px; align-content: start; min-width: 0; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
 
 /* status glyphs, shared by the table and the legends */
@@ -85,8 +82,15 @@ main { display: grid; gap: 16px; padding: 16px; }
 #lanes .plot.dragging { cursor: grabbing; }
 .axis { position: absolute; left: 0; right: 0; top: 0; height: 24px; pointer-events: none; }
 .axis span { position: absolute; top: 4px; transform: translateX(-50%); font-size: 11px; color: var(--muted); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
-#graph { height: 560px; background: var(--panel); cursor: grab; }
-#graph.dragging { cursor: grabbing; }
+.stage.big { height: max(560px, 78vh); background: var(--panel); cursor: grab; }
+.stage.big.dragging { cursor: grabbing; }
+.panel:fullscreen { border: 0; border-radius: 0; overflow: auto; }
+.panel:fullscreen .stage.big { height: calc(100vh - 100px); }
+.full { margin-left: auto; font: inherit; font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+.sw.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink); }
+.sw.dot.grey { background: var(--mid); border-color: var(--mid); } .sw.dot.ring { background: none; }
+.sw.dot.live { box-shadow: 0 0 0 3px var(--faint); animation: pulse 1.4s infinite; }
+.ln.same { border-top: 2px solid var(--ink); } .ln.dash { border-top: 2px dashed var(--g-node); }
 .labels { position: absolute; inset: 0; pointer-events: none; }
 .labels span { position: absolute; transform: translate(-50%, 0); font-size: 11px; color: var(--muted); white-space: nowrap; }
 .labels span.hi { color: var(--fg); font-weight: 600; }
@@ -135,22 +139,30 @@ summary .n { color: var(--muted); font-size: 12px; }
     </div>
     <div class="stage" id="lanes"><div class="gutter" id="lane-labels"></div><div class="plot" id="lane-plot"><div class="axis" id="axis"></div><div class="tip" id="lane-tip" hidden></div></div></div>
   </section>
-  <div class="row">
-    <section class="panel">
-      <h2>Decision graph <span class="muted" id="dcount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · drag a node to move it · double-click to fit</span></h2>
-      <div class="legend layers" id="layers" style="margin-bottom:8px">
-        <label><input type="checkbox" data-kind="tree" checked><i class="ln tree"></i>phase tree</label>
-        <label><input type="checkbox" data-kind="supersedes" checked><i class="ln sup"></i>supersedes</label>
-        <label><input type="checkbox" data-kind="mentions" checked><i class="ln men"></i>mentions a ticket</label>
-        <label><input type="checkbox" data-kind="evidence"><i class="ln evi"></i><i class="sw cube"></i>shared evidence</label>
-      </div>
-      <div class="stage" id="graph"><div class="labels" id="graph-labels"></div><div class="tip" id="graph-tip" hidden></div><div class="card" id="card" hidden></div></div>
-      <div id="tree" hidden></div>
-    </section>
-    <div class="col">
-      <section class="panel"><h2>Agents</h2><table><thead><tr><th>Agent</th><th>Status</th><th>Time</th><th>Events</th></tr></thead><tbody id="agents"></tbody></table><p class="muted" id="no-agents" hidden>No agents in this run.</p></section>
+  <section class="panel" id="crew-panel">
+    <h2>Agent network <span class="muted" id="ccount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · click an agent for its card · double-click to fit</span> <button class="full" data-full="crew-panel">full screen</button></h2>
+    <div class="legend layers" id="crew-layers" style="margin-bottom:8px">
+      <label><input type="checkbox" id="all-runs" checked>all runs</label>
+      <span><i class="sw dot live"></i>running</span><span><i class="sw dot"></i>PASS</span><span><i class="sw dot grey"></i>ISSUES</span><span><i class="sw dot ring"></i>BLOCKED / unknown</span>
+      <label><input type="checkbox" data-kind="dispatched" checked><i class="ln"></i>dispatched</label>
+      <label><input type="checkbox" data-kind="ticket" checked><i class="ln same"></i>same ticket</label>
+      <label><input type="checkbox" data-kind="builds" checked><i class="ln dash"></i>builds on</label>
+      <label><input type="checkbox" data-kind="files" checked><i class="ln men"></i>same file</label>
     </div>
-  </div>
+    <div class="stage big" id="crew"><div class="labels" id="crew-labels"></div><div class="tip" id="crew-tip" hidden></div><div class="card" id="crew-card" hidden></div></div>
+  </section>
+  <section class="panel" id="graph-panel">
+    <h2>Decision graph <span class="muted" id="dcount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · drag a node to move it · double-click to fit</span> <button class="full" data-full="graph-panel">full screen</button></h2>
+    <div class="legend layers" id="layers" style="margin-bottom:8px">
+      <label><input type="checkbox" data-kind="tree" checked><i class="ln tree"></i>phase tree</label>
+      <label><input type="checkbox" data-kind="supersedes" checked><i class="ln sup"></i>supersedes</label>
+      <label><input type="checkbox" data-kind="mentions" checked><i class="ln men"></i>mentions a ticket</label>
+      <label><input type="checkbox" data-kind="evidence"><i class="ln evi"></i><i class="sw cube"></i>shared evidence</label>
+    </div>
+    <div class="stage big" id="graph"><div class="labels" id="graph-labels"></div><div class="tip" id="graph-tip" hidden></div><div class="card" id="card" hidden></div></div>
+    <div id="tree" hidden></div>
+  </section>
+  <section class="panel"><h2>Agents in this run</h2><table><thead><tr><th>Agent</th><th>Status</th><th>Time</th><th>Events</th></tr></thead><tbody id="agents"></tbody></table><p class="muted" id="no-agents" hidden>No agents in this run.</p></section>
   <section class="panel"><h2>Timeline <span id="filter"></span></h2><ul id="timeline"></ul></section>
 </main>
 <script type="module" src="/assets/app.js"></script>
