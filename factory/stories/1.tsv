@@ -1,0 +1,90 @@
+story	kind	name
+1	check	licenses
+1	test	a fresh checkout gets the PDF, the HTML and the extracted LaTeX, and keeps no tarball
+1	test	a download whose SHA-256 differs from README.md fails, names the file and is not kept
+1	test	a missing ignored file is restored only when its SHA-256 matches the catalog
+2	none	-
+3	none	-
+4	check	tables
+4	test	a matching set of notes passes and records a pass check event
+5	check	tables
+6	check	references
+6	test	a catalog with every cited key and valid statuses passes and logs a pass check event
+6	test	a cited key missing from reference.bib fails the run by name and writes no catalog
+7	none	-
+8	none	-
+9	none	-
+10	none	-
+11	test	a table the check cannot parse is INCONCLUSIVE and never recorded as a pass
+11	test	a NOT VERIFIED or INCONCLUSIVE row with no assumption fails and the evidence names the row
+12	none	-
+13	check	brief
+13	test	a brief whose every parameter row is backed passes and logs a pass check event
+14	none	-
+15	none	-
+16	none	-
+17	none	-
+18	none	-
+19	test	the page lists each open ref with its title, link and reason, and leaves out closed refs
+19	test	the page works with no catalog and no events, and escapes untrusted titles and links
+20	test	dropping a file for an open fetch.failed ref saves it in that ref's raw folder and logs an artifact event
+20	test	a drop for a ref with no open fetch.failed event is rejected and writes nothing
+20	test	a dropped filename that tries to leave the raw folder is reduced to a plain name inside it
+20	test	a second file with the same name is saved beside the first, never over it
+21	test	the page cannot be reached from another machine's address
+21	test	a request naming another host (DNS rebinding) or a drop from another site is refused
+22	none	-
+23	check	references
+23	test	a row with an invalid or empty status fails and the evidence names the row
+23	test	a ref fetched by hand and recorded in curation.tsv shows as fetched and is never downloaded
+23	test	a ref whose curation says the cited page changed is never fetched and stays fetch-pending
+24	check	trail
+24	test	decide calls the installed pstack log.sh on the decision log, with a transcript:<session>@<iso> pointer to the session first in the evidence
+24	test	decide refuses with exit 2, and writes nothing, when a file: pointer in the evidence does not resolve
+24	test	decide refuses with exit 2, and writes nothing, when pstack is not installed or a cell is missing
+25	check	trail
+25	test	decisions form a tree by their slash-path phase, in the order each node first appeared
+26	none	-
+27	check	trail
+28	test	SubagentStart then SubagentStop record agent.start and agent.stop for that agent in the stream
+28	test	the hook commands registered in .claude/settings.json record start and stop when run by a POSIX shell
+29	test	each agent writes only to its own activity file
+29	test	an agent cannot pass someone else's agent or run as a field
+29	test	the reader refuses an event filed under another agent's file, naming the file
+29	test	two writers appending to one activity file at the same time produce no corrupt lines and lose no events
+30	test	a status or result outside its allowed values is rejected with an error naming the field
+30	test	an unknown event type is rejected
+30	test	the error for a missing run names every place a run comes from, the run marker too
+31	test	a hook payload missing the agent type records role unknown instead of dropping the event
+31	test	a payload missing the agent id or session id still records the event, as unknown
+31	test	a SubagentStop with no agent type still records the stop of an agent that did start
+32	test	events from all agents and runs come back in ts order
+32	test	decision log rows join the stream as orchestrator decision events, merged by ts
+33	test	every event carries ts, run, agent and type, and only decision events have a null run
+33	test	the reader leaves the legacy transcript field out of agent.stop events, and only there
+33	test	the hook writes under CLAUDE_PROJECT_DIR, not the worktree it runs in
+34	test	the status is the first PASS, ISSUES or BLOCKED in the final message
+34	test	a final message with no PASS, ISSUES or BLOCKED records status unknown
+34	test	a stop that handed back through SubagentHandback logs its full text as report
+35	none	-
+36	test	in the orchestrated run, each prompt and tool call gets one short line with the context-token count
+37	check	tables
+37	test	one wrong cell fails, and the evidence names the table, row and column
+37	test	a row missing from the notes fails with both row counts
+38	test	a table the check cannot parse is INCONCLUSIVE and never recorded as a pass
+39	check	references
+39	test	a catalog missing cited keys fails and the evidence names each missing key
+40	check	brief
+40	test	a row with no paper location or no verdict fails and the evidence names the row
+40	test	a placeholder location (?, TBD, -) fails and the evidence names the row
+40	test	a brief with no parameter rows fails rather than passing empty
+41	test	the check event still records every failure
+41	test	the latest result of each check in the run is reported
+42	check	trail
+43	check	trail
+43	test	review asks local qwen3.5:9b once, with thinking off, and returns its answer
+43	test	review fails loudly on an empty answer instead of returning nothing
+44	none	-
+45	none	-
+46	none	-
+47	none	-
