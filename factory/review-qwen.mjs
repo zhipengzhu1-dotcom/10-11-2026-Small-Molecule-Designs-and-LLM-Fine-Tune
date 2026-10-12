@@ -10,10 +10,9 @@
 // The review is written (to --out, else stdout) under a "reviewed by <model>" line, the line the
 // trail check reads. --out writes UTF-8, which a PowerShell 5.1 redirect does not.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cli, UsageError } from './cli.mjs';
 
-export const MODEL = 'qwen3.5:9b';
+const MODEL = 'qwen3.5:9b';
 const HOST = 'http://127.0.0.1:11434';
 // The s1 trail review (factory/audit/99ae39b6-...review.md) needed about 50K prompt tokens.
 const NUM_CTX = 65536;
@@ -39,30 +38,16 @@ export async function review({ files, model = MODEL, host = HOST, numCtx = NUM_C
   return answer;
 }
 
-function parseArgs(argv) {
-  const opts = { paths: [] };
-  const flags = { '--out': 'out', '--model': 'model', '--host': 'host', '--num-ctx': 'numCtx' };
-  for (let i = 0; i < argv.length; i++) {
-    if (flags[argv[i]]) {
-      if (i + 1 >= argv.length) throw new Error(`${argv[i]} needs a value`);
-      opts[flags[argv[i]]] = argv[++i];
-    } else opts.paths.push(argv[i]);
-  }
-  if (opts.numCtx) opts.numCtx = Number(opts.numCtx);
-  return opts;
-}
-
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  try {
-    const { paths, out, ...opts } = parseArgs(process.argv.slice(2));
-    if (!paths.length) throw new Error('usage: npm run review:qwen -- <file>... [--out <review.md>]');
-    const files = paths.map((path) => ({ path, text: readFileSync(path, 'utf8') }));
-    const text = `reviewed by ${opts.model ?? MODEL}\n\n${await review({ files, ...opts })}\n`;
-    if (out) writeFileSync(out, text);
-    else process.stdout.write(text);
-  } catch (err) {
-    process.stderr.write(`review-qwen.mjs: ${err.message}\n`);
-    process.exit(1);
-  }
-}
+cli(import.meta.url, {
+  usage: 'node factory/review-qwen.mjs <file>... [--out <review.md>] [--model <model>] [--host <url>] [--num-ctx <tokens>]',
+  options: { out: 'string', model: 'string', host: 'string', 'num-ctx': 'string' },
+  positionals: true,
+}, async ({ positionals: paths, out, model = MODEL, host, 'num-ctx': numCtx }) => {
+  if (!paths.length) throw new UsageError('missing the files to review');
+  if (numCtx !== undefined && !/^[1-9]\d*$/.test(numCtx)) throw new UsageError(`--num-ctx takes a whole number, got ${numCtx}`);
+  const files = paths.map((path) => ({ path, text: readFileSync(path, 'utf8') }));
+  const answer = await review({ files, model, host, numCtx: numCtx && Number(numCtx) });
+  const text = `reviewed by ${model}\n\n${answer}\n`;
+  if (out) writeFileSync(out, text);
+  else process.stdout.write(text);
+});

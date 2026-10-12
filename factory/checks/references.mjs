@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { checkCli, shown } from './check.mjs';
 
 // Reference statuses from issue #1.
-export const STATUSES = ['arxiv', 'oa', 'closed', 'fetch-pending', 'fetched'];
+const STATUSES = ['arxiv', 'oa', 'closed', 'fetch-pending', 'fetched'];
 
 // Every key in a \cite-family command (\cite, \citep, \citet, \citeauthor, ... with optional
 // [..] arguments) or \nocite, in first-cited order. LaTeX comments are skipped; \% is not one.
@@ -38,7 +38,7 @@ export function readCatalog(text) {
   });
 }
 
-export function runCheck(opts) {
+function runCheck(opts) {
   const tex = opts.tex ?? join(opts.root, 'research', 's1', 'raw', 'arxiv', 'latex', 'main.tex');
   const catalog = opts.catalog ?? join(opts.root, 'research', 'refs', 'catalog.tsv');
   const keys = citedKeys(readFileSync(tex, 'utf8'));

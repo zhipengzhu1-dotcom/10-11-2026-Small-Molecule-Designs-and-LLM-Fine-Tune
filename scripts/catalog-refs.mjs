@@ -43,7 +43,7 @@ const OPTIONS = { root: 'string', cache: 'string', latex: 'string', 'arxiv-base'
 // ---------- BibTeX ----------
 
 // Returns { key: { type, fields } } for every entry. Values in {...} or "..." with nested braces.
-export function parseBib(text) {
+function parseBib(text) {
   const entries = {};
   const re = /@(\w+)\s*\{\s*([^,\s]+)\s*,/g;
   let m;
@@ -84,7 +84,7 @@ export function parseBib(text) {
   return entries;
 }
 
-export function cleanTex(s = '') {
+function cleanTex(s = '') {
   return s.replace(/\\(?:textbf|textit|emph|textsc|url)\{([^}]*)\}/g, '$1')
     .replace(/\\([&%$#_])/g, '$1').replace(/~/g, ' ').replace(/[{}]/g, '')
     .replace(/\\'([a-z])/gi, '$1').replace(/\\"([a-z])/gi, '$1').replace(/\s+/g, ' ').trim();
@@ -92,7 +92,7 @@ export function cleanTex(s = '') {
 
 const ARXIV_ID = /(\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?/i;
 
-export function arxivId(fields) {
+function arxivId(fields) {
   const { eprint, archiveprefix, url, journal, doi, howpublished, note, booktitle } = fields;
   if (eprint && (!archiveprefix || /arxiv/i.test(archiveprefix))) {
     const m = new RegExp(`^${ARXIV_ID.source}$`, 'i').exec(eprint.trim());

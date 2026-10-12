@@ -14,8 +14,7 @@
 //   not-ready  anything else (needs-triage, needs-info, no label)
 // The frontier is the ready children, in map order. Needs `gh` logged in.
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cli, UsageError } from './cli.mjs';
 
 const QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
@@ -76,27 +75,22 @@ function run(cmd, args) {
   return r.stdout;
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  const args = process.argv.slice(2);
-  const number = Number(args.find((a) => /^\d+$/.test(a)));
-  if (!number) {
-    process.stderr.write('usage: npm run frontier -- <map issue number> [--json]\n');
-    process.exit(2);
+cli(import.meta.url, {
+  usage: 'node factory/frontier.mjs <map issue number> [--json]',
+  options: { json: 'flag' },
+  positionals: true,
+}, ({ positionals: [number, ...extra], json }) => {
+  if (!/^[1-9]\d*$/.test(number ?? '')) throw new UsageError(number ? `not an issue number: ${number}` : 'missing map issue number');
+  if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
+  const remote = run('git', ['remote', 'get-url', 'origin']);
+  const result = frontier({ number: Number(number), remote, gh: (a) => run('gh', a) });
+  if (json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
   }
-  try {
-    const remote = run('git', ['remote', 'get-url', 'origin']);
-    const result = frontier({ number, remote, gh: (a) => run('gh', a) });
-    if (args.includes('--json')) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    else {
-      for (const c of result.children) {
-        const status = c.status === 'blocked' ? `blocked by ${c.openBlockers.map((b) => `#${b}`).join(' ')}` : c.status;
-        process.stdout.write(`#${c.number}\t${status}\t[${c.labels.join(', ')}]\t${c.title}\n`);
-      }
-      process.stdout.write(`frontier: ${result.ready.map((n) => `#${n}`).join(' ') || 'none'}\n`);
-    }
-  } catch (err) {
-    process.stderr.write(`frontier.mjs: ${err.message}\n`);
-    process.exit(1);
+  for (const c of result.children) {
+    const status = c.status === 'blocked' ? `blocked by ${c.openBlockers.map((b) => `#${b}`).join(' ')}` : c.status;
+    process.stdout.write(`#${c.number}\t${status}\t[${c.labels.join(', ')}]\t${c.title}\n`);
   }
-}
+  process.stdout.write(`frontier: ${result.ready.map((n) => `#${n}`).join(' ') || 'none'}\n`);
+});

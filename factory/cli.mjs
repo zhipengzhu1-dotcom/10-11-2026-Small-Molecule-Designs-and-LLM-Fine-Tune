@@ -3,7 +3,8 @@
 //   cli(import.meta.url, { usage, options, positionals }, main)
 //
 // Runs main(opts) only when node was started with the calling file. `options` maps each option
-// name to 'string', 'list' (repeatable) or 'flag'; opts holds the parsed values, plus
+// name to 'string', 'list' (repeatable) or 'flag', or to { type, short } for an option that also
+// has a one-letter alias (`-m`); opts holds the parsed values, plus
 // `positionals` when the CLI takes them. A CLI that takes none rejects them.
 //
 // main may be async. A number it returns is the exit code; otherwise the process ends on its own
@@ -18,7 +19,10 @@ export class UsageError extends Error {}
 const TYPES = { string: { type: 'string' }, list: { type: 'string', multiple: true }, flag: { type: 'boolean' } };
 
 function parse(argv, options, positionals) {
-  const spec = Object.fromEntries(Object.entries(options).map(([name, type]) => [name, TYPES[type]]));
+  const spec = Object.fromEntries(Object.entries(options).map(([name, o]) => {
+    const { type, short } = typeof o === 'string' ? { type: o } : o;
+    return [name, short ? { ...TYPES[type], short } : TYPES[type]];
+  }));
   try {
     const parsed = parseArgs({ args: argv, options: spec, strict: true, allowPositionals: positionals });
     return positionals ? { ...parsed.values, positionals: parsed.positionals } : { ...parsed.values };
