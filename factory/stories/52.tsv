@@ -1,4 +1,10 @@
 story	kind	name
+1	test	a launch writes one dispatch in the orchestrator's activity file with agent, role, ticket, description and tool-use id
+3	test	a launch for work with no ticket (#-) writes a dispatch with no ticket
+4	test	a resume writes a dispatch keyed by resumedAgentId, carrying the role, ticket and description of the agent's launch
+5	test	a message to a running agent writes a message event (a cause edge), not a dispatch
+6	test	a Cause: line in the prompt or message becomes the event's cause
+7	test	on recorded calls, each dispatch's agent is the agent_id of the agent.start it caused
 21	check	stories
 22	test	a story-map row naming a check that is no check:* script fails, naming the row
 22	test	a story-map row naming a test that no test file declares fails, naming the row

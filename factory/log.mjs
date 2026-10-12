@@ -39,6 +39,11 @@ const SCHEMA = {
   // The ticket graph at a frontier step (issue #59): `spec` is the spec or map issue, `tickets`
   // one { number, state, status, blockers } per child, `blockers` its open blocked-by issues.
   'ticket.graph': { required: [], json: { spec: Number.isInteger, tickets: Array.isArray } },
+  // Issue #56: written by factory/hooks/dispatch.mjs into the orchestrator's file. `to` is the
+  // agent dispatched or messaged (the stamped `agent` is the orchestrator). A dispatch may also
+  // carry `resume: true` and `cause`; a message may carry `cause`.
+  dispatch: { required: ['to', 'role', 'description', 'tool_use_id'], optional: { ticket: ticketNumber } },
+  message: { required: ['to', 'tool_use_id'] },
 };
 
 export const UNKNOWN = 'unknown';
@@ -47,6 +52,12 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 export function defaultRoot(env = process.env) {
   return env.FACTORY_ROOT || env.CLAUDE_PROJECT_DIR || resolve(dirname(fileURLToPath(import.meta.url)), '..');
+}
+
+// An id from a hook payload made safe as a file name: characters outside [A-Za-z0-9._-] become _,
+// leading punctuation goes, and a missing or emptied id is "unknown".
+export function safeId(v) {
+  return v ? String(v).replace(/[^A-Za-z0-9._-]/g, '_').replace(/^[._-]+/, '') || UNKNOWN : UNKNOWN;
 }
 
 export function activityFile(root, run, agent) {

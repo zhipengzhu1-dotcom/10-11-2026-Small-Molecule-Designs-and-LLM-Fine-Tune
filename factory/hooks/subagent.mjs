@@ -8,7 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { UNKNOWN, activityFile, defaultRoot, writeEvent } from '../log.mjs';
+import { activityFile, defaultRoot, safeId, writeEvent } from '../log.mjs';
 import { inMarkedRun } from '../run-marker.mjs';
 
 // The payload has no parent field. Claude Code fires these hooks only for agents the orchestrator
@@ -19,9 +19,6 @@ const PARENT = 'orchestrator';
 // event line. A longer report is cut here and flagged report_truncated (spec #52, story 8).
 const REPORT_CAP = 64 * 1024;
 
-// An id safe as a file name: characters outside [A-Za-z0-9._-] become _, leading punctuation goes,
-// and a missing or emptied id is "unknown".
-const safeId = (v) => (v ? String(v).replace(/[^A-Za-z0-9._-]/g, '_').replace(/^[._-]+/, '') || UNKNOWN : UNKNOWN);
 const slash = (p) => p.replace(/\\/g, '/');
 
 function statusOf(message) {

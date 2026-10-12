@@ -94,6 +94,32 @@ test('events from all agents and runs come back in ts order', () => {
   ]);
 });
 
+// The orchestrator's dispatch and message events (issue #56) sit in its own file and come back
+// as written, ticket a number and resume a boolean, in ts order with the agents they started.
+test('the reader passes dispatch and message events through, in ts order with the agents\' events', () => {
+  const root = tempRoot();
+  const put = (agent, events) => {
+    const dir = join(root, 'factory', 'agents', 'run-1');
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(join(dir, `${agent}.jsonl`), events.map((e) => JSON.stringify({ run: 'run-1', agent, ...e }) + '\n').join(''));
+  };
+  const launch = { ts: '2026-10-12T08:36:27.300Z', type: 'dispatch', to: 'ac2d803fe514dbc00', role: 'implementer', description: 'implementer #56 dispatch events', tool_use_id: 'toolu_01XE4vWVQAfoiA9t9VYJXiSu', ticket: 56 };
+  const message = { ts: '2026-10-12T08:50:00.000Z', type: 'message', to: 'ac2d803fe514dbc00', tool_use_id: 'toolu_01Au4XvoAJgt8C5AFxcB1BQV', cause: 'row:95' };
+  const resume = { ts: '2026-10-12T09:10:00.200Z', type: 'dispatch', to: 'ac2d803fe514dbc00', role: 'implementer', description: 'implementer #56 dispatch events', tool_use_id: 'toolu_013hYNkpCEmHRvxVAKzegd97', ticket: 56, resume: true, cause: 'row:96' };
+  put('orchestrator', [launch, message, resume]);
+  put('ac2d803fe514dbc00', [
+    { ts: '2026-10-12T08:36:26.964Z', type: 'agent.start', role: 'general-purpose', parent: 'orchestrator' },
+    { ts: '2026-10-12T09:00:00.000Z', type: 'agent.stop', role: 'general-purpose', status: 'ISSUES' },
+    { ts: '2026-10-12T09:10:00.100Z', type: 'agent.start', role: 'general-purpose', parent: 'orchestrator' },
+  ]);
+  const events = readStream(root);
+  assert.deepEqual(events.map((e) => [e.agent, e.type]), [
+    ['ac2d803fe514dbc00', 'agent.start'], ['orchestrator', 'dispatch'], ['orchestrator', 'message'],
+    ['ac2d803fe514dbc00', 'agent.stop'], ['ac2d803fe514dbc00', 'agent.start'], ['orchestrator', 'dispatch'],
+  ]);
+  assert.deepEqual(events.filter((e) => e.agent === 'orchestrator'), [launch, message, resume].map((e) => ({ run: 'run-1', agent: 'orchestrator', ...e })));
+});
+
 // agent.stop events written before issue #21 also carry a `transcript` field (the subagent's
 // transcript path). The contract lists only role and status, and the path follows from run and
 // agent, so the stream leaves the field out and no consumer can come to depend on it (issue #62).

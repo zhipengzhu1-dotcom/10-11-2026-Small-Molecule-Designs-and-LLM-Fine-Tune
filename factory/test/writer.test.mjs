@@ -10,6 +10,9 @@ const VALID = {
   artifact: { path: 'research/s1/notes/paper.md', kind: 'notes' },
   'fetch.failed': { ref: 'qwen2025', url: 'https://example.org/paper.pdf', reason: 'HTTP 403' },
   check: { name: 'tables', result: 'pass', evidence: 'research/s1/tables/' },
+  // Spec #52, issue #56: written by the dispatch hook into the orchestrator's file.
+  dispatch: { to: 'ac2d803fe514dbc00', role: 'implementer', description: 'implementer #56 dispatch events', tool_use_id: 'toolu_01XE4vWVQAfoiA9t9VYJXiSu' },
+  message: { to: 'aca88395f9aed1a30', tool_use_id: 'toolu_01Au4XvoAJgt8C5AFxcB1BQV' },
 };
 
 const kv = (fields) => Object.entries(fields).map(([k, v]) => `${k}=${v}`);
