@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { checkCli, shown } from './check.mjs';
 
 // Claim verdicts from issue #1, written exactly as here.
-const VERDICTS = ['VERIFIED', 'NOT VERIFIED', 'INCONCLUSIVE'];
+const CLAIM_VERDICTS = ['VERIFIED', 'NOT VERIFIED', 'INCONCLUSIVE'];
 
 // A location that stands in for one not yet found: ?, TBD, or a lone dash of any kind.
 const PLACEHOLDER = /^(\?+|tbd|[-–—]+)$/i;
@@ -70,7 +70,7 @@ function rowProblems(row) {
   if (!row.location) problems.push('no paper location');
   else if (PLACEHOLDER.test(row.location)) problems.push(`placeholder paper location "${row.location}"`);
   if (!row.verdict) problems.push('no verdict');
-  else if (!VERDICTS.includes(row.verdict)) problems.push(`invalid verdict "${row.verdict}"`);
+  else if (!CLAIM_VERDICTS.includes(row.verdict)) problems.push(`invalid verdict "${row.verdict}"`);
   else if (row.verdict !== 'VERIFIED' && !row.assumption) problems.push(`${row.verdict} with no assumption`);
   return problems;
 }
