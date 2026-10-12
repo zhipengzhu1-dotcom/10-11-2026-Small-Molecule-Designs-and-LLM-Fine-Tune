@@ -172,6 +172,18 @@ t('a file pointer deleted after its audit row was committed resolves at that com
   assert.doesNotMatch(r.events[0].evidence, /line 2 /);
 });
 
+t('when every pointer that is gone from HEAD resolves at its audit row\'s commit, the CLI passes and exits 0', () => {
+  const f = deletedSource(AUDIT_HEADER
+    + row('2', '2026-10-11T10:00:00Z', 'ok', '', 'file:notes/old.md', 'x')
+    + row('3', '2026-10-11T10:05:00Z', 'ok', '', 'file:notes/old.md:1-2; file:notes/source.md:2', 'x'));
+  const r = check(f);
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.match(r.stdout, /^trail: pass: /m);
+  assert.deepEqual(r.events.map((e) => e.result), ['pass']);
+  assert.match(r.events[0].evidence, /line 2 \(2026-10-11T10:00:00Z\): file:notes\/old\.md resolved at/);
+  assert.match(r.events[0].evidence, /line 3 \(2026-10-11T10:05:00Z\): file:notes\/old\.md:1-2 resolved at/);
+});
+
 t('a deleted file pointer fails when it did not resolve at the commit that added its audit row either', () => {
   // Row 2 cites a line old.md never had; row 3 was committed only after old.md was deleted.
   const f = deletedSource(AUDIT_HEADER
