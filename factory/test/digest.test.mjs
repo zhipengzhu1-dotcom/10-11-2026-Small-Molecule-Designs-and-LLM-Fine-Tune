@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FACTORY, tempRoot } from './helpers.mjs';
 
@@ -78,6 +78,133 @@ test('the digest never writes: the factory root is the same after a read', () =>
   const before = readdirSync(join(dir, 'factory'), { recursive: true }).sort();
   assert.equal(digest(dir, 'dispatch', '63').status, 0);
   assert.deepEqual(readdirSync(join(dir, 'factory'), { recursive: true }).sort(), before);
+});
+
+// A factory root that is a git repo whose branch holds a `Merge #<n>: ...` commit per [n, second]
+// (committed at 2026-10-12T09:00:<second>Z), and whose orchestrator logged a snapshot of spec 52
+// and then dispatched each [ticket, second].
+function frontierRoot({ tickets, dispatches, merges, rows = [] }) {
+  const dir = root(rows, tickets);
+  const at = (s) => `2026-10-12T09:00:${String(s).padStart(2, '0')}Z`;
+  const git = (input, ...args) => {
+    const r = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', input });
+    assert.equal(r.status, 0, r.stderr);
+  };
+  // One fast-import builds the whole history: spawning git per commit is slow on Windows.
+  const commit = (mark, branch, s, message, parents) => [
+    `commit refs/heads/${branch}`, `mark :${mark}`, `committer t <t@example.com> ${Date.parse(at(s)) / 1000} +0000`,
+    `data ${Buffer.byteLength(message)}`, message, ...parents.map((p, i) => `${i ? 'merge' : 'from'} :${p}`), '',
+  ].join('\n');
+  let main = 1;
+  const stream = [commit(1, 'main', 0, 'base', [])];
+  merges.forEach(([n, s], i) => {
+    stream.push(commit(2 * i + 2, `t${n}`, s, `work on #${n}`, [main]));
+    stream.push(commit(2 * i + 3, 'main', s, `Merge #${n}: ticket ${n}`, [main, 2 * i + 2]));
+    main = 2 * i + 3;
+  });
+  git(undefined, 'init', '-q', '-b', 'main');
+  git(stream.join('\n'), 'fast-import', '--quiet');
+  const lines = dispatches.map(([ticket, s]) => JSON.stringify({ ts: at(s), run: 'r1', agent: 'orchestrator', type: 'dispatch', to: `a${ticket}`, role: 'implementer', ticket, description: `implementer #${ticket} x`, tool_use_id: `t${s}` }));
+  writeFileSync(join(dir, 'factory', 'agents', 'r1', 'orchestrator.jsonl'), readFileSync(join(dir, 'factory', 'agents', 'r1', 'orchestrator.jsonl'), 'utf8') + lines.join('\n') + '\n');
+  return dir;
+}
+
+const SPEC52 = {
+  tickets: [
+    { number: 63, state: 'OPEN', status: 'ready', blockers: [] },
+    { number: 59, state: 'OPEN', status: 'ready', blockers: [] },
+    { number: 67, state: 'OPEN', status: 'blocked', blockers: [63, 59] },
+    { number: 70, state: 'OPEN', status: 'blocked', blockers: [67] },
+  ],
+  dispatches: [[63, 1], [59, 2], [67, 5]],
+  merges: [[59, 4], [63, 10]], // #67 started at 5, before #63's merge commit at 10
+};
+
+test('the frontier read lists the zero-slack tickets and each start before a blocker\'s merge commit that no row explains', () => {
+  const dir = frontierRoot(SPEC52);
+  const r = digest(dir, 'frontier', '52');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, [
+    'frontier #52: 2 open tickets, 2 with zero slack, 1 undocumented early start',
+    '  zero slack (critical path of 2): #67 #70',
+    '  early start #67: started at event:r1/orchestrator:4, before #63 merged (2026-10-12T09:00:10Z)',
+    '',
+  ].join('\n'));
+});
+
+test('the frontier read is one line when every early start has a standing row that explains it', () => {
+  const dir = frontierRoot({ ...SPEC52, rows: [['project/implement-spec/ticket-67', 'started #67 before #63 merged: its interface is fixed', 'adopted']] });
+  const r = digest(dir, 'frontier', '52');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, 'frontier #52: 2 open tickets; no early start, hand-back or stop to flag; zero slack (critical path of 2): #67 #70\n');
+});
+
+test('the frontier read says so when spec has no ticket-graph snapshot, or every ticket merged', () => {
+  const dir = frontierRoot({ ...SPEC52, merges: [[59, 4], [63, 10], [67, 11], [70, 12]] });
+  assert.equal(digest(dir, 'frontier', '52').stdout, [
+    'frontier #52: every ticket merged, 1 undocumented early start',
+    '  early start #67: started at event:r1/orchestrator:4, before #63 merged (2026-10-12T09:00:10Z)',
+    '',
+  ].join('\n'));
+  assert.equal(digest(dir, 'frontier', '1').stdout, 'frontier #1: no ticket-graph snapshot of spec #1; run npm run frontier -- 1 first\n');
+});
+
+// A factory root whose activity files hold `events` (each filed under its own run and agent) and
+// whose decision log holds `rows` ([decision, evidence], from line 2).
+function streamRoot(events, rows = []) {
+  const dir = tempRoot();
+  const files = new Map();
+  for (const e of events) {
+    const file = join(dir, 'factory', 'agents', e.run, `${e.agent}.jsonl`);
+    files.set(file, (files.get(file) ?? '') + JSON.stringify(e) + '\n');
+  }
+  for (const [file, text] of files) {
+    mkdirSync(join(file, '..'), { recursive: true });
+    writeFileSync(file, text);
+  }
+  const lines = rows.map(([decision, evidence], i) => [`2026-10-12T10:${String(i).padStart(2, '0')}:00Z`, 'project/x', decision, 'w', evidence, 'adopted'].join('\t'));
+  writeFileSync(join(dir, 'factory', 'decisions.tsv'), [HEADER, ...lines, ''].join('\n'));
+  return dir;
+}
+const at = (s) => `2026-10-12T09:${String(s).padStart(2, '0')}:00.000Z`;
+const o = (s, type, fields) => ({ ts: at(s), run: 'r1', agent: 'orchestrator', type, ...fields });
+const a = (s, agent, type, fields) => ({ ts: at(s), run: 'r1', agent, type, ...fields });
+const snapshot = o(0, 'ticket.graph', { spec: 52, tickets: [{ number: 66, state: 'OPEN', status: 'ready', blockers: [] }] });
+
+test('the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean', () => {
+  const dir = streamRoot([
+    snapshot,
+    o(1, 'dispatch', { to: 'a1', role: 'implementer', ticket: 66, description: 'implementer #66 causal order' }),
+    a(2, 'a1', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    a(3, 'a1', 'agent.stop', { role: 'general-purpose', status: 'PASS', report: 'PASS: done' }),
+  ], [['merged #66', 'worktree-agent-a1']]);
+  const r = digest(dir, 'frontier', '52');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, 'frontier #52: 1 open ticket; no early start, hand-back or stop to flag; zero slack (critical path of 1): #66\n');
+});
+
+test('the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops', () => {
+  const dir = streamRoot([
+    snapshot,
+    o(1, 'dispatch', { to: 'a1', role: 'implementer', ticket: 66, description: 'implementer #66 causal order' }),
+    o(2, 'dispatch', { to: 'a2', role: 'audit', description: 'audit #- trail rows' }),
+    a(3, 'a2', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    a(4, 'a2', 'agent.stop', { role: 'general-purpose', status: 'PASS', report: 'PASS\nall rows audited' }),
+    a(5, 'a2', 'agent.stop', { role: 'general-purpose', status: 'PASS' }), // a stop from before reports were logged
+    a(6, 'a1', 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    a(7, 'a1', 'agent.stop', { role: 'general-purpose', status: 'ISSUES', report: 'ISSUES: the merge test fails on Windows\nmore' }),
+  ]);
+  const r = digest(dir, 'frontier', '52');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, [
+    'frontier #52: 1 open ticket, 1 with zero slack, 3 hand-backs not acted on, 1 orphaned or doubled stop',
+    '  zero slack (critical path of 1): #66',
+    '  event:r1/a1:2 ISSUES, implementer #66: the merge test fails on Windows',
+    '  event:r1/a2:2 PASS, audit #-: all rows audited',
+    '  event:r1/a2:3 PASS, audit #-',
+    '  event:r1/a2:3 doubled stop of agent a2',
+    '',
+  ].join('\n'));
 });
 
 test('an unknown moment or a missing ticket number is a usage error', () => {
