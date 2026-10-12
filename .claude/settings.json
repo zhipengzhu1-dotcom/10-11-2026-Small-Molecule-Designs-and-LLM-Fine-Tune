@@ -2,6 +2,10 @@
   "worktree": {
     "baseRef": "head"
   },
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": false
+  },
+  "disableClaudeAiConnectors": true,
   "hooks": {
     "SubagentStart": [
       {

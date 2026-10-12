@@ -11,7 +11,8 @@
 //   lines      report lines printed before the result
 // The tail writes one `check` event (inconclusive is recorded as result fail plus verdict
 // inconclusive, since the schema allows only pass or fail), prints `<name>: <verdict>: <evidence>`
-// and exits 0 on pass, 1 on fail, 3 on inconclusive. A check that cannot run exits 2.
+// (on fail, `<name>: fail: <n> failures` and the first 5 failures instead) and exits 0 on pass,
+// 1 on fail, 3 on inconclusive. A check that cannot run exits 2.
 import { isAbsolute, relative, resolve } from 'node:path';
 import { cli } from '../cli.mjs';
 import { defaultRoot, writeEvent } from '../log.mjs';
@@ -45,8 +46,19 @@ function report(name, opts, { evidence, problems = [], unchecked = [], lines = [
   if (verdict !== result) fields.verdict = verdict;
   writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields });
   for (const line of lines) process.stdout.write(line + '\n');
-  process.stdout.write(`${name}: ${verdict}: ${evidence}\n`);
+  if (verdict === 'fail') process.stdout.write(failures(name, problems));
+  else process.stdout.write(`${name}: ${verdict}: ${evidence}\n`);
   return exit;
+}
+
+// A failing check prints its failure count and the first SHOWN failures, one per line, so a long
+// list never lands as one line (issue #45). The event's evidence keeps every failure.
+const SHOWN = 5;
+function failures(name, problems) {
+  const n = problems.length;
+  const out = [`${name}: fail: ${n} failure${n === 1 ? '' : 's'}`, ...problems.slice(0, SHOWN).map((p) => `  ${p}`)];
+  if (n > SHOWN) out.push(`  and ${n - SHOWN} more; the check event's evidence lists all ${n}`);
+  return out.join('\n') + '\n';
 }
 
 // A path inside the repo is shown relative to it; anything else (a test fixture) in full.
