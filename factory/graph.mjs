@@ -15,12 +15,32 @@
 //   graph.decisions, .decision(N) the rows in line order, each with label (in|out|undec), parts
 //                                 ([{ by, label }]), relations, text and state (claim.mjs)
 //   graph.binding(n)              the standing decisions that bind ticket n: [{ row, because }]
+//   graph.similar(query, opts)    TF-IDF neighbours of a text node or { text } (graph/text.mjs)
+//   graph.precedents(text, k)     the k rows still in nearest to a text, as [{ row, score }]
+//   graph.spec                    the snapshot's spec, or null with no snapshot
+//   graph.earlyStarts()           starts before a blocker merged:
+//                                 [{ ticket, blocker, start, merged, explainedBy }]
+//   graph.slack()                 critical path of the unmerged tickets:
+//                                 [{ ticket, earliest, latest, slack }]
+//   graph.completion()            { proper, sink, unmerged, gates } for the done read
+//   (the last three: the workflow net in graph/workflow.mjs; merges come in as snapshot.merges,
+//    [{ ticket, ts, commit }], the integration branch's `Merge #<n>` commits)
 //   graph.overdue(now, { run? })  running agents past their role's usual time (graph/sojourn.mjs)
+//   graph.clock(id), .happensBefore(a, b), .unacted(spec?), .lifecycle(spec?)
+//                                 the causal-order overlay (graph/causal.mjs)
+//   graph.writtenTwice(paths?)    files two agents' artifact events wrote: [{ path, agents, writes }]
+//   graph.staleChecks(paths?)     checks that ran before their file's last write:
+//                                 [{ check, name, result, path, write }] (both graph/provenance.mjs)
 //
-// Overlays (argumentation so far) live here, or in sibling files once this passes about 400 lines,
-// without changing the interface.
+// Overlays (argumentation here, the others in graph/) live here or in sibling files, without
+// changing the interface.
 import { claimState, parseRelations } from './claim.mjs';
+import { causalOrder } from './graph/causal.mjs';
+import { ticketsNamed } from './graph/names.mjs';
+import { provenanceOverlay } from './graph/provenance.mjs';
 import { overdue } from './graph/sojourn.mjs';
+import { textOverlay } from './graph/text.mjs';
+import { workflow } from './graph/workflow.mjs';
 
 export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   const nodes = new Map();
@@ -33,6 +53,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   const agent = (name) => add(`agent:${name}`, 'agent', 'agent');
 
   const decisions = [];
+  const stream = []; // [{ id, e }] in stream order, for the causal overlay
   const count = new Map(); // `<run>/<agent>` -> lines read so far: the event's line in its file
   for (const e of events) {
     if (e.type === 'decision') {
@@ -40,12 +61,14 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
       const d = { ...e, relations, text, state: claimState(e.result).state ?? null };
       decisions.push(d);
       link(add(`row:${d.line}`, 'entity', 'decision', { event: e }), 'wasAttributedTo', agent(e.agent));
+      stream.push({ id: `row:${d.line}`, e });
       continue;
     }
     const file = `${e.run}/${e.agent}`;
     count.set(file, (count.get(file) ?? 0) + 1);
     const id = add(`event:${file}:${count.get(file)}`, 'activity', e.type, { event: e });
     link(id, 'wasAssociatedWith', agent(e.agent));
+    stream.push({ id, e });
     if (e.type === 'dispatch' && e.to) agent(e.to);
     if (e.type === 'artifact' && e.path) link(add(`file:${e.path}`, 'entity', 'file'), 'wasGeneratedBy', id);
   }
@@ -65,7 +88,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
       }
     }
   }
-  for (const t of snapshot?.tickets ?? []) Object.assign(nodes.get(`issue:${t.number}`), { state: t.state, status: t.status });
+  for (const t of snapshot?.tickets ?? []) Object.assign(nodes.get(`issue:${t.number}`), { state: t.state, status: t.status, title: t.title });
 
   decisions.sort((a, b) => a.line - b.line);
   const byLine = new Map(decisions.map((d) => [d.line, d]));
@@ -83,9 +106,18 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
     node: (id) => nodes.get(id),
     decisions,
     decision: (line) => byLine.get(line),
+    spec: snapshot?.spec ?? null,
   };
   graph.binding = (n) => binding(graph, n);
+  Object.assign(graph, textOverlay(graph));
+  let net;
+  const replay = () => (net ??= workflow(graph, snapshot));
+  graph.earlyStarts = () => replay().earlyStarts;
+  graph.slack = () => replay().slack;
+  graph.completion = () => replay().completion;
   graph.overdue = (now, opts) => overdue(events, now, opts);
+  Object.assign(graph, causalOrder(stream));
+  Object.assign(graph, provenanceOverlay(graph));
   return graph;
 }
 
@@ -106,14 +138,10 @@ function binding(graph, n) {
     }
   }
   for (const s of out(`issue:${n}`, 'subIssueOf')) if (!scope.has(s)) scope.set(s, `spec #${s}`);
-  const names = (d) => new Set([
-    ...d.phase.split('/').map((p) => /^ticket-(\d+)$/.exec(p)?.[1]).filter(Boolean).map(Number),
-    ...[...d.decision.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1])),
-  ]);
   const result = [];
   for (const d of graph.decisions) {
     if (d.label !== 'in' || !BINDS.has(d.state)) continue;
-    const named = names(d);
+    const named = ticketsNamed(d);
     const because = d.state === 'given' ? 'given' : [...scope].find(([t]) => named.has(t))?.[1];
     if (because) result.push({ row: d, because });
   }

@@ -3,9 +3,16 @@
 // decision log. It runs the skill's own log.sh from the installed pstack, and puts the pointer to
 // the session transcript at the moment of the decision first in the evidence cell.
 //
-//   npm run decide -- [--root <repo>] [--run <session-id>] [--state <state>]
+//   npm run decide -- [--root <repo>] [--run <session-id>] [--state <state>] [--dry-run]
 //                     [--supersedes|--withdraws|--corrects <line>[ (part)]]... [--closes <challenge id>]...
 //                     <phase> <decision> <why> <evidence> [<result>]
+//
+// Precedent: once the row is valid, and before it is written, decide prints the precedent check
+//           (precedent.mjs): the 3 nearest standing rows, each judged by local qwen3.5:4b
+//           (judge.mjs; host from FACTORY_JUDGE_HOST, else http://127.0.0.1:11434). It is one line
+//           when clean. It never stops the write: an unreachable judge is reported and the row is
+//           written. --dry-run runs everything up to the write, so the check can steer the flags,
+//           and writes nothing.
 //
 // Claim:    the grammar is claim.mjs's. --state <state> leads the result cell ("<state>: <result>",
 //           or the state alone when <result> is left out); without it, <result> must already start
@@ -33,10 +40,13 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { claimState, formatRelations, leadingRelation, parseRowTarget, RELATIONS } from './claim.mjs';
+import { claimState, formatRelations, leadingRelation, parseRelations, parseRowTarget, RELATIONS } from './claim.mjs';
 import { cli, UsageError } from './cli.mjs';
+import { buildGraph } from './graph.mjs';
+import { createJudge } from './judge.mjs';
 import { challenged, defaultRoot, plainName } from './log.mjs';
 import { parsePointer, resolvePointer } from './pointer.mjs';
+import { precedentRead } from './precedent.mjs';
 import { readStream } from './read.mjs';
 import { defaultRun } from './run-marker.mjs';
 import { projectTranscripts, readTranscript } from './transcript.mjs';
@@ -120,7 +130,18 @@ function resultCell(state, result) {
   return result ? `${state}: ${result}` : state;
 }
 
-function decide({ root, run, cells, state, relations = [], home = homedir() }) {
+// The precedent check's lines (precedent.mjs). It is a read, never a gate: whatever goes wrong in
+// it, from an unreachable judge to an unreadable stream, is reported and the row is still written.
+async function precedent(root, decision, plainDecision, why, judge) {
+  try {
+    const { relations } = parseRelations(decision);
+    return await precedentRead({ graph: buildGraph(readStream(root)), decision: plainDecision, why, relations, judge });
+  } catch (err) {
+    return [`precedent: not run (${err.message})`];
+  }
+}
+
+async function decide({ root, run, cells, state, relations = [], home = homedir(), dryRun = false, judge = createJudge(), out }) {
   const [phase, plainDecision, why, evidence, plainResult] = cells;
   const decision = decisionCell(root, plainDecision, relations);
   const result = resultCell(state, plainResult);
@@ -130,6 +151,8 @@ function decide({ root, run, cells, state, relations = [], home = homedir() }) {
   if (!session) throw new Error('no run: pass --run <session-id>, set FACTORY_RUN, or start a run marker (factory/run-marker.mjs)');
   checkEvidence(evidence, { root, transcripts: dir, home });
   const pointer = transcriptPointer(dir, session);
+  out((await precedent(root, decision, plainDecision, why, judge)).join('\n') + '\n');
+  if (dryRun) return { dryRun };
   const log = join(root, 'factory', 'decisions.tsv').replace(/\\/g, '/');
   const r = spawnSync(bash(), [script.replace(/\\/g, '/'), log, phase, decision, why, evidence ? `${pointer}; ${evidence}` : pointer, result], {
     encoding: 'utf8', env: { ...process.env, MSYS_NO_PATHCONV: '1' },
@@ -139,16 +162,17 @@ function decide({ root, run, cells, state, relations = [], home = homedir() }) {
 }
 
 cli(import.meta.url, {
-  usage: 'node factory/decide.mjs [--root <repo>] [--run <session-id>] [--state <state>] '
+  usage: 'node factory/decide.mjs [--root <repo>] [--run <session-id>] [--state <state>] [--dry-run] '
     + '[--supersedes|--withdraws|--corrects|--closes <line>[ (part)]]... <phase> <decision> <why> <evidence> [<result>]',
-  options: { root: 'string', run: 'string', state: 'string', ...Object.fromEntries(RELATIONS.map((k) => [k, 'list'])) },
+  options: { root: 'string', run: 'string', state: 'string', 'dry-run': 'flag', ...Object.fromEntries(RELATIONS.map((k) => [k, 'list'])) },
   positionals: true,
   failure: 2,
-}, ({ positionals: cells, root = defaultRoot(process.env), run, state, ...flags }) => {
+}, async ({ positionals: cells, root = defaultRoot(process.env), run, state, 'dry-run': dryRun, ...flags }) => {
   if (cells.length !== 5 && !(state !== undefined && cells.length === 4)) {
     throw new UsageError('expected 5 cells: <phase> <decision> <why> <evidence> <result> (4 with --state, which can stand as the result)');
   }
   const relations = RELATIONS.flatMap((kind) => (flags[kind] ?? []).map((value) => ({ kind, value })));
-  const { log, pointer } = decide({ root, run, cells, state, relations });
-  process.stdout.write(`decide: logged to ${log} with ${pointer}\n`);
+  const out = (s) => process.stdout.write(s);
+  const { log, pointer } = await decide({ root, run, cells, state, relations, dryRun, out });
+  out(dryRun ? 'decide: dry run, nothing written\n' : `decide: logged to ${log} with ${pointer}\n`);
 });

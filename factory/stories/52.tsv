@@ -64,16 +64,37 @@ story	kind	name
 28	test	a corrects row leaves the row it corrects in, and superseding the correction changes nothing for that row
 29	test	the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec
 29	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
+31	test	a hand-back no later decision or dispatch acted on is listed, ISSUES and BLOCKED before the rest
+31	test	a later row or dispatch acts on a hand-back by citing it: its event, agent, branch or log, a file it wrote, a commit it checked, or a resume
+31	test	for a spec, both lists keep to agents with an event in a run that logged its ticket graph, wherever the agent ran before
+31	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
+32	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
+32	test	an orphaned stop and a doubled stop are reported, and nothing else
+32	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
 33	test	an agent running past its role's bound from earlier runs is flagged; one whose role has no history is not
 33	test	a resumed agent is timed from its latest start, and history comes only from other runs
 33	test	with a run given, only that run's agents are flagged: an earlier run's agent that never stopped is left out
+38	test	happens-before comes from dispatches and citations, never from ts: inverted timestamps order correctly
+38	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
 39	test	the dispatch read prints one line when no standing decision binds the ticket
+34	test	on spec #1's replaced rows, each recorded supersede or withdraw names its target as the rank-1 earlier neighbour
+34	test	similarity is exact cosine: a text scores 1 against itself, 0 against a text sharing no term, and ranks highest first
+34	test	the text nodes are decision rows (decision and why), hand-back reports and tickets (their titles)
+34	test	a contradicted row the new row does not mark is flagged with the judge's reason and the flags that would mark it
+34	test	a contradiction the new row already marks with --supersedes or --withdraws is no flag
+34	test	when the judge cannot be reached, the check says so and lists the nearest standing rows unjudged, asking no more
+39	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 39	test	a long dispatch read stops at 15 lines, the last one naming the command for the rest
 39	test	a long decision is cut so each line stays short
+39	test	a clean check is one line naming the rows judged
+40	test	decide prints the precedent check before it writes the row, flagging a standing row the judge finds contradicted
+40	test	decide still writes the row when the judge is unreachable, and says so
+40	test	decide --dry-run prints the precedent check and writes nothing
 41	test	an agent running well past its role's earlier sojourns adds one line naming it, its role and ticket
 41	test	the meter's output is unchanged when no agent is overdue: a running agent whose role has no history adds nothing
 42	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 42	test	the dispatch read prints one line when no standing decision binds the ticket
+42	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 43	test	the digest never writes: the factory root is the same after a read
 44	none	-
 47	test	the disk layout places every node closer to its parent than to any non-ancestor; only its children tie
@@ -84,6 +105,15 @@ story	kind	name
 49	test	T(1) and C(1) of a worked example: two points swapped on a line
 49	test	the 2-D Laplacian eigenmap of a cycle is a regular polygon
 49	test	the state carries the phase disk's trustworthiness and continuity at k = 5 and 10, against Laplacian eigenmaps of the full graph
+45	test	precedents are the 3 nearest earlier rows that still stand: an out row is never one
+45	test	the judge sees only the 3 nearest rows that still stand, one call per pair, and never an out row
+45	test	a corrects pair is judged like any other but never reported as a contradiction
+45	test	each reviewed row is judged against its 3 nearest earlier rows that still stand, one call per pair, never a later or an out row
+45	test	a contradiction the later row already marks, a corrects pair among them, is judged but never flagged
+46	test	the graph module is pure: it, the pointer grammar and every module they import import no built-in or package, so no file, network or model code
+46	test	the judge asks local qwen3.5:4b about one pair per call, with thinking off, and returns its verdict and reason
+46	test	the judge takes its host from the option, else FACTORY_JUDGE_HOST, and throws on an HTTP error or a refused connection
+46	test	the review lists each flagged pair with the judge's label under a "reviewed by" line naming the judge
 51	test	each decision in the tree carries the graph module's label and relations
 51	test	the state counts the decisions in, out and undec
 51	test	GET /state serves each decision with its label and relations from the graph module
@@ -91,3 +121,26 @@ story	kind	name
 52	test	a decision that supersedes an earlier row links to that row's decision
 53	test	three.js is gone: no dependency, no import map or CDN on the page, no script importing a package, and no 3-D view
 53	test	the page's scripts are served from factory/viewer as JavaScript
+30	test	a ticket started before its blocker merged, with no decision row explaining it, is an early start; a standing row naming both explains it
+30	test	zero-slack tickets are the unmerged tickets on a longest chain, each ticket one step
+30	test	the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains
+30	test	the frontier read is one line when every early start has a standing row that explains it
+39	test	the frontier read is one line when every early start has a standing row that explains it
+42	test	the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains
+42	test	the frontier read says so when spec has no ticket-graph snapshot, or every ticket merged
+37	test	proper completion: the sink is reached when every ticket merged, and proper only when every gate token was consumed too
+36	test	a file written by two agents is reported with both writes; one agent rewriting its own file is not
+36	test	a check older than its artifact's last write is stale; a check re-run after the write is not
+36	test	a check naming no written file, or a file only as part of a longer path, is never stale
+36	test	both queries narrow to the given paths, which match an artifact logged by its absolute path too
+36	test	files written twice and stale checks among the changed files are listed, each on its line
+35	test	a hand-back report contradicting a standing decision is reported with the judge's reason
+35	test	the judge sees each report against its 3 nearest rows that still stand, one call per pair, as a report
+35	test	the reports judged are the latest of each agent dispatched for the ticket, or of the agent the branch names
+35	test	a later text of kind report is put to the judge as a hand-back report against the standing decision
+35	test	an unreachable judge is named, its reports listed unjudged, and the provenance lines still shown
+39	test	a clean read is one line
+39	test	a long read is cut to 15 lines, the last naming the command that prints it all
+40	test	npm run merge prints the merge read and still merges when the judge is unreachable, saying so
+40	test	npm run merge prints a clean merge read as one line before it merges
+40	test	npm run merge --read prints the read of a branch's changed files and merges and commits nothing

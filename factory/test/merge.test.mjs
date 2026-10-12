@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { FACTORY, marker, merge, tempRoot, write } from './helpers.mjs';
 
@@ -206,6 +207,78 @@ t('close-out takes -m or -F too, and its factory commit carries the trailer', ()
   const f = merge(['--factory-only', '--root', root, '-F', file]);
   assert.equal(f.status, 0, f.stderr);
   assert.equal(body(root, 'HEAD'), 'Record factory activity for run run-1\n\nCo-Authored-By: A <a@a>\nCo-Authored-By: B <b@b>');
+});
+
+// The merge read (issue #69). A worker of ticket 17 handed back a report, a standing row is like
+// it, and the judge's host is a port nothing listens on: Ollama is unreachable.
+const LOG = ['ts\tphase\tdecision\twhy\tevidence\tresult',
+  '2026-10-12T01:00:00Z\tproject/a\ttests run on fixtures, never the live decision log\tthe live log grows\tissue:4\tadopted',
+].join('\n') + '\n';
+const lines = (...events) => events.map((e) => JSON.stringify({ run: 'run-1', ...e })).join('\n') + '\n';
+
+function readFixture() {
+  const root = fixture();
+  put(root, 'factory/decisions.tsv', LOG);
+  put(root, 'factory/agents/run-1/orchestrator.jsonl', lines(
+    { ts: '2026-10-12T02:00:00.000Z', agent: 'orchestrator', type: 'dispatch', to: 'impl', role: 'implementer', ticket: 17, description: 'implementer #17 x' },
+  ));
+  put(root, 'factory/agents/run-1/impl.jsonl', lines(
+    { ts: '2026-10-12T02:00:01.000Z', agent: 'impl', type: 'agent.start' },
+    { ts: '2026-10-12T02:00:02.000Z', agent: 'impl', type: 'artifact', path: 'src/feature.txt', kind: 'code' },
+    { ts: '2026-10-12T02:09:00.000Z', agent: 'impl', type: 'agent.stop', status: 'PASS', report: 'PASS. The tests read the live decision log.' },
+  ));
+  return root;
+}
+
+async function closedHost() {
+  const server = createServer();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const host = `http://127.0.0.1:${server.address().port}`;
+  await new Promise((r) => server.close(r));
+  return host;
+}
+
+test('npm run merge prints the merge read and still merges when the judge is unreachable, saying so', { skip: !hasGit && 'git is not installed' }, async () => {
+  const root = readFixture();
+  const host = await closedHost();
+  const r = merge(['ticket', '--root', root, '-m', 'Merge #17: ticket'], { FACTORY_JUDGE_HOST: host });
+  assert.equal(r.status, 0, r.stderr);
+  const out = r.stdout.trimEnd().split('\n');
+  assert.equal(out[0], 'merge read ticket: judge unreachable');
+  assert.match(out[1], new RegExp(`^ {2}judge unreachable \\(qwen3\\.5:4b at ${host.replace(/\./g, '\\.')}: .+\\); 1 report unjudged:$`));
+  assert.equal(out[2], '    report event:run-1/impl:3 (impl, PASS)');
+  assert.equal(out.at(-1), 'committed factory paths; merged');
+  assert.ok(isAncestor(root, 'ticket', 'integ'));
+});
+
+test('npm run merge prints a clean merge read as one line before it merges', { skip: !hasGit && 'git is not installed' }, () => {
+  const root = fixture();
+  const r = merge(['ticket', '--root', root]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(r.stdout.trimEnd().split('\n'), [
+    'merge read ticket: clean (1 changed file: none written twice, no stale check; no hand-back report to judge)',
+    'no factory changes; merged',
+  ]);
+});
+
+test('npm run merge --read prints the read of a branch\'s changed files and merges and commits nothing', { skip: !hasGit && 'git is not installed' }, () => {
+  const root = readFixture();
+  put(root, 'factory/agents/run-1/other.jsonl', lines(
+    { ts: '2026-10-12T02:05:00.000Z', agent: 'other', type: 'artifact', path: 'src/feature.txt', kind: 'code' },
+    { ts: '2026-10-12T02:06:00.000Z', agent: 'other', type: 'artifact', path: 'src/untouched.txt', kind: 'code' },
+  ));
+  appendFileSync(join(root, 'factory/agents/run-1/impl.jsonl'), lines(
+    { ts: '2026-10-12T02:10:00.000Z', agent: 'impl', type: 'artifact', path: 'src/untouched.txt', kind: 'code' },
+  ));
+  const before = git(root, 'rev-parse', 'HEAD');
+  const r = merge(['ticket', '--root', root, '--read']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(r.stdout.trimEnd().split('\n'), [
+    'merge read ticket: 1 file written twice',
+    '  written twice: src/feature.txt, by impl and other (event:run-1/impl:2, event:run-1/other:1)',
+  ]);
+  assert.equal(git(root, 'rev-parse', 'HEAD'), before);
+  assert.ok(!isAncestor(root, 'ticket', 'integ'));
 });
 
 t('-m and -F together are refused', () => {
