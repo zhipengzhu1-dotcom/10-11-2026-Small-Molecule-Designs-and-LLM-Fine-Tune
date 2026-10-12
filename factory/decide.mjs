@@ -3,7 +3,16 @@
 // decision log. It runs the skill's own log.sh from the installed pstack, and puts the pointer to
 // the session transcript at the moment of the decision first in the evidence cell.
 //
-//   npm run decide -- [--root <repo>] [--run <session-id>] <phase> <decision> <why> <evidence> <result>
+//   npm run decide -- [--root <repo>] [--run <session-id>] [--state <state>]
+//                     [--supersedes|--withdraws|--corrects|--closes <line>[ (part)]]...
+//                     <phase> <decision> <why> <evidence> [<result>]
+//
+// Claim:    the grammar is claim.mjs's. --state <state> leads the result cell ("<state>: <result>",
+//           or the state alone when <result> is left out); without it, <result> must already start
+//           with a claim state. Each relation flag names an earlier row's line, with "(part)" for a
+//           partial one, and becomes "<relation> line N[ (part)]: " at the start of the decision
+//           cell, joined by ", " in the order supersedes, withdraws, corrects, closes. A target past
+//           the log's last row, or a relation phrase written into <decision> by hand, is refused.
 //
 // Root:     --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else this repo (see log.mjs).
 // log.sh:   <installPath>/skills/show-me-your-work/scripts/log.sh, where installPath is the
@@ -22,6 +31,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { claimState, formatRelations, leadingRelation, parseTarget, RELATIONS } from './claim.mjs';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
 import { parsePointer, resolvePointer } from './pointer.mjs';
@@ -68,12 +78,44 @@ function checkEvidence(evidence, opts) {
   if (problems.length) throw new Error(`evidence: ${problems.join('; ')}`);
 }
 
-function decide({ root, run, cells, home = homedir() }) {
+// The decision cell with its relation prefix (claim.mjs). Each target must be a row already in the
+// log; a hand-written relation phrase is refused, so the flags are the only way to write one.
+function decisionCell(root, decision, flags) {
+  const word = leadingRelation(decision);
+  if (word) throw new UsageError(`decision starts with "${word}"; pass --${word} <line> instead of writing the phrase`);
+  const logFile = join(root, 'factory', 'decisions.tsv');
+  const last = existsSync(logFile) ? readFileSync(logFile, 'utf8').split(/\r?\n/).filter((l) => l !== '').length : 1;
+  const relations = flags.map(({ kind, value }) => {
+    const target = parseTarget(value);
+    const at = `--${kind} ${value}`;
+    if (!target) throw new UsageError(`${at}: write a line number, optionally followed by (part)`);
+    if (target.line < 2) throw new UsageError(`${at}: line ${target.line} is the header, not a decision row`);
+    if (target.line > last) throw new UsageError(`${at}: line ${target.line} is past the last row (${last})`);
+    return { kind, ...target };
+  });
+  return formatRelations(relations) + decision;
+}
+
+// The result cell, led by a claim state: --state's, or the one `result` already starts with.
+function resultCell(state, result) {
+  if (state === undefined) {
+    const { problem } = claimState(result);
+    if (problem) throw new UsageError(`result: ${problem}; pass --state <state>`);
+    return result;
+  }
+  const claim = claimState(state);
+  if (claim.state !== state) throw new UsageError(`--state: ${claim.problem ?? `"${state}" is more than one claim state word`}`);
+  return result ? `${state}: ${result}` : state;
+}
+
+function decide({ root, run, cells, state, relations = [], home = homedir() }) {
+  const [phase, plainDecision, why, evidence, plainResult] = cells;
+  const decision = decisionCell(root, plainDecision, relations);
+  const result = resultCell(state, plainResult);
   const script = logScript(home);
   const dir = projectTranscripts(root, home);
   const session = run || defaultRun(root);
   if (!session) throw new Error('no run: pass --run <session-id>, set FACTORY_RUN, or start a run marker (factory/run-marker.mjs)');
-  const [phase, decision, why, evidence, result] = cells;
   checkEvidence(evidence, { root, transcripts: dir, home });
   const pointer = transcriptPointer(dir, session);
   const log = join(root, 'factory', 'decisions.tsv').replace(/\\/g, '/');
@@ -85,12 +127,16 @@ function decide({ root, run, cells, home = homedir() }) {
 }
 
 cli(import.meta.url, {
-  usage: 'node factory/decide.mjs [--root <repo>] [--run <session-id>] <phase> <decision> <why> <evidence> <result>',
-  options: { root: 'string', run: 'string' },
+  usage: 'node factory/decide.mjs [--root <repo>] [--run <session-id>] [--state <state>] '
+    + '[--supersedes|--withdraws|--corrects|--closes <line>[ (part)]]... <phase> <decision> <why> <evidence> [<result>]',
+  options: { root: 'string', run: 'string', state: 'string', ...Object.fromEntries(RELATIONS.map((k) => [k, 'list'])) },
   positionals: true,
   failure: 2,
-}, ({ positionals: cells, root = defaultRoot(process.env), run }) => {
-  if (cells.length !== 5) throw new UsageError('expected 5 cells: <phase> <decision> <why> <evidence> <result>');
-  const { log, pointer } = decide({ root, run, cells });
+}, ({ positionals: cells, root = defaultRoot(process.env), run, state, ...flags }) => {
+  if (cells.length !== 5 && !(state !== undefined && cells.length === 4)) {
+    throw new UsageError('expected 5 cells: <phase> <decision> <why> <evidence> <result> (4 with --state, which can stand as the result)');
+  }
+  const relations = RELATIONS.flatMap((kind) => (flags[kind] ?? []).map((value) => ({ kind, value })));
+  const { log, pointer } = decide({ root, run, cells, state, relations });
   process.stdout.write(`decide: logged to ${log} with ${pointer}\n`);
 });
