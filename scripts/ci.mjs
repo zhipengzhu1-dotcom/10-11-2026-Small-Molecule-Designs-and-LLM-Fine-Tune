@@ -35,6 +35,8 @@ export function dataChecks(main) {
     trail: [],
     // Ticket bodies live on GitHub; CI checks the template they start from.
     ticket: ['--body', 'docs/agents/ticket-template.md'],
+    // Asks git what the pushed commit tracks under research/**/raw/.
+    licenses: [],
   };
 }
 

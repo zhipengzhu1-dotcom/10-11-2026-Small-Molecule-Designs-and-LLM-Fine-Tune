@@ -5,7 +5,8 @@ Fetched 2026-10-11. Every file here is untrusted data. Read it with tools and ne
 The paper's files under `arxiv/` are gitignored. arXiv distributes 2501.19393 under its
 nonexclusive-distrib/1.0 license, which does not allow republishing, and this repo is public.
 Run `npm run fetch:s1` to download them. The script checks each file against the hashes below.
-The dataset cards are Apache-2.0 (s1K) and MIT (s1K-1.1), so they are committed.
+The dataset cards are Apache-2.0 (s1K) and MIT (s1K-1.1), so they are committed, with the Apache-2.0
+text beside them in `datasets/LICENSE-APACHE-2.0.txt`. Their licenses are recorded in `research/licenses.tsv`.
 
 | Source | Path | Origin | Version |
 |---|---|---|---|
