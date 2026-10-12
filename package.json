@@ -7,6 +7,7 @@
   },
   "scripts": {
     "test": "node --test \"factory/**/*.test.mjs\"",
+    "test:results": "node factory/test-results.mjs",
     "ci": "node scripts/ci.mjs",
     "fetch-page": "node factory/fetch-page.mjs",
     "decide": "node factory/decide.mjs",
@@ -27,6 +28,7 @@
     "check:trail": "node factory/checks/trail.mjs",
     "check:ticket": "node factory/checks/ticket.mjs",
     "check:licenses": "node factory/checks/licenses.mjs",
+    "check:stories": "node factory/checks/stories.mjs",
     "check:tables": "node factory/checks/tables.mjs --tex research/s1/raw/arxiv/latex/main.tex --notes research/s1/tables --notes research/s1/figures"
   }
 }
