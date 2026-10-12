@@ -127,3 +127,16 @@ test('FACTORY_RUN still wins over the run marker', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(readStream(root).map((e) => e.run), ['run-env']);
 });
+
+// The orchestrator's own check events carry the ticket they concern (issue #59).
+test('a check event written with ticket=#59 records ticket 59; a ticket that is no issue number is rejected', () => {
+  const root = tempRoot();
+  const r = write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'check', ...kv(VALID.check), 'ticket=#59']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readStream(root)[0].ticket, 59);
+
+  const bad = write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'check', ...kv(VALID.check), 'ticket=soon']);
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /ticket must be an issue number/);
+  assert.equal(readStream(root).length, 1);
+});

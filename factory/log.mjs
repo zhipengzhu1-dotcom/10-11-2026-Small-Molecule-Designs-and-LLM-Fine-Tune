@@ -13,28 +13,42 @@ import { fileURLToPath } from 'node:url';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRun } from './run-marker.mjs';
 
-// The API contract from issue #1. Dashboards depend on it. Its deliberate departures (parent,
-// decision run, legacy transcript) are listed under "Event contract choices" in CONTEXT.md.
-// Optional fields pass through as given: the lifecycle hook adds `report` and `report_truncated`
-// to agent.stop (spec #52, CONTEXT.md).
+class EventError extends Error {}
+
+// A ticket is a GitHub issue number, written `59` or `#59` and recorded as the number 59.
+export function ticketNumber(v) {
+  const m = /^#?([1-9]\d*)$/.exec(String(v));
+  if (!m) throw new EventError(`ticket must be an issue number such as 59 or #59; got ${v}`);
+  return Number(m[1]);
+}
+
+// The API contract from issue #1, extended by spec #52. Dashboards depend on it. Its deliberate
+// departures (parent, decision run, legacy transcript) are listed under "Event contract choices"
+// in CONTEXT.md.
+//   required  fields every event of the type carries (recorded as strings)
+//   json      required fields that hold JSON values (arrays, objects, numbers) as given
+//   optional  fields an event may carry, each with the function that checks and normalizes it
+// Any other field passes through as given: the lifecycle hook adds `report` and
+// `report_truncated` to agent.stop (spec #52, CONTEXT.md).
 const SCHEMA = {
   'agent.start': { required: ['role', 'parent'] },
   'agent.stop': { required: ['role', 'status'], enums: { status: ['PASS', 'ISSUES', 'BLOCKED'] } },
   artifact: { required: ['path', 'kind'] },
   'fetch.failed': { required: ['ref', 'url', 'reason'] },
-  check: { required: ['name', 'result', 'evidence'], enums: { result: ['pass', 'fail'] } },
-  // Spec #52, issue #56: written by factory/hooks/dispatch.mjs into the orchestrator's file. `to`
-  // is the agent dispatched or messaged (the stamped `agent` is the orchestrator). A dispatch may
-  // also carry `ticket` (a number), `resume: true` and `cause`; a message may carry `cause`.
-  dispatch: { required: ['to', 'role', 'description', 'tool_use_id'] },
+  check: { required: ['name', 'result', 'evidence'], enums: { result: ['pass', 'fail'] }, optional: { ticket: ticketNumber } },
+  // The ticket graph at a frontier step (issue #59): `spec` is the spec or map issue, `tickets`
+  // one { number, state, status, blockers } per child, `blockers` its open blocked-by issues.
+  'ticket.graph': { required: [], json: { spec: Number.isInteger, tickets: Array.isArray } },
+  // Issue #56: written by factory/hooks/dispatch.mjs into the orchestrator's file. `to` is the
+  // agent dispatched or messaged (the stamped `agent` is the orchestrator). A dispatch may also
+  // carry `resume: true` and `cause`; a message may carry `cause`.
+  dispatch: { required: ['to', 'role', 'description', 'tool_use_id'], optional: { ticket: ticketNumber } },
   message: { required: ['to', 'tool_use_id'] },
 };
 
 export const UNKNOWN = 'unknown';
 const STAMPED = ['ts', 'run', 'agent', 'type'];
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-
-class EventError extends Error {}
 
 export function defaultRoot(env = process.env) {
   return env.FACTORY_ROOT || env.CLAUDE_PROJECT_DIR || resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -76,6 +90,14 @@ export function writeEvent({ root, run, agent, type, fields = {}, fillUnknown = 
   for (const [k, allowed] of Object.entries(spec.enums || {})) {
     const ok = allowed.includes(event[k]) || (fillUnknown && event[k] === UNKNOWN);
     if (!ok) throw new EventError(`${type}: field ${k} must be one of ${allowed.join(', ')}; got ${event[k]}`);
+  }
+  for (const [k, valid] of Object.entries(spec.json || {})) {
+    if (fields[k] === undefined) throw new EventError(`${type}: missing required field: ${k}`);
+    if (!valid(fields[k])) throw new EventError(`${type}: field ${k} has the wrong shape`);
+    event[k] = fields[k];
+  }
+  for (const [k, normalize] of Object.entries(spec.optional || {})) {
+    if (fields[k] !== undefined) event[k] = normalize(fields[k]);
   }
   for (const [k, v] of Object.entries(fields)) {
     if (!(k in event) && v !== undefined) event[k] = v;

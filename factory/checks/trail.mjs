@@ -12,7 +12,8 @@
 //   line, ts       the decision row's line in factory/decisions.tsv (header is line 1) and its ts
 //   verdict        ok (true, and its pointers prove it) or superseded (wrong; a later row replaces it)
 //   superseded_by  for superseded, the line of the row that replaces it
-//   pointers       for ok, what the auditor checked, "; "-separated: file:<path>[:<line>[-<line>]]
+//   pointers       for ok, what the auditor checked, "; "-separated, in the one pointer grammar
+//                  (factory/pointer.mjs, shared with npm run decide): file:<path>[:<line>[-<line>]]
 //                  (repo-relative, or ~/ for the home dir), commit:<sha>,
 //                  transcript:<session-id>@<ISO time prefix>, issue:<n>, url:<url>
 // Beside it, <run>.review.md holds the cross-family review, with a "reviewed by <model>" line.
@@ -33,9 +34,9 @@
 //   - a row from 2026-10-12 on records a push or PR (phase ending /push or /pr): git and GitHub
 //     hold that record, and the row would land in a commit after the push
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { gitRun as git } from '../git.mjs';
+import { lineProblem, parsePointer, resolvePointer } from '../pointer.mjs';
 import { projectTranscripts } from '../transcript.mjs';
 import { checkCli } from './check.mjs';
 
@@ -46,20 +47,6 @@ export function readLog(text) {
   return text.split(/\r?\n/)
     .map((line, i) => ({ line: i + 1, ts: line.split('\t')[0], cells: line.split('\t'), text: line }))
     .filter((r) => r.line > 1 && r.text !== '');
-}
-
-// Transcripts run to megabytes and many pointers name the same one, so each is read once.
-const transcripts = new Map();
-function transcript(file) {
-  if (!transcripts.has(file)) transcripts.set(file, readFileSync(file, 'utf8'));
-  return transcripts.get(file);
-}
-
-// Why a file pointer's line range falls outside a file's text, or null. `text` is read lazily.
-function lineProblem(p, from, to, text) {
-  if (!from) return null;
-  const lines = text().replace(/\r?\n$/, '').split(/\r?\n/).length;
-  return Number(to ?? from) > lines ? `${p} is past the end of the file (${lines} lines)` : null;
 }
 
 // The commit that added audit verdict `v`: the oldest commit of its audit file holding its line.
@@ -76,40 +63,18 @@ function addedIn(opts, v) {
 
 // Whether one audit pointer of verdict `v` resolves: { problem } when it does not, { note } when it
 // resolves only at the commit that added `v` (a cited file deleted or shortened since), else null.
-// issue: and url: need the network, so they are taken as given.
-function pointerProblem(p, v, opts) {
-  const colon = p.indexOf(':');
-  const kind = p.slice(0, colon);
-  const value = p.slice(colon + 1);
-  const fail = (problem) => ({ problem });
-  if (kind === 'file') {
-    const [, path, from, to] = /^(.*?)(?::(\d+)(?:-(\d+))?)?$/.exec(value);
-    const home = path.startsWith('~/');
-    const full = home ? join(homedir(), path.slice(2)) : join(opts.root, path);
-    if (existsSync(full) && !home && git(opts.root, 'check-ignore', '-q', path).status === 0) {
-      return fail(`${p} is gitignored; cite a tracked file, commit or transcript instead`);
-    }
-    const now = existsSync(full) ? lineProblem(p, from, to, () => readFileSync(full, 'utf8')) : `${p} does not exist`;
-    if (!now) return null;
-    const sha = home ? null : addedIn(opts, v);
-    const old = sha && git(opts.root, 'show', `${sha}:${path}`);
-    if (old?.status === 0 && !lineProblem(p, from, to, () => old.stdout)) {
-      return { note: `${p} resolved at ${sha}, the commit that added its audit row` };
-    }
-    return fail(now);
+// The pointers are parsed and resolved by the shared grammar (pointer.mjs); every item of the
+// pointers cell must be a pointer, so prose there is an unknown pointer.
+function pointerProblem(text, v, opts) {
+  const p = parsePointer(text) ?? { text, problem: `unknown pointer ${text}` };
+  const now = resolvePointer(p, opts);
+  if (!now?.changed) return now;
+  const sha = addedIn(opts, v);
+  const old = sha && git(opts.root, 'show', `${sha}:${p.path}`);
+  if (old?.status === 0 && !lineProblem(p, () => old.stdout)) {
+    return { note: `${p.text} resolved at ${sha}, the commit that added its audit row` };
   }
-  if (kind === 'commit') {
-    return /^[0-9a-f]{7,40}$/.test(value) && git(opts.root, 'cat-file', '-e', `${value}^{commit}`).status === 0
-      ? null : fail(`${p} is not a commit`);
-  }
-  if (kind === 'transcript') {
-    const [session, at] = value.split('@');
-    const file = join(opts.transcripts, `${session}.jsonl`);
-    if (!existsSync(file)) return fail(`${p} does not exist`);
-    return at && !transcript(file).includes(`"timestamp":"${at}`) ? fail(`${p} has no line at that time`) : null;
-  }
-  if (kind === 'issue' || kind === 'url') return null;
-  return fail(`unknown pointer ${p}`);
+  return { problem: now.problem };
 }
 
 // Append-only: every committed version of the log must be a prefix of the working copy. Reports

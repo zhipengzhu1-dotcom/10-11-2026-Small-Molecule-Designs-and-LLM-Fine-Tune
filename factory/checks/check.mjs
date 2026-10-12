@@ -2,8 +2,10 @@
 //
 //   checkCli(import.meta.url, { name, usage, options }, run)
 //
-// Adds --root, --run and --agent to the check's own options. Run and agent default to FACTORY_RUN
-// and FACTORY_AGENT, else the run marker's run, else run "manual", and agent "orchestrator".
+// Adds --root, --run, --agent and --ticket to the check's own options. Run and agent default to
+// FACTORY_RUN and FACTORY_AGENT, else the run marker's run, else run "manual", and agent
+// "orchestrator". --ticket <n> (or #<n>) names the ticket the check concerns; its event then
+// carries `ticket: <n>`, so per-ticket gates see orchestrator-written checks (issue #59).
 // run(opts) returns the findings:
 //   where      what was checked; the evidence is it plus every problem, or plus `ok` on a pass
 //   ok         what a pass says, as in "all have an allowlisted license"
@@ -16,8 +18,8 @@
 // (on fail, `<name>: fail: <n> failures` and the first 5 failures instead) and exits 0 on pass,
 // 1 on fail, 3 on inconclusive. A check that cannot run exits 2.
 import { isAbsolute, relative, resolve } from 'node:path';
-import { cli } from '../cli.mjs';
-import { defaultRoot, writeEvent } from '../log.mjs';
+import { cli, UsageError } from '../cli.mjs';
+import { defaultRoot, ticketNumber, writeEvent } from '../log.mjs';
 import { defaultRun } from '../run-marker.mjs';
 
 // Every verdict a check can reach, with the `result` its event records and its exit code. The
@@ -29,13 +31,22 @@ const VERDICTS = {
 };
 
 export function checkCli(url, { name, usage, options = {} }, run) {
-  const all = { ...options, root: 'string', run: 'string', agent: 'string' };
-  cli(url, { usage, options: all, failure: 2 }, (parsed) => {
+  const all = { ...options, root: 'string', run: 'string', agent: 'string', ticket: 'string' };
+  cli(url, { usage: `${usage} [--ticket <n>]`, options: all, failure: 2 }, (parsed) => {
     const env = process.env;
     const root = parsed.root ?? defaultRoot(env);
     const opts = { root, run: defaultRun(root, env) || 'manual', agent: env.FACTORY_AGENT || 'orchestrator', ...parsed };
+    if (parsed.ticket !== undefined) opts.ticket = ticketOf(parsed.ticket);
     return report(name, opts, run(opts));
   });
+}
+
+function ticketOf(v) {
+  try {
+    return ticketNumber(v);
+  } catch (err) {
+    throw new UsageError(err.message);
+  }
 }
 
 // The check output's tail: the one place that turns findings into the event, the printed result
@@ -47,6 +58,7 @@ function report(name, opts, { where, ok, evidence, problems = [], unchecked = []
   const fields = { name, result, evidence };
   // The event's result can't tell an inconclusive check from a failed one, so it names its verdict.
   if (verdict !== result) fields.verdict = verdict;
+  if (opts.ticket !== undefined) fields.ticket = opts.ticket;
   writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields });
   for (const line of lines) process.stdout.write(line + '\n');
   if (verdict === 'fail') process.stdout.write(failures(name, problems));
