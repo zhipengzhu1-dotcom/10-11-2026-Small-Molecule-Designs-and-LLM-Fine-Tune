@@ -10,8 +10,8 @@
 // Root: --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else the repo this script lives in.
 // Run:  --run, else FACTORY_RUN.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
 
 export function markerFile(root) {
@@ -27,37 +27,21 @@ export function readMarker(root) {
   return m;
 }
 
-function parseArgs(argv, env) {
-  const opts = { cmd: argv[0], root: defaultRoot(env), run: env.FACTORY_RUN, branch: undefined };
-  for (let i = 1; i < argv.length; i++) {
-    const flag = argv[i];
-    const key = { '--root': 'root', '--run': 'run', '--branch': 'branch' }[flag];
-    if (!key || argv[i + 1] === undefined) throw new Error(`unexpected argument: ${flag}`);
-    opts[key] = argv[++i];
-  }
-  return opts;
-}
-
-function main(argv, env) {
-  const { cmd, root, run, branch } = parseArgs(argv, env);
+cli(import.meta.url, {
+  usage: 'node factory/run-marker.mjs start --run <run-id> --branch <branch> [--root <repo>] | stop [--root <repo>]',
+  options: { root: 'string', run: 'string', branch: 'string' },
+  positionals: true,
+}, ({ positionals, root = defaultRoot(), run = process.env.FACTORY_RUN, branch }) => {
+  const [cmd, ...extra] = positionals;
+  if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
   if (cmd === 'start') {
-    if (!run) throw new Error('missing run (pass --run or set FACTORY_RUN)');
-    if (!branch) throw new Error('missing --branch (the integration branch)');
+    if (!run) throw new UsageError('missing run (pass --run or set FACTORY_RUN)');
+    if (!branch) throw new UsageError('missing --branch (the integration branch)');
     mkdirSync(dirname(markerFile(root)), { recursive: true });
     writeFileSync(markerFile(root), `${JSON.stringify({ run, branch })}\n`);
   } else if (cmd === 'stop') {
     rmSync(markerFile(root), { force: true });
   } else {
-    throw new Error('usage: run-marker.mjs start --run <run-id> --branch <branch> [--root <repo>] | stop [--root <repo>]');
+    throw new UsageError(cmd ? `unknown command: ${cmd}` : 'missing command: start or stop');
   }
-}
-
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  try {
-    main(process.argv.slice(2), process.env);
-  } catch (err) {
-    process.stderr.write(`factory/run-marker.mjs: ${err.message}\n`);
-    process.exit(1);
-  }
-}
+});

@@ -12,18 +12,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
+import { cli } from '../factory/cli.mjs';
 
 const ID = '2501.19393v3';
-
-function args(argv) {
-  const out = { root: dirname(dirname(fileURLToPath(import.meta.url))), baseUrl: 'https://arxiv.org' };
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--root') out.root = argv[++i];
-    else if (argv[i] === '--base-url') out.baseUrl = argv[++i].replace(/\/$/, '');
-    else throw new Error(`unknown argument: ${argv[i]}`);
-  }
-  return out;
-}
 
 async function download(url) {
   const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 s1-factory fetch-s1' } });
@@ -126,9 +117,8 @@ export async function fetchS1({ root, baseUrl }) {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  fetchS1(args(process.argv.slice(2))).catch((e) => {
-    console.error(`fetch-s1: ${e.message}`);
-    process.exit(1);
-  });
-}
+cli(import.meta.url, {
+  usage: 'node scripts/fetch-s1.mjs [--root <repo>] [--base-url <url>]',
+  options: { root: 'string', 'base-url': 'string' },
+}, ({ root = dirname(dirname(fileURLToPath(import.meta.url))), 'base-url': baseUrl = 'https://arxiv.org' }) =>
+  fetchS1({ root, baseUrl: baseUrl.replace(/\/$/, '') }));

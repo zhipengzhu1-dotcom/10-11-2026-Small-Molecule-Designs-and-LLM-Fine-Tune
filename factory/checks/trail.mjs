@@ -37,20 +37,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { defaultRoot, writeEvent } from '../log.mjs';
-
-function parseArgs(argv, env = process.env) {
-  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator' };
-  for (let i = 0; i < argv.length; i++) {
-    const name = argv[i].replace(/^--/, '');
-    if (!['root', 'run', 'agent', 'transcripts'].includes(name) || i + 1 >= argv.length) {
-      throw new Error(`unknown or incomplete argument: ${argv[i]}`);
-    }
-    opts[name] = argv[++i];
-  }
-  return opts;
-}
+import { checkCli } from './check.mjs';
 
 const tsvLines = (text) => text.split(/\r?\n/).slice(1).filter((l) => l !== '').map((l) => l.split('\t'));
 
@@ -255,21 +242,12 @@ export function runCheck(opts) {
     }
   }
 
-  const result = problems.length ? 'fail' : 'pass';
   const where = `factory/decisions.tsv: append-only across ${history.commits} commits; ${log.length} decision rows audited (${ok} ok, ${superseded} superseded); reviewed by ${reviews.map((r) => r.reviewer).filter(Boolean).join(', ') || 'no one'}`;
-  const evidence = [where, ...notes, ...problems].join('; ');
-  writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields: { name: 'trail', result, evidence } });
-  return { result, evidence };
+  return { evidence: [where, ...notes, ...problems].join('; '), problems };
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  try {
-    const { result, evidence } = runCheck(parseArgs(process.argv.slice(2)));
-    process.stdout.write(`trail: ${result}: ${evidence}\n`);
-    process.exit(result === 'pass' ? 0 : 1);
-  } catch (err) {
-    process.stderr.write(`trail.mjs: ${err.message}\n`);
-    process.exit(2);
-  }
-}
+checkCli(import.meta.url, {
+  name: 'trail',
+  usage: 'node factory/checks/trail.mjs [--root <repo>] [--run <id>] [--agent <id>] [--transcripts <dir>]',
+  options: { transcripts: 'string' },
+}, runCheck);

@@ -13,9 +13,9 @@
 // are matched by position after \multicolumn is expanded. Text cells are ignored, so row labels
 // can be written in plain words.
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { defaultRoot, writeEvent } from '../log.mjs';
+import { join } from 'node:path';
+import { UsageError } from '../cli.mjs';
+import { checkCli } from './check.mjs';
 
 // ---------- numbers ----------
 
@@ -296,48 +296,20 @@ export function runCheck({ tex, notes }) {
       : `${rows} rows with numbers compared`;
     lines.push(`${p.length ? 'FAIL' : 'PASS'} ${unit.id} (${basis})`);
   }
-  // INCONCLUSIVE is never a pass: it is reported only when nothing failed outright.
-  const verdict = problems.length ? 'fail' : unparsed.length ? 'inconclusive' : 'pass';
-  return { verdict, lines, problems, unparsed, units: units.length, compared };
+  // Unparsed tables make the verdict INCONCLUSIVE, never a pass, and only when nothing failed outright.
+  const summary = `${notes.join(',')}: ${units.length} tables and figures checked, ${compared} rows with numbers compared`;
+  const details = problems.length ? problems : unparsed.length ? [`INCONCLUSIVE, check by hand: ${unparsed.join('; ')}`] : [];
+  return { evidence: [summary, ...details].join('; '), problems, unchecked: unparsed, lines };
 }
 
 // ---------- CLI ----------
 
-function parseArgs(argv, env = process.env) {
-  const opts = { tex: null, notes: [], root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator' };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    const v = argv[i + 1];
-    if (v === undefined) throw new Error(`${a} needs a value`);
-    if (a === '--tex') opts.tex = v;
-    else if (a === '--notes') opts.notes.push(v);
-    else if (a === '--root' || a === '--run' || a === '--agent') opts[a.slice(2)] = v;
-    else throw new Error(`unknown argument: ${a}`);
-    i++;
-  }
-  if (!opts.tex) throw new Error('missing --tex <file>');
-  if (opts.notes.length === 0) throw new Error('missing --notes <dir>');
-  return opts;
-}
-
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  try {
-    const opts = parseArgs(process.argv.slice(2));
-    const r = runCheck(opts);
-    for (const l of [...r.lines, ...r.problems]) process.stdout.write(l + '\n');
-    process.stdout.write(`tables: ${r.verdict.toUpperCase()}\n`);
-    const evidence = {
-      pass: `${opts.notes.join(',')}: ${r.units} tables and figures checked, ${r.compared} rows with numbers compared`,
-      fail: r.problems.join('; '),
-      inconclusive: `INCONCLUSIVE, check by hand: ${r.unparsed.join('; ')}`,
-    }[r.verdict];
-    // The event schema allows only pass or fail, so INCONCLUSIVE is recorded as fail plus a verdict field.
-    const result = r.verdict === 'pass' ? 'pass' : 'fail';
-    writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields: { name: 'tables', result, evidence, verdict: r.verdict } });
-    process.exit({ pass: 0, fail: 1, inconclusive: 3 }[r.verdict]);
-  } catch (err) {
-    process.stderr.write(`tables.mjs: ${err.message}\n`);
-    process.exit(2);
-  }
-}
+checkCli(import.meta.url, {
+  name: 'tables',
+  usage: 'node factory/checks/tables.mjs --tex <main.tex> --notes <dir> [--notes <dir> ...] [--root <repo>] [--run <id>] [--agent <id>]',
+  options: { tex: 'string', notes: 'list' },
+}, (opts) => {
+  if (!opts.tex) throw new UsageError('missing --tex <file>');
+  if (!opts.notes?.length) throw new UsageError('missing --notes <dir>');
+  return runCheck(opts);
+});

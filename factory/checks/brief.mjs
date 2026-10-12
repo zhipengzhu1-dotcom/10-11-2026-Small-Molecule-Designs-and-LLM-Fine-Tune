@@ -15,34 +15,14 @@
 //   - its verdict is NOT VERIFIED or INCONCLUSIVE and its assumption is empty
 // A brief with no parameter rows fails. Tables whose first header cell isn't "ID" are ignored.
 import { readFileSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { defaultRoot, writeEvent } from '../log.mjs';
+import { join } from 'node:path';
+import { checkCli, shown } from './check.mjs';
 
 // Claim verdicts from issue #1, written exactly as here.
 export const VERDICTS = ['VERIFIED', 'NOT VERIFIED', 'INCONCLUSIVE'];
 
 // A location that stands in for one not yet found: ?, TBD, or a lone dash of any kind.
 const PLACEHOLDER = /^(\?+|tbd|[-–—]+)$/i;
-
-function parseArgs(argv, env = process.env) {
-  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator' };
-  for (let i = 0; i < argv.length; i++) {
-    const name = argv[i].replace(/^--/, '');
-    if (!['root', 'run', 'agent', 'brief'].includes(name) || i + 1 >= argv.length) {
-      throw new Error(`unknown or incomplete argument: ${argv[i]}`);
-    }
-    opts[name] = argv[++i];
-  }
-  opts.brief ??= join(opts.root, 'research', 's1', 'brief.md');
-  return opts;
-}
-
-// A path inside the repo is shown relative to it; anything else (a test fixture) in full.
-function shown(root, path) {
-  const rel = relative(root, resolve(path));
-  return (rel.startsWith('..') || isAbsolute(rel) ? resolve(path) : rel).replace(/\\/g, '/');
-}
 
 // Splits a Markdown table line into trimmed cells. `\|` is a literal pipe inside a cell.
 function cells(line) {
@@ -97,24 +77,16 @@ function rowProblems(row) {
 }
 
 export function runCheck(opts) {
-  const { rows, problems } = parseBrief(readFileSync(opts.brief, 'utf8'));
+  const brief = opts.brief ?? join(opts.root, 'research', 's1', 'brief.md');
+  const { rows, problems } = parseBrief(readFileSync(brief, 'utf8'));
   if (rows.length === 0 && problems.length === 0) problems.push('no parameter rows found');
   for (const r of rows) problems.push(...rowProblems(r).map((p) => `${r.id || '(no ID)'} (line ${r.line}): ${p}`));
-  const result = problems.length ? 'fail' : 'pass';
-  const where = `${shown(opts.root, opts.brief)}: ${rows.length} parameter rows`;
-  const evidence = problems.length ? `${where}; ${problems.join('; ')}` : `${where}; all have a location and a valid verdict`;
-  writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields: { name: 'brief', result, evidence } });
-  return { result, evidence };
+  const where = `${shown(opts.root, brief)}: ${rows.length} parameter rows`;
+  return { evidence: [where, ...(problems.length ? problems : ['all have a location and a valid verdict'])].join('; '), problems };
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  try {
-    const { result, evidence } = runCheck(parseArgs(process.argv.slice(2)));
-    process.stdout.write(`brief: ${result}: ${evidence}\n`);
-    process.exit(result === 'pass' ? 0 : 1);
-  } catch (err) {
-    process.stderr.write(`brief.mjs: ${err.message}\n`);
-    process.exit(2);
-  }
-}
+checkCli(import.meta.url, {
+  name: 'brief',
+  usage: 'node factory/checks/brief.mjs [--root <repo>] [--run <id>] [--agent <id>] [--brief <brief.md>]',
+  options: { brief: 'string' },
+}, runCheck);
