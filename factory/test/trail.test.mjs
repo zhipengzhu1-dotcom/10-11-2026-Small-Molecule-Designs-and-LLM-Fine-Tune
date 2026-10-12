@@ -148,6 +148,47 @@ t('pointers to a real commit and a line range resolve; an ok verdict with no poi
   assert.doesNotMatch(r.events[0].evidence, /line 2 /);
 });
 
+// A fixture whose audit cites notes/old.md, committed together, after which old.md is deleted.
+// Returns the short sha of the commit that added the audit.
+function deletedSource(audit) {
+  const f = fixture({ audit });
+  put(f.root, 'notes/old.md', 'old one\nold two\n');
+  git(f.root, 'add', '-A');
+  git(f.root, 'commit', '-q', '-m', 'audit');
+  const sha = git(f.root, 'rev-parse', '--short', 'HEAD');
+  git(f.root, 'rm', '-q', 'notes/old.md');
+  git(f.root, 'commit', '-q', '-m', 'delete old.md');
+  return { ...f, sha };
+}
+
+t('a file pointer deleted after its audit row was committed resolves at that commit, and the evidence says so', () => {
+  const f = deletedSource(AUDIT_HEADER + GOOD_AUDIT[0]
+    + row('3', '2026-10-11T10:05:00Z', 'ok', '', 'file:notes/old.md:2; issue:4', 'matches'));
+  const r = check(f);
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  assert.equal(r.events[0].result, 'pass');
+  assert.match(r.events[0].evidence, new RegExp(
+    `line 3 \\(2026-10-11T10:05:00Z\\): file:notes/old\\.md:2 resolved at ${f.sha}, the commit that added its audit row`));
+  assert.doesNotMatch(r.events[0].evidence, /line 2 /);
+});
+
+t('a deleted file pointer fails when it did not resolve at the commit that added its audit row either', () => {
+  // Row 2 cites a line old.md never had; row 3 was committed only after old.md was deleted.
+  const f = deletedSource(AUDIT_HEADER
+    + row('2', '2026-10-11T10:00:00Z', 'ok', '', 'file:notes/old.md:3', 'x'));
+  put(f.root, `factory/audit/${AUDIT_RUN}.tsv`, AUDIT_HEADER
+    + row('2', '2026-10-11T10:00:00Z', 'ok', '', 'file:notes/old.md:3', 'x')
+    + row('3', '2026-10-11T10:05:00Z', 'ok', '', 'file:notes/old.md:1', 'x'));
+  git(f.root, 'add', '-A');
+  git(f.root, 'commit', '-q', '-m', 'audit row 3');
+  const r = check(f);
+  assert.equal(r.status, 1, r.stderr + r.stdout);
+  const ev = r.events[0].evidence;
+  assert.match(ev, /line 2 \(2026-10-11T10:00:00Z\): file:notes\/old\.md:3 does not exist/);
+  assert.match(ev, /line 3 \(2026-10-11T10:05:00Z\): file:notes\/old\.md:1 does not exist/);
+  assert.doesNotMatch(ev, /resolved at/);
+});
+
 const FIX = row('2026-10-11T11:00:00Z', 'project/b', 'supersedes line 3: picked 5 epochs', 'the paper says 5', 'notes/source.md:2', 'adopted');
 
 t('a superseded row replaced by a later row passes and is counted as superseded', () => {
