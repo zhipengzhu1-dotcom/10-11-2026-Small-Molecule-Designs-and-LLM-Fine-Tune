@@ -1,5 +1,5 @@
-// The viewer page: polls /state, draws the lists, and hands the state to the three.js
-// diagrams. If three.js cannot load (offline), the diagrams say so and the lists still work.
+// The viewer page: polls /state, draws the lists, and hands the state to the canvas diagrams. If
+// the diagrams cannot start, they say so and the lists still work.
 import { clock, h, short, span } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
@@ -78,6 +78,7 @@ function render(s) {
   }).reverse());
   $('checks').replaceChildren(...s.checks.map((c) => h('span', { class: 'chip ' + c.result, title: c.evidence }, c.name)));
   $('dcount').textContent = '(' + s.tree.count + ': ' + s.labels.in + ' in, ' + s.labels.out + ' out, ' + s.labels.undec + ' undec)';
+  $('dscore').replaceChildren(...scores(s.disk));
   const members = allRuns ? s.crew : s.crew.filter((c) => c.run === s.run);
   $('ccount').textContent = count(members);
   renderAgents();
@@ -86,6 +87,14 @@ function render(s) {
   crew?.update(members);
   if (graph) graph.update(s.tree);
   else $('tree').replaceChildren(...s.tree.children.map((n) => branch(n, true)));
+}
+
+// "T(5) 0.92 C(5) 0.89 · T(10) 0.85 C(10) 0.84", how far the disk distorts the full graph (see
+// diskView in viewer.mjs); a k too large for the log shows a dash.
+function scores(d) {
+  const f = (v) => (v == null ? '–' : v.toFixed(2));
+  return [h('b', null, [5, 10].map((k) => 'T(' + k + ') ' + f(d.T[k]) + ' C(' + k + ') ' + f(d.C[k])).join(' · ')),
+    ' against ' + d.against.method + ' (d = ' + d.against.d + ') of the full graph, ' + d.n + ' nodes · 1 is faithful, about 0.5 is random · every edge is ' + d.tau.toFixed(2) + ' long, so one hop from the centre is near the rim'];
 }
 
 // "15 agents · 3 running · 12 stopped (9 PASS, 2 ISSUES, 1 BLOCKED / unknown)"
@@ -115,7 +124,7 @@ function refreshTimes() {
   for (const td of document.querySelectorAll('td[data-start]')) td.textContent = span(td.dataset.start, td.dataset.stop);
 }
 
-// The plain list of the decision tree, shown only when three.js is unavailable.
+// The plain list of the decision tree, shown only when the diagrams cannot start.
 function branch(n, top) {
   const d = h('details', { class: top ? 'top' : null },
     h('summary', null, n.name, ' ', h('span', { class: 'n' }, n.count)),
@@ -164,16 +173,16 @@ async function loadDiagrams() {
   try {
     const [{ createSwimlane }, { createGraph }, { createCrew }] = await Promise.all([import('./swimlane.js'), import('./graph.js'), import('./crew.js')]);
     lanes = createSwimlane({ labels: $('lane-labels'), plot: $('lane-plot'), axis: $('axis'), tip: $('lane-tip') }, { onSelect: selectAgent, roleOf });
-    graph = createGraph({ stage: $('graph'), labels: $('graph-labels'), tip: $('graph-tip'), card: $('card') });
-    crew = createCrew({ stage: $('crew'), labels: $('crew-labels'), tip: $('crew-tip'), card: $('crew-card') });
+    graph = createGraph({ stage: $('graph'), tip: $('graph-tip'), card: $('card') });
+    crew = createCrew({ stage: $('crew'), tip: $('crew-tip'), card: $('crew-card') });
     for (const box of document.querySelectorAll('#layers input')) box.addEventListener('change', () => graph.setLayer(box.dataset.kind, box.checked));
     for (const box of document.querySelectorAll('#crew-layers input[data-kind]')) box.addEventListener('change', () => crew.setLayer(box.dataset.kind, box.checked));
     if (state) render(state);
   } catch (err) {
-    const note = 'three.js could not load (' + err.message + '), so the diagrams are off. The lists below still work.';
-    $('lanes').replaceChildren(h('p', { class: 'nothree' }, note));
-    $('graph').replaceWith(h('p', { class: 'nothree' }, note));
-    $('crew').replaceWith(h('p', { class: 'nothree' }, note));
+    const note = 'The diagrams could not start (' + err.message + '). The lists below still work.';
+    $('lanes').replaceChildren(h('p', { class: 'nodraw' }, note));
+    $('graph').replaceWith(h('p', { class: 'nodraw' }, note));
+    $('crew').replaceWith(h('p', { class: 'nodraw' }, note));
     $('layers').hidden = true;
     $('crew-layers').hidden = true;
     $('tree').hidden = false;

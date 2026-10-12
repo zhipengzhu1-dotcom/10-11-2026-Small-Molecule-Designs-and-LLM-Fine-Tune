@@ -126,6 +126,7 @@ test('the graph module is pure: it, the pointer grammar and every module they im
   };
   walk(join(FACTORY, 'graph.mjs'));
   walk(join(FACTORY, 'pointer-grammar.mjs')); // the pointer parsers the graph may use
+  walk(join(FACTORY, 'graph', 'distortion.mjs')); // the views' distortion scores
   assert.ok(seen.size >= 3, 'graph.mjs imports the claim grammar');
 });
 

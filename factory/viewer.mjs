@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Viewer. A read-only page that watches the event stream: a swimlane timeline of the run's
-// agents, a graph of every agent and how they connect, a graph of the decision tree, and lists. A quick stand-in until the dashboard
-// (piece C) replaces it. The page and its scripts live in factory/viewer/.
+// agents, a graph of every agent and how they connect, the decision log's phase tree as a
+// Poincare disk with the scores of how far it distorts the full graph, and lists. A quick
+// stand-in until the dashboard (piece C) replaces it. The page and its scripts live in
+// factory/viewer/.
 //
 //   node factory/viewer.mjs [--root <repo>] [--port 4175]
 import { closeSync, openSync, readFileSync, readSync } from 'node:fs';
@@ -229,7 +231,7 @@ function handle(root, taskOf, req, res) {
 
 // Served by name only, never by path, so nothing else in the repo can be fetched. Read on
 // every request, so an edit shows on reload.
-const SCRIPTS = new Set(['app.js', 'ui.js', 'layout.js', 'swimlane.js', 'force.js', 'graph.js', 'crew.js']);
+const SCRIPTS = new Set(['app.js', 'ui.js', 'layout.js', 'disk.js', 'plane.js', 'swimlane.js', 'graph.js', 'crew.js']);
 const ASSETS = join(dirname(fileURLToPath(import.meta.url)), 'viewer');
 const asset = (name) => readFileSync(join(ASSETS, name), 'utf8');
 
