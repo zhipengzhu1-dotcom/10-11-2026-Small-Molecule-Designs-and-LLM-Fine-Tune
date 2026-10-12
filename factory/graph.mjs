@@ -15,12 +15,15 @@
 //   graph.decisions, .decision(N) the rows in line order, each with label (in|out|undec), parts
 //                                 ([{ by, label }]), relations, text and state (claim.mjs)
 //   graph.binding(n)              the standing decisions that bind ticket n: [{ row, because }]
+//   graph.similar(query, opts)    TF-IDF neighbours of a text node or { text } (graph/text.mjs)
+//   graph.precedents(text, k)     the k rows still in nearest to a text, as [{ row, score }]
 //   graph.overdue(now, { run? })  running agents past their role's usual time (graph/sojourn.mjs)
 //
 // Overlays (argumentation so far) live here, or in sibling files once this passes about 400 lines,
 // without changing the interface.
 import { claimState, parseRelations } from './claim.mjs';
 import { overdue } from './graph/sojourn.mjs';
+import { textOverlay } from './graph/text.mjs';
 
 export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   const nodes = new Map();
@@ -65,7 +68,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
       }
     }
   }
-  for (const t of snapshot?.tickets ?? []) Object.assign(nodes.get(`issue:${t.number}`), { state: t.state, status: t.status });
+  for (const t of snapshot?.tickets ?? []) Object.assign(nodes.get(`issue:${t.number}`), { state: t.state, status: t.status, title: t.title });
 
   decisions.sort((a, b) => a.line - b.line);
   const byLine = new Map(decisions.map((d) => [d.line, d]));
@@ -85,6 +88,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
     decision: (line) => byLine.get(line),
   };
   graph.binding = (n) => binding(graph, n);
+  Object.assign(graph, textOverlay(graph));
   graph.overdue = (now, opts) => overdue(events, now, opts);
   return graph;
 }
