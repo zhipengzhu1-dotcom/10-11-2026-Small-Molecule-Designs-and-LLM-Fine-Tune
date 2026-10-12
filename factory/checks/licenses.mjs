@@ -1,14 +1,18 @@
 #!/usr/bin/env node
-// License check (issue #16). Every committed file under research/**/raw/ needs a row in the
-// reference catalog whose license allows republishing. Writes one check event and exits 0 on
-// pass, 1 on fail.
+// License check (issue #16). Every committed file under research/**/raw/ needs a row whose
+// license allows republishing, in the reference catalog or in research/licenses.tsv. Writes one
+// check event and exits 0 on pass, 1 on fail.
 //
-//   node factory/checks/licenses.mjs [--root <repo>] [--run <id>] [--agent <id>] [--catalog <catalog.tsv>]
+//   node factory/checks/licenses.mjs [--root <repo>] [--run <id>] [--agent <id>]
+//                                    [--catalog <catalog.tsv>] [--licenses <licenses.tsv>]
 //
 // "Committed" means tracked by git (`git ls-files`), not merely on disk: most raw files are
-// gitignored. A catalog row covers the file named in its `file` column.
+// gitignored. A row covers the file named in its `file` column. The catalog is rebuilt from the
+// paper's citations, so raw files that are not cited references (dataset cards, the repo's own
+// provenance notes) are listed by hand in research/licenses.tsv; there, "own work" marks a file
+// the repo wrote itself and exempts that exact path.
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { basename, join, posix } from 'node:path';
 import { checkCli, shown } from './check.mjs';
 import { readCatalog } from './references.mjs';
@@ -40,13 +44,20 @@ function committedRaw(root) {
   return r.stdout.split('\0').filter((p) => /^research\/(?:.+\/)?raw\//.test(p));
 }
 
+// The hand-kept list's license for a file the repo wrote itself. Only an exact path listed with it
+// is exempt, so a third-party README beside it is still checked.
+const OWN_WORK = 'own work';
+
 export function runCheck(opts) {
   const catalog = opts.catalog ?? join(opts.root, 'research', 'refs', 'catalog.tsv');
-  const rows = readCatalog(readFileSync(catalog, 'utf8'));
+  const list = opts.licenses ?? join(opts.root, 'research', 'licenses.tsv');
+  const listed = existsSync(list) ? readCatalog(readFileSync(list, 'utf8')) : [];
+  const own = new Set(listed.filter((r) => r.license === OWN_WORK).map((r) => r.file));
+  const rows = [...readCatalog(readFileSync(catalog, 'utf8')), ...listed.filter((r) => r.license !== OWN_WORK)];
   const files = committedRaw(opts.root);
   const texts = new Set(files.filter(isLicenseText).map((p) => posix.dirname(p)));
   const problems = [];
-  for (const file of files.filter((p) => !isLicenseText(p))) {
+  for (const file of files.filter((p) => !isLicenseText(p) && !own.has(p))) {
     const entries = rows.filter((r) => r.file === file);
     if (!entries.length) problems.push(`${file}: no catalog entry`);
     for (const { license = '' } of entries) {
@@ -56,12 +67,12 @@ export function runCheck(opts) {
       }
     }
   }
-  const where = `${files.length} committed raw files vs ${shown(opts.root, catalog)}`;
+  const where = `${files.length} committed raw files vs ${shown(opts.root, catalog)} and ${shown(opts.root, list)} (${own.size} own work)`;
   return { evidence: [where, ...(problems.length ? problems : ['all have an allowlisted license'])].join('; '), problems };
 }
 
 checkCli(import.meta.url, {
   name: 'licenses',
-  usage: 'node factory/checks/licenses.mjs [--root <repo>] [--run <id>] [--agent <id>] [--catalog <catalog.tsv>]',
-  options: { catalog: 'string' },
+  usage: 'node factory/checks/licenses.mjs [--root <repo>] [--run <id>] [--agent <id>] [--catalog <catalog.tsv>] [--licenses <licenses.tsv>]',
+  options: { catalog: 'string', licenses: 'string' },
 }, runCheck);

@@ -1,0 +1,5 @@
+file	license	source
+research/s1/raw/README.md	own work	written by this repo: provenance notes for the s1 primary sources
+research/s1/raw/code/README.md	own work	written by this repo: how to recreate the gitignored code clone
+research/s1/raw/datasets/s1K.md	Apache-2.0	front matter "license: apache-2.0"; text in LICENSE-APACHE-2.0.txt (apache.org, sha256 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30)
+research/s1/raw/datasets/s1K-1.1.md	MIT	front matter "license: mit"
