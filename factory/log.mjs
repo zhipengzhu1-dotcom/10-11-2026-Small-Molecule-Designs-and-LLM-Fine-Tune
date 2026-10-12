@@ -34,7 +34,7 @@ const SCHEMA = {
   check: { required: ['name', 'result', 'evidence'], enums: { result: ['pass', 'fail'] }, optional: { ticket: ticketNumber } },
   // The ticket graph at a frontier step (issue #59): `spec` is the spec or map issue, `tickets`
   // one { number, state, status, blockers } per child, `blockers` its open blocked-by issues.
-  'ticket.graph': { required: ['spec'], json: { tickets: Array.isArray } },
+  'ticket.graph': { required: [], json: { spec: Number.isInteger, tickets: Array.isArray } },
 };
 
 export const UNKNOWN = 'unknown';
