@@ -75,6 +75,19 @@ test('ISSUES, BLOCKED and unknown stops and fetch.failed are doubts until a late
   assert.deepEqual(open(graphOf([...events, citing])), [['event:r1/a3:1', 'stop', 'undermine', 'issue:70']]);
 });
 
+test('a check that ran before its file\'s last write is an open undercut doubt on its story, until the check runs again', () => {
+  const write = (s, agent) => ev(s, 'r1', agent, 'artifact', { path: 'research/s1/brief.md', kind: 'notes' });
+  const events = [snap(0, { stories: [1] }), write(1, 'a1'), check(2, 'a1', 'brief', 'pass', { evidence: 'file:research/s1/brief.md: 67 rows' }), write(3, 'a2')];
+  const g = graphOf(events, { map: map([1, 'check', 'brief']), merges: [] });
+  const stale = 'stale:event:r1/a1:2:file:research/s1/brief.md';
+  assert.deepEqual(g.challenges(52).filter((c) => c.open).map((c) => [c.id, c.source, c.kind, c.target]), [[stale, 'stale', 'undercut', 'file:research/s1/brief.md']]);
+  assert.deepEqual(g.goals().map((s) => [s.story, s.status, s.doubts]), [[1, 'failing', [stale]]]);
+  assert.equal(g.done(52).residual, 1);
+  const rerun = graphOf([...events, check(4, 'a1', 'brief', 'pass', { evidence: 'research/s1/brief.md' })], { map: map([1, 'check', 'brief']), merges: [] });
+  assert.deepEqual(rerun.challenges(52), []);
+  assert.deepEqual(rerun.goals().map((s) => [s.story, s.status]), [[1, 'supported']]);
+});
+
 test('done counts residual doubt once per doubt: stories without passing evidence, failing evidence and open challenges, never multiplied', () => {
   const events = [
     snap(0, { stories: [1, 2, 3, 4] }), check(1, 'orchestrator', 'trail', 'fail'), check(2, 'orchestrator', 'stories', 'pass'),

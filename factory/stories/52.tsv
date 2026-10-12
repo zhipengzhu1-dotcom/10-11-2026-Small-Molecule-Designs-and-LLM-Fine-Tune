@@ -144,3 +144,5 @@ story	kind	name
 40	test	npm run merge prints the merge read and still merges when the judge is unreachable, saying so
 40	test	npm run merge prints a clean merge read as one line before it merges
 40	test	npm run merge --read prints the read of a branch's changed files and merges and commits nothing
+36	test	a check that ran before its file's last write is an open undercut doubt on its story, until the check runs again
+37	test	a check that ran before its file's last write is an open undercut doubt on its story, until the check runs again

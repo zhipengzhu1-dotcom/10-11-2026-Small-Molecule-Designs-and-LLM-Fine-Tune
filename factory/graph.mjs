@@ -105,7 +105,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
     for (const r of d.relations) if (r.kind !== 'closes' && byLine.has(r.line)) link(`row:${d.line}`, r.kind, `row:${r.line}`, { part: r.part });
   }
   const activities = [...nodes.values()].filter((n) => n.class === 'activity').map((n) => ({ id: n.id, e: n.event }));
-  const challenges = challengesOf(activities, decisions);
+  const challenges = challengesOf(activities, decisions, provenanceOverlay({ nodes: [...nodes.values()] }).staleChecks());
   for (const c of challenges) {
     if (c.source === 'challenge') link(c.node, 'challenges', c.target);
     for (const d of decisions) if (d.relations.some((r) => r.kind === 'closes' && r.challenge === c.id)) link(`row:${d.line}`, 'closes', c.node);

@@ -4,7 +4,8 @@
 // (research/assurance-case:research/orchestration/assurance-case.md, sections 1 and 6).
 //
 // Doubts are challenges. A logged `challenge` event is one; so are, read at this time and never
-// logged twice, a failed check, an ISSUES, BLOCKED or unknown stop and a `fetch.failed`. Each is an
+// logged twice, a failed check, a stale check (graph/provenance.mjs: one that ran before its file's
+// last write, an undercut), an ISSUES, BLOCKED or unknown stop and a `fetch.failed`. Each is an
 // argument in graph.mjs's grounded labelling, attacked by what eliminates it, so a closing row that
 // is itself out brings its challenge back. A logged challenge whose target is `row:<N>` attacks
 // that row. What eliminates a challenge (each a later record naming it, never an edit):
@@ -13,7 +14,9 @@
 //   stop          a later PASS stop of the same agent, or of an agent dispatched for the same
 //                 ticket in the same role
 //   fetch.failed  a later artifact with that `ref`, or a path under research/refs/<ref>/raw/
-// and any read-time one by a row citing its event id (`event:<run>/<agent>:<line>`).
+//   stale check   a rerun after the write (it is then no longer stale, so it never shows)
+// and any read-time one by a row citing its event id (`event:<run>/<agent>:<line>`). A stale
+// check's id is `stale:<check event id>:file:<path>`, and it doubts the story that check backs.
 //
 // Goals are the spec's user stories, `snapshot.stories` (the frontier logs them from the spec).
 // Their evidence is the story map, `snapshot.map` ([{ story, kind, name }], kind check, test or
@@ -42,7 +45,7 @@ const cites = (text, id) => {
 // Every challenge in the stream, with `arg` (its argument in the labelling), `row` (the row it
 // attacks, if any) and `by` (its attackers: row lines and the event ids of eliminating events).
 // `activities` are [{ id, e }] in stream order.
-export function challengesOf(activities, decisions) {
+export function challengesOf(activities, decisions, stale = []) {
   const dispatched = new Map(); // agent -> its first dispatch
   for (const { e } of activities) if (e.type === 'dispatch' && e.to && !dispatched.has(e.to)) dispatched.set(e.to, e);
   const rowsCiting = (id) => decisions.filter((d) => [d.decision, d.why, d.evidence, d.result].some((t) => cites(t ?? '', id))).map((d) => d.line);
@@ -82,12 +85,22 @@ export function challengesOf(activities, decisions) {
     const kind = e.status === 'unknown' ? 'undermine' : KIND[source];
     out.push({ id, source, kind, target: ticket === undefined ? null : `issue:${ticket}`, why, ticket, node: id, run: e.run, by: [...by, ...rowsCiting(id)] });
   });
+  // A stale check undercuts itself: its evidence may hold, but it no longer vouches for the file.
+  // Its rerun after the write ends it (staleChecks no longer lists it), as can a row citing it.
+  const event = new Map(activities.map((x) => [x.id, x.e]));
+  for (const s of stale) {
+    const e = event.get(s.check);
+    out.push({ id: `stale:${s.check}:file:${s.path}`, source: 'stale', kind: 'undercut', target: `file:${s.path}`, on: s.check,
+      why: `check ${s.name} ran before ${s.write} wrote ${s.path}`, ticket: e.ticket, node: s.check, run: e.run, by: rowsCiting(s.check) });
+  }
   return out.map((c) => ({ ...c, arg: `challenge:${c.id}` }));
 }
 
 // The overlay's queries, once graph.mjs has labelled every argument (`label`).
 export function assurance(graph, activities, challenges, label, snapshot) {
-  const all = challenges.map(({ arg, by, row, run, ...c }) => ({ ...c, run, label: label.get(arg), open: label.get(arg) !== 'out' }));
+  const all = challenges.map(({ arg, by, row, on, ...c }) => ({ ...c, label: label.get(arg), open: label.get(arg) !== 'out' }));
+  // What each open challenge doubts as evidence: a logged one its target, a stale check itself.
+  const on = new Map(challenges.map((c) => [c.id, c.source === 'stale' ? c.on : c.target]));
   const specRuns = (s) => new Set(activities.filter((x) => x.e.type === 'ticket.graph' && x.e.spec === s).map((x) => x.e.run));
   const specTickets = (s) => new Set([s, ...activities.filter((x) => x.e.type === 'ticket.graph' && x.e.spec === s).flatMap((x) => (x.e.tickets ?? []).map((t) => t.number))]);
   const challengesOf = (s) => {
@@ -109,7 +122,7 @@ export function assurance(graph, activities, challenges, label, snapshot) {
     const rows = snapshot?.map ?? [];
     const stories = [...new Set([...(snapshot?.stories ?? []), ...rows.map((r) => r.story)])].sort((a, b) => a - b);
     const doubted = new Map(); // a challenge target -> the open logged challenges on it
-    for (const c of all) if (c.open && c.source === 'challenge') doubted.set(c.target, [...(doubted.get(c.target) ?? []), c.id]);
+    for (const c of all) if (c.open && ['challenge', 'stale'].includes(c.source)) doubted.set(on.get(c.id), [...(doubted.get(on.get(c.id)) ?? []), c.id]);
     return stories.map((story) => {
       const mine = rows.filter((r) => r.story === story);
       if (!mine.length) return { story, status: 'undeveloped', evidence: [], doubts: [`story:${story}`] };
