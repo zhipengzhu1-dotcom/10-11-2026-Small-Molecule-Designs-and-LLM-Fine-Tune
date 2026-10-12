@@ -31,11 +31,20 @@ export function allowed(cell) {
   return ALLOWED.some((re) => re.test(id));
 }
 
-// A license text (LICENSE, LICENSE.txt, LICENCE-APACHE, COPYING, ...). Apache-2.0 requires its text
-// to travel with the file, so an Apache-2.0 file needs one committed in its own folder. A license
-// text is the license itself, not a third-party work, so it needs no catalog row of its own.
-const LICENSE_TEXT = /^(?:LICEN[CS]E|COPYING)(?:[.-][^/]*)?$/i;
-const isLicenseText = (path) => LICENSE_TEXT.test(basename(path));
+// A license text: a file named like one (LICENSE, LICENSE.txt, LICENCE-APACHE, COPYING, ...) whose
+// contents open with a license we can name. Apache-2.0 requires its text to travel with the file,
+// so an Apache-2.0 file needs the Apache text committed in its own folder. A license text is the
+// license itself, not a third-party work, so it needs no catalog row of its own; a file that is
+// only named like one is checked like any other.
+const LICENSE_NAME = /^(?:LICEN[CS]E|COPYING)(?:[.-][^/]*)?$/i;
+const TEXTS = { 'Apache-2.0': /Apache License\s+Version 2\.0/i, MIT: /Permission is hereby granted, free of charge/i };
+
+// The license a committed file is the text of, or undefined.
+function textOf(root, path) {
+  if (!LICENSE_NAME.test(basename(path))) return undefined;
+  const head = readFileSync(join(root, path), 'utf8').slice(0, 2000);
+  return Object.keys(TEXTS).find((id) => TEXTS[id].test(head));
+}
 
 // Files git tracks under any research/**/raw/ folder, as repo-relative paths.
 function committedRaw(root) {
@@ -55,14 +64,15 @@ export function runCheck(opts) {
   const own = new Set(listed.filter((r) => r.license === OWN_WORK).map((r) => r.file));
   const rows = [...readCatalog(readFileSync(catalog, 'utf8')), ...listed.filter((r) => r.license !== OWN_WORK)];
   const files = committedRaw(opts.root);
-  const texts = new Set(files.filter(isLicenseText).map((p) => posix.dirname(p)));
+  const textFor = new Map(files.map((p) => [p, textOf(opts.root, p)]).filter(([, id]) => id));
+  const apache = new Set([...textFor].filter(([, id]) => id === 'Apache-2.0').map(([p]) => posix.dirname(p)));
   const problems = [];
-  for (const file of files.filter((p) => !isLicenseText(p) && !own.has(p))) {
+  for (const file of files.filter((p) => !textFor.has(p) && !own.has(p))) {
     const entries = rows.filter((r) => r.file === file);
     if (!entries.length) problems.push(`${file}: no catalog entry`);
     for (const { license = '' } of entries) {
       if (!allowed(license)) problems.push(`${file}: license "${license}" not allowlisted`);
-      else if (/^Apache/i.test(licenseId(license)) && !texts.has(posix.dirname(file))) {
+      else if (/^Apache/i.test(licenseId(license)) && !apache.has(posix.dirname(file))) {
         problems.push(`${file}: Apache-2.0 without its license text committed in ${posix.dirname(file)}/`);
       }
     }
