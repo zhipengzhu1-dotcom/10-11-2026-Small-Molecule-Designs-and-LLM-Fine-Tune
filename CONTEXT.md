@@ -36,3 +36,8 @@ Replicating s1 (arXiv 2501.19393) at small scale. Spec: GitHub issue #1.
 - **Lifecycle hooks**: `.claude/settings.json` runs `factory/hooks/subagent.mjs` on `SubagentStart` and `SubagentStop` (they fire in the orchestrator session). It writes `agent.start` / `agent.stop`; a field the payload lacks becomes `unknown`. The stop `status` is the first `PASS`, `ISSUES` or `BLOCKED` in `last_assistant_message`. When that has none, the hook reads `agent_transcript_path` and uses the last `SubagentHandback` report, then the last assistant text block. If neither has one, the status is `unknown`.
 - **Writer command**: on `SubagentStart` the hook injects `additionalContext` telling the subagent its agent id, run id and the exact command for its own events:
   `node "<main>/factory/log.mjs" --root "<main>" --run <run-id> --agent <agent-id> <type> key=value ...`
+
+## Local models
+
+- **VRAM cap**: 8 GiB (8,192 MiB) of GPU memory, the RTX 5060 budget, for every model run on the RTX 5090 (decision log line 3). It is separate from the parameter limit (models under 8B) on the same line.
+- **VRAM delta**: a model's real footprint, the rise in `nvidia-smi` memory.used when it loads alone. Measure it with `npm run vram -- <model>...` (`scripts/vram.mjs`). Ollama's `/api/ps` `size_vram` reads low and is no measure of the cap (issue #38).
