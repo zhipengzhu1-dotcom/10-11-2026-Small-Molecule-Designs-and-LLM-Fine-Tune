@@ -12,7 +12,7 @@
 // written. The trail check enforces this for rows from CLAIM_RULES_FROM on.
 
 // Claim state -> SACM v2.3 assertionDeclaration (OMG formal/23-05-08, section 11.8).
-export const STATES = {
+const STATES = {
   adopted: 'asserted',
   open: 'needsSupport',
   assumed: 'assumed',

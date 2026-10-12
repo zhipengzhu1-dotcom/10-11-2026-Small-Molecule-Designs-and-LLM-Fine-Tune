@@ -82,9 +82,9 @@ test('after the orchestrator clears the run marker, the hooks write nothing', ()
 });
 
 // The events carry the contract's fields and nothing else (issue #1, plus agent.stop's report from
-// spec #52). The parent is always the
-// orchestrator: Claude Code fires SubagentStart and SubagentStop only for agents the orchestrator
-// session spawns, never for an agent a subagent spawns (issue #21).
+// spec #52). The parent is always the orchestrator: Claude Code fires SubagentStart and
+// SubagentStop only for agents the orchestrator session spawns, never for an agent a subagent
+// spawns (issue #21).
 test('SubagentStart then SubagentStop record agent.start and agent.stop for that agent in the stream', () => {
   const root = runRoot();
   const env = { CLAUDE_PROJECT_DIR: root };
