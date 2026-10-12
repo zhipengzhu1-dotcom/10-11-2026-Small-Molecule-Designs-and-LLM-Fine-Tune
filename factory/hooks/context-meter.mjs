@@ -4,29 +4,57 @@
 // session's current context size, read from its transcript (factory/transcript.mjs), so the
 // orchestrator's budget check runs on a number instead of a guess. Other sessions, and tool
 // calls inside subagents, get nothing.
+//
+// It also asks the node model (factory/graph.mjs) for this run's overdue agents, those running
+// past their role's usual time (spec #52, stories 33 and 41), and adds one line naming them only
+// when there are any: a stuck last agent never hands back, so nothing else would show it.
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { defaultRoot } from '../log.mjs';
+import { buildGraph } from '../graph.mjs';
+import { defaultRoot, safeId } from '../log.mjs';
+import { readStream } from '../read.mjs';
 import { inMarkedRun } from '../run-marker.mjs';
 import { contextTokens } from '../transcript.mjs';
+
+function meterLine(transcriptPath) {
+  let tokens;
+  try {
+    tokens = contextTokens(transcriptPath.replace(/^~(?=[\\/])/, homedir()));
+  } catch {
+    return undefined; // no transcript yet
+  }
+  return tokens == null ? undefined : `Context meter: ${tokens.toLocaleString('en-US')} tokens in context (latest main-thread reply).`;
+}
+
+const span = (ms) => {
+  const m = Math.round(ms / 60000);
+  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}m`;
+};
+
+// One line for every overdue agent of the run, or undefined when there is none. A stream the
+// reader rejects is named instead, since the check can't run on it.
+function overdueLine(root, run) {
+  let late;
+  try {
+    late = buildGraph(readStream(root)).overdue(Date.now(), { run });
+  } catch (err) {
+    return `Overdue check failed: ${err.message}`;
+  }
+  if (!late.length) return undefined;
+  const one = (o) => `${o.agent} (${o.role} #${o.ticket ?? '-'}) running ${span(o.elapsed)}, past its role's bound of ${span(o.bound)} (${o.n} earlier sojourns)`;
+  return `Overdue: ${late.map(one).join('; ')}.`;
+}
 
 function main() {
   const payload = JSON.parse(readFileSync(0, 'utf8'));
   // A subagent's tool calls carry its agent_id; the orchestrator's own never do.
   if (payload.agent_id || !payload.session_id || !payload.transcript_path) return;
-  if (!inMarkedRun(defaultRoot(), payload.session_id)) return;
-  let tokens;
-  try {
-    tokens = contextTokens(payload.transcript_path.replace(/^~(?=[\\/])/, homedir()));
-  } catch {
-    return; // no transcript yet
-  }
-  if (tokens == null) return;
+  const root = defaultRoot();
+  if (!inMarkedRun(root, payload.session_id)) return;
+  const lines = [meterLine(payload.transcript_path), overdueLine(root, safeId(payload.session_id))].filter(Boolean);
+  if (!lines.length) return;
   process.stdout.write(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: payload.hook_event_name,
-      additionalContext: `Context meter: ${tokens.toLocaleString('en-US')} tokens in context (latest main-thread reply).`,
-    },
+    hookSpecificOutput: { hookEventName: payload.hook_event_name, additionalContext: lines.join('\n') },
   }));
 }
 
