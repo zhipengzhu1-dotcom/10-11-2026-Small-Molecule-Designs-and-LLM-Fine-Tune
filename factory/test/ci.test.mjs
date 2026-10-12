@@ -11,6 +11,7 @@ test('a skipped test fails CI unless its reason is an allowed one', () => {
     'ok 2 - the page cannot be reached from another machine\'s address # SKIP no non-loopback IPv4 interface',
     'ok 3 - a fully audited trail passes # SKIP git is not installed',
     '    ok 4 - nested subtest # SKIP',
+    'ok 5 - the CLI turns real PDFs into text in one run # SKIP pdftotext is not installed',
   ].join('\n');
   assert.deepEqual(unexpectedSkips(tap), ['a fully audited trail passes (git is not installed)', 'nested subtest (no reason)']);
 });
