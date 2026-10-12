@@ -75,6 +75,51 @@ test('decide with no --run, FACTORY_RUN or run marker refuses, and asks for --ru
   assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
 });
 
+// The log is append-only, so a bad pointer that got in could never be fixed in place.
+test('decide refuses with exit 2, and writes nothing, when a file: pointer in the evidence does not resolve', () => {
+  const s = setup();
+  writeFileSync(join(s.root, 'notes.md'), 'one\ntwo\n');
+  const evidence = (e) => [ROW[0], ROW[1], ROW[2], e, ROW[4]];
+
+  const missing = decide(s, ['--run', SESSION, ...evidence('issue:44; file:gone.md')]);
+  assert.equal(missing.status, 2);
+  assert.match(missing.stderr, /file:gone\.md does not exist/);
+  const short = decide(s, ['--run', SESSION, ...evidence('file:notes.md:3')]);
+  assert.equal(short.status, 2);
+  assert.match(short.stderr, /file:notes\.md:3 is past the end of the file \(2 lines\)/);
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+
+  assert.equal(decide(s, ['--run', SESSION, ...evidence('file:notes.md:1-2; merge 1945810')]).status, 0);
+});
+
+test('decide refuses an evidence item of an unknown pointer kind, or a malformed transcript: pointer, and writes nothing', () => {
+  const s = setup();
+  const r = decide(s, ['--run', SESSION, ROW[0], ROW[1], ROW[2], 'https://example.org; transcript:sess-1', ROW[4]]);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /unknown pointer https:\/\/example\.org; write url:https:\/\/example\.org/);
+  assert.match(r.stderr, /transcript:sess-1 has no @<ISO time>/);
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+});
+
+const hasGit = spawnSync('git', ['--version']).status === 0;
+test('decide refuses with exit 2, and writes nothing, when a commit: pointer names no commit of the repo', { skip: !hasGit && 'git is not installed' }, () => {
+  const s = setup();
+  const git = (...a) => spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-C', s.root, ...a], { encoding: 'utf8' }).stdout.trim();
+  git('init', '-q');
+  git('commit', '-q', '--allow-empty', '-m', 'first');
+  const sha = git('rev-parse', '--short', 'HEAD');
+  const evidence = (e) => [ROW[0], ROW[1], ROW[2], e, ROW[4]];
+
+  const r = decide(s, ['--run', SESSION, ...evidence(`commit:${sha}; commit:abcdef1; commit:xyz`)]);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /commit:abcdef1 is not a commit/);
+  assert.match(r.stderr, /commit:xyz is not a commit \(7 to 40 hex digits\)/);
+  assert.doesNotMatch(r.stderr, new RegExp(`commit:${sha}`));
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
+
+  assert.equal(decide(s, ['--run', SESSION, ...evidence(`commit:${sha}`)]).status, 0);
+});
+
 test('decide refuses with exit 2, and writes nothing, when pstack is not installed or a cell is missing', () => {
   const none = setup({ plugins: {} });
   const r = decide(none, ROW);

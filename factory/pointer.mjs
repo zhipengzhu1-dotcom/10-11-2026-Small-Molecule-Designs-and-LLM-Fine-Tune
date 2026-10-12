@@ -58,13 +58,13 @@ function transcript(file) {
 
 // Whether parsed pointer `p` resolves now: null when it does, else { problem }. A repo file that is
 // missing or too short also gets `changed: true`, since it may have resolved when it was cited.
-// `root` is the repo; `transcripts` the Claude Code transcripts folder. issue: and url: need the
-// network, so they are taken as given.
-export function resolvePointer(p, { root, transcripts: dir }) {
+// `root` is the repo, `transcripts` the Claude Code transcripts folder and `home` what ~/ means.
+// issue: and url: need the network, so they are taken as given.
+export function resolvePointer(p, { root, transcripts: dir, home: homeDir = homedir() }) {
   if (p.problem) return { problem: p.problem };
   if (p.kind === 'file') {
     const home = p.path.startsWith('~/');
-    const full = home ? join(homedir(), p.path.slice(2)) : join(root, p.path);
+    const full = home ? join(homeDir, p.path.slice(2)) : join(root, p.path);
     if (!existsSync(full)) return { problem: `${p.text} does not exist`, changed: !home };
     if (!home && gitRun(root, 'check-ignore', '-q', p.path).status === 0) {
       return { problem: `${p.text} is gitignored; cite a tracked file, commit or transcript instead` };
