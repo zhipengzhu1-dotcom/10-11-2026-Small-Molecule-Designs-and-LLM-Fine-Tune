@@ -39,7 +39,7 @@ const ROW = ['project/frontier/next', 'took #44 next', 'it blocks #14', 'issue:4
 
 test('decide calls the installed pstack log.sh on the decision log, with the session transcript pointer first in the evidence', () => {
   const s = setup();
-  const r = decide(s, ROW);
+  const r = decide(s, ['--run', SESSION, ...ROW]);
   assert.equal(r.status, 0, r.stderr);
   const args = readFileSync(join(s.root, 'factory', 'log.sh.args'), 'utf8').trimEnd().split('\n');
   assert.equal(args[0].replace(/\\/g, '/'), join(s.root, 'factory', 'decisions.tsv').replace(/\\/g, '/'));
@@ -50,15 +50,29 @@ test('decide calls the installed pstack log.sh on the decision log, with the ses
   ]);
 });
 
-test('decide points at the session named by FACTORY_RUN or --run, not the latest transcript', () => {
+test('decide takes the session from --run, then FACTORY_RUN, then the run marker', () => {
   const s = setup();
   const dir = transcriptsDir(s.root, s.home);
-  writeFileSync(join(dir, 'other.jsonl'), '{"type":"user","timestamp":"2026-10-12T06:00:00.000Z"}\n');
+  writeFileSync(join(dir, 'env.jsonl'), '{"type":"user","timestamp":"2026-10-12T06:00:00.000Z"}\n');
+  writeFileSync(join(dir, 'marked.jsonl'), '{"type":"user","timestamp":"2026-10-12T07:00:00.000Z"}\n');
+  writeFileSync(join(s.root, 'factory', 'run.json'), '{"run":"marked","branch":"spec1/leftovers"}\n');
   const args = () => readFileSync(join(s.root, 'factory', 'log.sh.args'), 'utf8').split('\n')[4];
-  assert.equal(decide(s, ['--run', SESSION, ...ROW]).status, 0);
+
+  assert.equal(decide(s, ['--run', SESSION, ...ROW], { FACTORY_RUN: 'env' }).status, 0);
   assert.match(args(), new RegExp(`/${SESSION}\\.jsonl @04:40:09Z; issue:44$`));
-  assert.equal(decide(s, ROW, { FACTORY_RUN: 'other' }).status, 0);
-  assert.match(args(), /\/other\.jsonl @06:00:00Z; issue:44$/);
+  assert.equal(decide(s, ROW, { FACTORY_RUN: 'env' }).status, 0);
+  assert.match(args(), /\/env\.jsonl @06:00:00Z; issue:44$/);
+  assert.equal(decide(s, ROW).status, 0);
+  assert.match(args(), /\/marked\.jsonl @07:00:00Z; issue:44$/);
+});
+
+// A concurrent session's transcript can be the newest one, so the newest is never a guess for the run.
+test('decide with no --run, FACTORY_RUN or run marker refuses, and asks for --run instead of taking the newest transcript', () => {
+  const s = setup();
+  const r = decide(s, ROW);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /pass --run <session-id>/);
+  assert.throws(() => readFileSync(join(s.root, 'factory', 'log.sh.args')), /ENOENT/);
 });
 
 test('decide refuses with exit 2, and writes nothing, when pstack is not installed or a cell is missing', () => {

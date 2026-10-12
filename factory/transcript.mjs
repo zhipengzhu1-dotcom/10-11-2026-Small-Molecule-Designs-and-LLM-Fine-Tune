@@ -3,7 +3,7 @@
 // per line. Audit agents, the context meter and `npm run decide` read them through this module
 // instead of each writing its own parser.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,17 +20,6 @@ export function projectTranscripts(root, home = homedir()) {
   const common = spawnSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-common-dir'], { encoding: 'utf8' });
   const main = common.status === 0 ? dirname(common.stdout.trim()) : root;
   return transcriptsDir(resolve(main), home);
-}
-
-// The id of the most recently written session transcript in `dir`, or null. Subagent transcripts
-// sit in <session>/subagents/ and are not sessions.
-export function latestSession(dir) {
-  if (!existsSync(dir)) return null;
-  const sessions = readdirSync(dir, { withFileTypes: true })
-    .filter((d) => d.isFile() && d.name.endsWith('.jsonl'))
-    .map((d) => ({ id: d.name.slice(0, -6), mtime: statSync(join(dir, d.name)).mtimeMs }))
-    .sort((a, b) => b.mtime - a.mtime);
-  return sessions[0]?.id ?? null;
 }
 
 // Every entry of a transcript, in file order. A line that is not JSON (the last line while

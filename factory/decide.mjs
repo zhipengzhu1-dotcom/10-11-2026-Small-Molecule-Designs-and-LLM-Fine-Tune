@@ -9,8 +9,9 @@
 // log.sh:   <installPath>/skills/show-me-your-work/scripts/log.sh, where installPath is the
 //           pstack@pstack-marketplace entry of ~/.claude/plugins/installed_plugins.json. The plugin
 //           cache keeps stale versions beside it, so never hard-code a cache path.
-// Session:  --run, else FACTORY_RUN, else the most recently written transcript of this project.
-//           The pointer is "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z", the time of the
+// Session:  --run, else FACTORY_RUN, else the run marker's run (factory/run.json, run-marker.mjs).
+//           With none of them it refuses: the newest transcript can be a concurrent session's, so
+//           it is never taken as a guess. The pointer is "~/.claude/projects/<slug>/<session>.jsonl @<HH:MM:SS>Z", the time of the
 //           transcript's latest entry.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -18,7 +19,8 @@ import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultRoot } from './log.mjs';
-import { latestSession, projectTranscripts, readTranscript } from './transcript.mjs';
+import { readMarker } from './run-marker.mjs';
+import { projectTranscripts, readTranscript } from './transcript.mjs';
 
 export class DecideError extends Error {}
 
@@ -57,8 +59,8 @@ export function decide({ root, run, cells, home = homedir() }) {
   if (cells.length !== 5) throw new DecideError('expected 5 cells: <phase> <decision> <why> <evidence> <result>');
   const script = logScript(home);
   const dir = projectTranscripts(root, home);
-  const session = run || latestSession(dir);
-  if (!session) throw new DecideError(`no session transcript in ${dir}; pass --run <session-id>`);
+  const session = run || readMarker(root)?.run;
+  if (!session) throw new DecideError('no run: pass --run <session-id>, set FACTORY_RUN, or start a run marker (factory/run-marker.mjs)');
   const [phase, decision, why, evidence, result] = cells;
   const pointer = transcriptPointer(dir, session);
   const log = join(root, 'factory', 'decisions.tsv').replace(/\\/g, '/');
