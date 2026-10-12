@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Viewer. A read-only page that watches the event stream: a swimlane timeline of the run's
 // agents, a graph of every agent and how they connect, the decision log's phase tree as a
-// Poincare disk with the scores of how far it distorts the full graph, and lists. A quick
+// Poincare disk and the decision text as a 2-D scatter linked to it, each with the scores of how
+// far it distorts the full space, the spec's stories with their residual doubt, and lists. A quick
 // stand-in until the dashboard (piece C) replaces it. The page and its scripts live in
 // factory/viewer/.
 //
@@ -11,8 +12,10 @@ import { createServer } from 'node:http';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { evidence } from './digest.mjs';
 import { buildGraph } from './graph.mjs';
 import { eigenmap, euclidean, neighbourhoods } from './graph/distortion.mjs';
+import { scatterView } from './graph/scatter.mjs';
 import { defaultRoot } from './log.mjs';
 import { readStream } from './read.mjs';
 import { buildGraph as decisionGraph, phaseDisk } from './viewer/layout.js';
@@ -25,8 +28,15 @@ import { buildGraph as decisionGraph, phaseDisk } from './viewer/layout.js';
 // an agent was asked to do, so `taskOf(run, agent)` supplies it (see readTask), or null.
 // Each decision in `tree` carries the node model's `label` (in, out or undec) and `relations`
 // (factory/graph.mjs), so the page and the orchestrator read one model; `labels` counts them.
-export function summarize(events, run, taskOf = () => null) {
-  const graph = buildGraph(events);
+// `scatter` is the decision text projected to 2-D (graph/scatter.mjs): PCA unless `opts.scatter`
+// asks for 'umap'. `stories` are the user stories of the latest snapshotted spec that has any (a
+// story list in its ticket-graph snapshot or a story map), else of the latest snapshot, each with
+// its residual doubt as the done read counts it (graph/assurance.mjs), from the story map and test
+// results `opts.evidence(spec)` supplies; null with no snapshot.
+export function summarize(events, run, taskOf = () => null, opts = {}) {
+  const snapshots = events.filter((e) => e.type === 'ticket.graph').map((s) => ({ ...s, ...opts.evidence?.(s.spec) }));
+  const snapshot = snapshots.findLast((s) => s.stories?.length || s.map?.length) ?? snapshots.at(-1);
+  const graph = buildGraph(events, snapshot);
   const runs = [...new Set(events.map((e) => e.run).filter((r) => r !== null))];
   const newest = runs.findLast((r) => r !== 'manual') ?? runs.at(-1) ?? null;
   run ??= newest;
@@ -57,6 +67,12 @@ export function summarize(events, run, taskOf = () => null) {
     checks: latestChecks(own),
     tree: decisions,
     disk: diskView(decisions),
+    scatter: textScatter(graph, opts.scatter ?? 'pca'),
+    stories: graph.spec === null ? null : {
+      spec: graph.spec,
+      goals: graph.goals().map(({ story, status, doubts }) => ({ story, status, doubts })),
+      residual: graph.done(graph.spec).residual,
+    },
     labels: Object.fromEntries(['in', 'out', 'undec'].map((l) => [l, graph.decisions.filter((d) => d.label === l).length])),
     timeline: events.filter((e) => e.run === run || during(e)).reverse(),
   };
@@ -182,6 +198,20 @@ function diskView(tree) {
   return lastDisk.view;
 }
 
+// The decision rows' TF-IDF vectors (graph/text.mjs) projected to 2-D, each point keyed by its
+// row's line so the page can link it to the same row on the disk, and scored against the full
+// space. Kept in memory per method, like the disk's scores.
+const lastScatter = new Map();
+function textScatter(graph, method) {
+  const rows = graph.decisions;
+  const key = JSON.stringify(rows.map((d) => [d.line, d.text, d.why, d.label]));
+  if (lastScatter.get(method)?.key === key) return lastScatter.get(method).view;
+  const view = scatterView(rows.map((d) => graph.vector(`row:${d.line}`)), { method });
+  const out = { ...view, points: view.points.map((p, i) => ({ line: rows[i].line, label: rows[i].label, ...p })) };
+  lastScatter.set(method, { key, view: out });
+  return out;
+}
+
 export function createViewer({ root = defaultRoot(), home = homedir() } = {}) {
   // A transcript's first line and meta are written when the agent starts and never change.
   const tasks = new Map();
@@ -217,12 +247,15 @@ function handle(root, taskOf, req, res) {
   if (script && SCRIPTS.has(script[1])) return send(res, 200, 'text/javascript', asset(script[1]));
   if (url.pathname === '/state') {
     const run = url.searchParams.get('run') || undefined;
+    const scatter = url.searchParams.get('scatter') || 'pca';
+    if (!['pca', 'umap'].includes(scatter)) return send(res, 400, 'text/plain', `unknown scatter: ${scatter} (pca or umap)`);
     let state;
     try {
-      state = { ...summarize(readStream(root), run, taskOf), error: null };
+      const events = readStream(root);
+      state = { ...summarize(events, run, taskOf, { scatter, evidence: (spec) => evidence(root, events, spec) }), error: null };
     } catch (err) {
       // readStream throws on a corrupt line or a misfiled event; show it rather than go blank.
-      state = { ...summarize([], run), error: err.message };
+      state = { ...summarize([], run, undefined, { scatter }), error: err.message };
     }
     return send(res, 200, 'application/json', JSON.stringify(state));
   }
@@ -231,7 +264,7 @@ function handle(root, taskOf, req, res) {
 
 // Served by name only, never by path, so nothing else in the repo can be fetched. Read on
 // every request, so an edit shows on reload.
-const SCRIPTS = new Set(['app.js', 'ui.js', 'layout.js', 'disk.js', 'plane.js', 'swimlane.js', 'graph.js', 'crew.js']);
+const SCRIPTS = new Set(['app.js', 'ui.js', 'layout.js', 'disk.js', 'plane.js', 'swimlane.js', 'graph.js', 'crew.js', 'scatter.js']);
 const ASSETS = join(dirname(fileURLToPath(import.meta.url)), 'viewer');
 const asset = (name) => readFileSync(join(ASSETS, name), 'utf8');
 

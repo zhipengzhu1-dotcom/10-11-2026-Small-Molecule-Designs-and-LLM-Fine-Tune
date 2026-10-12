@@ -17,6 +17,7 @@
 //   labelled(n, i, { set, focus, scale })  whether its label shows; `set` is the lit nodes or null
 //   tip(n)                       hover content, or null
 //   card(i, view)                the card's content; view = { graph, neighbours, cross(kind) }
+//   picked(i)                    optional: told of each click, with the node or null for empty space
 //
 // A `space`:
 //   start(graph, prev)           a new graph; `prev` is the last one, to keep places, or null
@@ -235,8 +236,8 @@ export function createPlane({ stage, tip, card }, look, space) {
   canvas.addEventListener('pointerleave', () => { if (!press) { hover = null; tip.hidden = true; } });
   canvas.addEventListener('pointerup', () => {
     if (press?.moved) space.release?.(press);
-    else if (press?.i != null) { space.click?.(press.i); showCard(press.i); hover = null; tip.hidden = true; }
-    else if (press) { card.hidden = true; active = null; }
+    else if (press?.i != null) { space.click?.(press.i); showCard(press.i); hover = null; tip.hidden = true; look.picked?.(press.i); }
+    else if (press) { card.hidden = true; active = null; look.picked?.(null); }
     press = null;
     stage.classList.remove('dragging');
   });
@@ -256,6 +257,14 @@ export function createPlane({ stage, tip, card }, look, space) {
     },
     // start afresh on the next update, for a new set of nodes (another run, all runs)
     refit() { key = ''; graph = null; },
+    graph: () => graph,
+    // light node i, as if its card were open but with the card closed, and bring it into view; null
+    // clears it (a pick in a linked view, see linkViews in layout.js)
+    highlight(i) {
+      card.hidden = true;
+      active = i;
+      if (i != null) space.click?.(i);
+    },
   };
 }
 

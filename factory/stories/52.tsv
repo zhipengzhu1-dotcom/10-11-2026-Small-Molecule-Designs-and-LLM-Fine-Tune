@@ -156,3 +156,14 @@ story	kind	name
 40	test	npm run merge --read prints the read of a branch's changed files and merges and commits nothing
 36	test	a check that ran before its file's last write is an open undercut doubt on its story, until the check runs again
 37	test	a check that ran before its file's last write is an open undercut doubt on its story, until the check runs again
+48	test	the PCA scatter's T(k) and C(k) at k = 5 and 10 match a direct computation on fixture vectors
+48	test	vectors that lie on a plane come out at their true distances, so the PCA scatter scores 1
+48	test	the state carries the PCA scatter of the decision text, a point per row keyed by its line, with T(k) and C(k) at k = 5 and 10
+48	test	the scatter has a node per row at its point, carrying the row from the tree
+48	test	picking a row in either view highlights the same row in the other; picking a phase clears it
+49	test	the PCA scatter's T(k) and C(k) at k = 5 and 10 match a direct computation on fixture vectors
+50	test	PCA carries no warning; UMAP, asked for, carries its small-data warning and its own T(k) and C(k)
+50	test	UMAP is off by default; asked for, the scatter is UMAP with its small-data warning
+50	test	GET /state serves the PCA scatter unless ?scatter=umap asks for UMAP; any other method is refused
+51	test	each story node carries its residual doubt from the done read, and the spec's total, for the latest spec with stories
+51	test	GET /state gives each story of the snapshot's spec its doubts from the committed story map

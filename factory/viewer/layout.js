@@ -1,6 +1,6 @@
 // Geometry for the viewer's diagrams, with no DOM so that node:test can run it and the server can
 // score what the page draws: the decision graph and its phase disk, the crew graph and its 2-D
-// force layout, and the swimlane timeline.
+// force layout, the text scatter and the link between it and the disk, and the swimlane timeline.
 import { sarkar } from './disk.js';
 
 // The decision log as a graph. Tree links join a root, one node per phase folder and one dot
@@ -83,6 +83,39 @@ export function phaseDisk(graph) {
   const parents = members.map(() => -1);
   for (const l of graph.links) if (l.kind === 'tree') parents[at.get(l.target)] = at.get(l.source);
   return { members, disk: sarkar(parents) };
+}
+
+// The text scatter (state.scatter, see textScatter in viewer.mjs) as a graph for the plane: a node
+// per row at its 2-D point, carrying the row from the decision tree. No links: nearness is the
+// picture, and its T(k) and C(k) say how far to trust it.
+export function buildScatter(scatter, tree) {
+  const rows = new Map();
+  const visit = (n) => { for (const d of n.decisions) rows.set(d.line, d); n.children.forEach(visit); };
+  visit(tree);
+  const nodes = scatter.points.map((p) => ({ id: `row:${p.line}`, kind: 'decision', label: rows.get(p.line)?.decision ?? `line ${p.line}`, count: 1, x: p.x, y: p.y, decision: rows.get(p.line) ?? { line: p.line, label: p.label } }));
+  return { nodes, links: [] };
+}
+
+// Linked selection between views of the decision rows (the disk and the scatter). A view joins
+// with `graph()` (its current { nodes }, a row's node carrying `decision.line`) and `highlight(i)`
+// (light node i, or nothing for null). Picking node i in one view highlights the same row in every
+// other; picking a node that is no row (a phase), or nothing, clears them.
+export function linkViews() {
+  const views = [];
+  return {
+    join(view) {
+      views.push(view);
+      return view;
+    },
+    pick(from, i) {
+      const line = i == null ? null : from.graph()?.nodes[i]?.decision?.line ?? null;
+      for (const v of views) {
+        if (v === from) continue;
+        const at = line == null ? -1 : (v.graph()?.nodes ?? []).findIndex((n) => n.decision?.line === line);
+        v.highlight(at < 0 ? null : at);
+      }
+    },
+  };
 }
 
 // The crew (see summarize in viewer.mjs) as a graph: a hub per run for its orchestrator and a

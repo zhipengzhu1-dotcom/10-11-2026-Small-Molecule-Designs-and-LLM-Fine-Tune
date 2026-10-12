@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { readTask, subagentTranscript, summarize } from '../viewer.mjs';
 import { startViewer, tempRoot } from './helpers.mjs';
 
-const SCRIPTS = ['app.js', 'ui.js', 'layout.js', 'disk.js', 'plane.js', 'swimlane.js', 'graph.js', 'crew.js'];
+const SCRIPTS = ['app.js', 'ui.js', 'layout.js', 'disk.js', 'plane.js', 'swimlane.js', 'graph.js', 'crew.js', 'scatter.js'];
 
 const ev = (ts, run, agent, type, fields = {}) => ({ ts: `2026-10-11T10:${ts}:00Z`, run, agent, type, ...fields });
 const decision = (ts, phase, extra = {}) =>
@@ -136,6 +136,61 @@ test('a log too small for a k leaves that score null', () => {
   assert.deepEqual(summarize([]).disk.T, { 5: null, 10: null });
 });
 
+// 24 rows whose text draws three words each from a small vocabulary, so rows share some terms.
+const WORDS = 'merge ticket judge disk scatter story doubt check stale report graph phase row label vector cosine'.split(' ');
+const worded = () => Array.from({ length: 24 }, (_, i) => decision(String(i).padStart(2, '0'), `p${i % 3}`, {
+  line: i + 2,
+  decision: [WORDS[i % 16], WORDS[(i * 7 + 3) % 16], WORDS[(i * 5 + 1) % 16]].join(' '),
+  why: WORDS[(i * 3) % 16],
+}));
+
+test('the state carries the PCA scatter of the decision text, a point per row keyed by its line, with T(k) and C(k) at k = 5 and 10', () => {
+  const { scatter } = summarize(worded());
+  assert.equal(scatter.method, 'pca');
+  assert.equal(scatter.warning, null);
+  assert.equal(scatter.n, 24);
+  assert.deepEqual(scatter.points.map((p) => p.line), Array.from({ length: 24 }, (_, i) => i + 2));
+  assert.ok(scatter.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && p.label === 'in'));
+  for (const k of [5, 10]) for (const m of ['T', 'C']) assert.ok(scatter[m][k] > 0.5 && scatter[m][k] <= 1, `${m}(${k}) = ${scatter[m][k]}`);
+  assert.deepEqual(scatter.against, { space: 'tf-idf', metric: 'euclidean' });
+  assert.deepEqual(summarize([]).scatter.points, []);
+});
+
+test('UMAP is off by default; asked for, the scatter is UMAP with its small-data warning', () => {
+  assert.equal(summarize(worded()).scatter.method, 'pca');
+  const { scatter } = summarize(worded(), undefined, undefined, { scatter: 'umap' });
+  assert.equal(scatter.method, 'umap');
+  assert.match(scatter.warning, /500 samples/);
+  assert.match(scatter.warning, /24 rows/);
+});
+
+// A ticket-graph snapshot lists stories 1 to 4 of spec 52. The story map backs 1 with the trail
+// check (passing), 2 with nothing (a none row), 4 with the stories check (failing); 3 has no row. A
+// later snapshot of spec 77 has no stories and no map.
+const assured = () => summarize([
+  ev('00', 'r1', 'orchestrator', 'ticket.graph', { spec: 52, tickets: [{ number: 73, state: 'OPEN', status: 'ready', blockers: [] }], stories: [1, 2, 3, 4] }),
+  ev('01', 'r1', 'orchestrator', 'check', { name: 'trail', result: 'pass', evidence: 'ok' }),
+  ev('02', 'r1', 'orchestrator', 'check', { name: 'stories', result: 'fail', evidence: 'story 4 names a missing test' }),
+  ev('03', 'r2', 'orchestrator', 'ticket.graph', { spec: 77, tickets: [] }),
+], undefined, undefined, {
+  evidence: (spec) => (spec === 52 ? {
+    map: [{ story: 1, kind: 'check', name: 'trail' }, { story: 2, kind: 'none', name: '' }, { story: 4, kind: 'check', name: 'stories' }],
+    results: {},
+  } : { map: [], results: {} }),
+});
+
+test("each story node carries its residual doubt from the done read, and the spec's total, for the latest spec with stories", () => {
+  const { stories } = assured();
+  assert.equal(stories.spec, 52);
+  assert.deepEqual(stories.goals.map((g) => [g.story, g.status, g.doubts.length]), [
+    [1, 'supported', 0], [2, 'none', 1], [3, 'undeveloped', 1], [4, 'failing', 1],
+  ]);
+  // story 4's doubt is the failed check, also an open challenge, so it counts once: 1 + 1 + 1
+  assert.deepEqual(stories.goals[3].doubts, ['event:r1/orchestrator:3']);
+  assert.equal(stories.residual, 3);
+  assert.equal(summarize([]).stories, null); // no snapshot, no spec, no stories
+});
+
 test('the latest result of each check in the run is reported', () => {
   const s = summarize([
     ev('00', 'r1', 'c', 'check', { name: 'tables', result: 'fail', evidence: 'row 3' }),
@@ -251,6 +306,30 @@ test('GET /state serves each decision with its label and relations from the grap
     const read = a.children[0].decisions.map((d) => [d.line, d.label, d.relations]);
     assert.deepEqual(read, [[2, 'out', []], [3, 'in', [{ kind: 'supersedes', line: 2, part: false }]]]);
     assert.deepEqual(s.labels, { in: 1, out: 1, undec: 0 });
+  });
+});
+
+test('GET /state serves the PCA scatter unless ?scatter=umap asks for UMAP; any other method is refused', async () => {
+  const root = seed();
+  await withViewer(root, async (url) => {
+    assert.equal((await (await fetch(`${url}/state`)).json()).scatter.method, 'pca');
+    const umap = (await (await fetch(`${url}/state?scatter=umap`)).json()).scatter;
+    assert.equal(umap.method, 'umap');
+    assert.match(umap.warning, /500 samples/);
+    assert.equal((await fetch(`${url}/state?scatter=tsne`)).status, 400);
+  });
+});
+
+test("GET /state gives each story of the snapshot's spec its doubts from the committed story map", async () => {
+  const root = seed();
+  appendFileSync(join(root, 'factory', 'agents', 'r1', 'a1.jsonl'),
+    JSON.stringify(ev('02', 'r1', 'a1', 'ticket.graph', { spec: 52, tickets: [], stories: [1, 2] })) + '\n'
+    + JSON.stringify(ev('03', 'r1', 'a1', 'check', { name: 'trail', result: 'pass', evidence: 'ok' })) + '\n');
+  mkdirSync(join(root, 'factory', 'stories'));
+  writeFileSync(join(root, 'factory', 'stories', '52.tsv'), 'story\tkind\tname\n1\tcheck\ttrail\n');
+  await withViewer(root, async (url) => {
+    const { stories } = await (await fetch(`${url}/state`)).json();
+    assert.deepEqual(stories, { spec: 52, goals: [{ story: 1, status: 'supported', doubts: [] }, { story: 2, status: 'undeveloped', doubts: ['story:2'] }], residual: 1 });
   });
 });
 

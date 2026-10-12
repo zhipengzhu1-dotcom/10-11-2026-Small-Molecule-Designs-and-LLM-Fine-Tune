@@ -18,6 +18,7 @@
 //   graph.binding(n)              the standing decisions that bind ticket n: [{ row, because }]
 //   graph.similar(query, opts)    TF-IDF neighbours of a text node or { text } (graph/text.mjs)
 //   graph.precedents(text, k)     the k rows still in nearest to a text, as [{ row, score }]
+//   graph.vector(id)              a text node's TF-IDF vector, a Map from term to weight
 //   graph.spec                    the snapshot's spec, or null with no snapshot
 //   graph.earlyStarts()           starts before a blocker merged:
 //                                 [{ ticket, blocker, start, merged, explainedBy }]

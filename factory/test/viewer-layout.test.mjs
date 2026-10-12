@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCrew, buildGraph, createSimulation, swimlanes } from '../viewer/layout.js';
+import { buildCrew, buildGraph, buildScatter, createSimulation, linkViews, swimlanes } from '../viewer/layout.js';
 import { summarize } from '../viewer.mjs';
 
 const at = (mm, ss = '00') => `2026-10-11T10:${mm}:${ss}Z`;
@@ -127,6 +127,37 @@ test('the simulation cools down and can be reheated', () => {
   assert.equal(sim.settled(), true);
   sim.reheat();
   assert.equal(sim.settled(), false);
+});
+
+// The text scatter, linked to the disk
+
+const words = ['merge ticket judge', 'disk scatter story', 'doubt check stale', 'report graph phase', 'merge judge doubt', 'story phase check'];
+const scattered = summarize(words.map((w, i) => decision(`0${i}`, i % 2 ? 'plan/a' : 'build/b', { line: i + 2, decision: w })));
+
+test('the scatter has a node per row at its point, carrying the row from the tree', () => {
+  const g = buildScatter(scattered.scatter, scattered.tree);
+  assert.deepEqual(g.nodes.map((n) => [n.id, n.decision.line, n.decision.decision]), words.map((w, i) => [`row:${i + 2}`, i + 2, w]));
+  assert.deepEqual(g.nodes.map((n) => [n.x, n.y]), scattered.scatter.points.map((p) => [p.x, p.y]));
+  assert.deepEqual(g.links, []);
+});
+
+test('picking a row in either view highlights the same row in the other; picking a phase clears it', () => {
+  const disk = buildGraph(scattered.tree), scatter = buildScatter(scattered.scatter, scattered.tree);
+  const lit = { disk: [], scatter: [] };
+  const link = linkViews();
+  const diskView = link.join({ graph: () => disk, highlight: (i) => lit.disk.push(i) });
+  const scatterView = link.join({ graph: () => scatter, highlight: (i) => lit.scatter.push(i) });
+  const onDisk = (line) => disk.nodes.findIndex((n) => n.decision?.line === line);
+  const onScatter = (line) => scatter.nodes.findIndex((n) => n.decision.line === line);
+
+  link.pick(diskView, onDisk(5));
+  assert.deepEqual(lit, { disk: [], scatter: [onScatter(5)] });
+  link.pick(scatterView, onScatter(3));
+  assert.deepEqual(lit, { disk: [onDisk(3)], scatter: [onScatter(5)] });
+  link.pick(diskView, disk.nodes.findIndex((n) => n.kind === 'phase'));
+  assert.deepEqual(lit.scatter, [onScatter(5), null]);
+  link.pick(scatterView, null); // a click on empty space
+  assert.deepEqual(lit.disk, [onDisk(3), null]);
 });
 
 // Crew

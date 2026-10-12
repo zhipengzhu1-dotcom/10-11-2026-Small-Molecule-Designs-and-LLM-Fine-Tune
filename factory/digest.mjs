@@ -133,8 +133,8 @@ export function doneRead(graph, n, all = false) {
 
 // The story map of the spec and every logged test-results file, as the assurance overlay reads them
 // from the snapshot: map [{ story, kind, name }], results { <path>: [{ name, result }] }. A file
-// that is missing gives none.
-function evidence(root, events, spec) {
+// that is missing gives none. The viewer reads them the same way for its story nodes.
+export function evidence(root, events, spec) {
   const file = join(root, 'factory', 'stories', `${spec}.tsv`);
   const map = existsSync(file) ? readMap(file).rows.map((r) => ({ story: Number(r.story), kind: r.kind, name: r.name })) : [];
   const results = {};

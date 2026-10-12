@@ -10,6 +10,8 @@
 //       order. query is a text node's id, or { text } for text not in the graph (a row about to be
 //       written); a node is never its own neighbour. among(id) narrows the candidates.
 //   precedents(text, k = 3) -> [{ row, score }]   the k nearest rows still `in` (stories 34, 45)
+//   vector(id) -> Map(term -> weight)   a text node's unit TF-IDF vector (empty for no terms), or
+//       undefined for a node with no text; the text scatter projects the rows' (graph/scatter.mjs)
 
 // Function words that carry no topic. Kept short: TF-IDF already damps common words.
 const STOP = new Set(('a an and are as at be been but by can for from had has have he her his i if in into is it its '
@@ -72,7 +74,7 @@ export function textOverlay(graph) {
   const precedents = (text, k = 3) => similar({ text }, { k, among: standing })
     .map(({ id, score }) => ({ row: graph.decision(graph.node(id).event.line), score }));
 
-  return { similar, precedents };
+  return { similar, precedents, vector: (id) => vectors.get(id) };
 }
 
 function countOf(list) {
