@@ -5,6 +5,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Write multi-line bodies to a file and pass `--body-file`.
+- **Write a ticket**: start from `docs/agents/ticket-template.md` and run `npm run check:ticket -- --body <file>` before creating it. Subagents can't write a deliverable named like a report, so the check fails on one.
 - **Pick work**: an issue with sub-issues is a spec or map, never a ticket. Skip it when choosing the next `ready-for-agent` issue.
 - **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
