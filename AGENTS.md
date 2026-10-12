@@ -19,6 +19,10 @@ CI runs in a Docker container on this machine (Docker Desktop), never on GitHub 
 
 ## Agent skills
 
+### Spec pipeline
+
+Feature work runs `grilling` → `to-spec` → `to-tickets` → `implement` (one ticket) or `implement-spec` (a whole spec). The spec is the GitHub issue `to-spec` opens, and it lives only there: no copy in the repo to drift. When `brainstorming` fires on feature work, switch to `grilling`.
+
 ### Issue tracker
 
 Issues live in this repo's GitHub Issues (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
