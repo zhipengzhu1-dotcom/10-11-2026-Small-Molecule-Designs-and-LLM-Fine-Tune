@@ -9,9 +9,15 @@
 //
 // Root: --root, else FACTORY_ROOT, else CLAUDE_PROJECT_DIR, else the repo this script lives in.
 // Run:  --run, else FACTORY_RUN.
+//
+// start refuses while a tracked file in the checkout has uncommitted changes, other than the
+// factory logs the merge script commits: mergers work in the main checkout, and a stray edit there
+// collides with the first merge. Untracked files don't collide, and a root outside git has nothing
+// to collide with.
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { cli, UsageError } from './cli.mjs';
+import { gitRun } from './git.mjs';
 import { defaultRoot } from './log.mjs';
 
 function markerFile(root) {
@@ -41,6 +47,16 @@ export function defaultRun(root, env = process.env) {
   return env.FACTORY_RUN || readMarker(root)?.run;
 }
 
+// The factory logs the merge script commits for every run (merge.mjs).
+const isFactoryLog = (path) => path === 'factory/decisions.tsv' || path.startsWith('factory/agents/');
+
+// Tracked files under root with staged or unstaged changes, other than the factory logs.
+function strayEdits(root) {
+  const r = gitRun(root, 'diff', '--name-only', '-z', 'HEAD');
+  if (r.status !== 0) return [];
+  return r.stdout.split('\0').filter((p) => p && !isFactoryLog(p));
+}
+
 cli(import.meta.url, {
   usage: 'node factory/run-marker.mjs start --run <run-id> --branch <branch> [--root <repo>] | stop [--root <repo>]',
   options: { root: 'string', run: 'string', branch: 'string' },
@@ -51,6 +67,10 @@ cli(import.meta.url, {
   if (cmd === 'start') {
     if (!run) throw new UsageError('missing run (pass --run or set FACTORY_RUN)');
     if (!branch) throw new UsageError('missing --branch (the integration branch)');
+    const stray = strayEdits(root);
+    if (stray.length) {
+      throw new Error(`uncommitted changes in ${stray.join(', ')}: commit or stash them before the run starts, since mergers work in this checkout`);
+    }
     mkdirSync(dirname(markerFile(root)), { recursive: true });
     writeFileSync(markerFile(root), `${JSON.stringify({ run, branch })}\n`);
   } else if (cmd === 'stop') {
