@@ -66,7 +66,7 @@ main { display: grid; gap: 16px; padding: 16px; }
 .layers label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .layers input { accent-color: var(--ink); margin: 0; }
 .ln { display: inline-block; width: 22px; height: 0; border-top: 1px solid var(--faint); vertical-align: middle; }
-.ln.sup { border-top: 2px dashed var(--ink); } .ln.men { border-top: 2px dotted var(--mid); } .ln.evi { border-top-color: var(--faint); }
+.ln.sup { border-top: 2px dashed var(--ink); } .ln.wd { border-top: 2px dotted var(--ink); } .ln.cor { border-top: 2px solid var(--mid); } .ln.men { border-top: 2px dotted var(--mid); } .ln.evi { border-top-color: var(--faint); }
 .sw.cube { width: 7px; height: 7px; background: var(--mid); border: 0; margin: 0 2px 0 0; }
 
 /* the two three.js stages */
@@ -154,8 +154,11 @@ summary .n { color: var(--muted); font-size: 12px; }
   <section class="panel" id="graph-panel">
     <h2>Decision graph <span class="muted" id="dcount"></span> <span class="hint">drag to orbit · right-drag to pan · scroll to zoom · drag a node to move it · double-click to fit</span> <button class="full" data-full="graph-panel">full screen</button></h2>
     <div class="legend layers" id="layers" style="margin-bottom:8px">
+      <span><i class="sw dot"></i>in</span><span><i class="sw dot grey"></i>undec</span><span><i class="sw dot ring"></i>out</span>
       <label><input type="checkbox" data-kind="tree" checked><i class="ln tree"></i>phase tree</label>
       <label><input type="checkbox" data-kind="supersedes" checked><i class="ln sup"></i>supersedes</label>
+      <label><input type="checkbox" data-kind="withdraws" checked><i class="ln wd"></i>withdraws</label>
+      <label><input type="checkbox" data-kind="corrects" checked><i class="ln cor"></i>corrects</label>
       <label><input type="checkbox" data-kind="mentions" checked><i class="ln men"></i>mentions a ticket</label>
       <label><input type="checkbox" data-kind="evidence"><i class="ln evi"></i><i class="sw cube"></i>shared evidence</label>
     </div>

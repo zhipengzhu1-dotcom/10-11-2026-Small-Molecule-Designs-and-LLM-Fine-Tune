@@ -15,13 +15,15 @@
 //   graph.decisions, .decision(N) the rows in line order, each with label (in|out|undec), parts
 //                                 ([{ by, label }]), relations, text and state (claim.mjs)
 //   graph.binding(n)              the standing decisions that bind ticket n: [{ row, because }]
+//   graph.overdue(now, { run? })  running agents past their role's usual time (graph/sojourn.mjs)
 //   graph.clock(id), .happensBefore(a, b), .unacted(spec?), .lifecycle(spec?)
 //                                 the causal-order overlay (graph/causal.mjs)
 //
-// Overlays (argumentation here, causal order in graph/causal.mjs) live here, or in sibling files
+// Overlays (argumentation here, the others in graph/<overlay>.mjs) live here, or in sibling files
 // once this passes about 400 lines, without changing the interface.
 import { claimState, parseRelations } from './claim.mjs';
 import { causalOrder } from './graph/causal.mjs';
+import { overdue } from './graph/sojourn.mjs';
 
 export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
   const nodes = new Map();
@@ -89,6 +91,7 @@ export function buildGraph(events, snapshot = latest(events, 'ticket.graph')) {
     decision: (line) => byLine.get(line),
   };
   graph.binding = (n) => binding(graph, n);
+  graph.overdue = (now, opts) => overdue(events, now, opts);
   Object.assign(graph, causalOrder(stream));
   return graph;
 }

@@ -49,6 +49,27 @@ test("a decision that supersedes an earlier row links to that row's decision", (
   assert.deepEqual(linksOf(crossed, 'supersedes').map(([a, b]) => [a.decision.line, b.decision.line]), [[5, 2]]);
 });
 
+test('row links come from the relations the server sends, never from the text', () => {
+  // relations with no relation text: linked all the same
+  const served = { name: '', path: '', count: 2, decisions: [], children: [{ name: 'a', path: 'a', count: 2, children: [], decisions: [
+    { phase: 'a', line: 2, decision: 'first', why: '', evidence: 'x', result: 'adopted', label: 'out', relations: [] },
+    { phase: 'a', line: 5, decision: 'asked again', why: '', evidence: 'y', result: 'adopted', label: 'in', relations: [{ kind: 'supersedes', line: 2, part: false }] },
+  ] }] };
+  assert.deepEqual(linksOf(buildGraph(served), 'supersedes').map(([a, b]) => [a.decision.line, b.decision.line]), [[5, 2]]);
+
+  const g = buildGraph(summarize([
+    decision('00', 'a', { line: 2 }),
+    decision('01', 'a', { line: 3, why: 'it supersedes line 2 in spirit', result: 'see supersedes line 2' }),
+    decision('02', 'b', { line: 4, decision: 'withdraws line 3: wrong' }),
+    decision('03', 'b', { line: 5, decision: 'corrects line 2 (part): typo' }),
+    decision('04', 'b', { line: 6, decision: 'supersedes line 9: no such row' }),
+  ]).tree);
+  const rel = (kind) => g.links.filter((l) => l.kind === kind).map((l) => [g.nodes[l.source].decision.line, g.nodes[l.target].decision.line, l.part]);
+  assert.deepEqual(rel('supersedes'), []);
+  assert.deepEqual(rel('withdraws'), [[4, 3, false]]);
+  assert.deepEqual(rel('corrects'), [[5, 2, true]]);
+});
+
 test("a decision that mentions a ticket links to that ticket's phase, unless it is its own or has no phase", () => {
   assert.deepEqual(linksOf(crossed, 'mentions').map(([a, b]) => [a.decision.line, b.id]), [
     [4, 'project/implement/ticket-2'],

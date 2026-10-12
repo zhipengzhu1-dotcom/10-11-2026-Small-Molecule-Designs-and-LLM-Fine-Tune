@@ -71,14 +71,24 @@ story	kind	name
 32	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
 32	test	an orphaned stop and a doubled stop are reported, and nothing else
 32	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
+33	test	an agent running past its role's bound from earlier runs is flagged; one whose role has no history is not
+33	test	a resumed agent is timed from its latest start, and history comes only from other runs
+33	test	with a run given, only that run's agents are flagged: an earlier run's agent that never stopped is left out
 38	test	happens-before comes from dispatches and citations, never from ts: inverted timestamps order correctly
 38	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
 39	test	the dispatch read prints one line when no standing decision binds the ticket
 39	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 39	test	a long dispatch read stops at 15 lines, the last one naming the command for the rest
 39	test	a long decision is cut so each line stays short
+41	test	an agent running well past its role's earlier sojourns adds one line naming it, its role and ticket
+41	test	the meter's output is unchanged when no agent is overdue: a running agent whose role has no history adds nothing
 42	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 42	test	the dispatch read prints one line when no standing decision binds the ticket
 42	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 43	test	the digest never writes: the factory root is the same after a read
 44	none	-
+51	test	each decision in the tree carries the graph module's label and relations
+51	test	the state counts the decisions in, out and undec
+51	test	GET /state serves each decision with its label and relations from the graph module
+52	test	row links come from the relations the server sends, never from the text
+52	test	a decision that supersedes an earlier row links to that row's decision
