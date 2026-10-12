@@ -40,6 +40,8 @@ for (const command of [
   'git config --show-origin core.hooksPath .githooks',
   'git -C ../main config core.hooksPath .githooks',
   'cd sub && git config core.hooksPath .githooks',
+  'echo "a; b" ; git config core.hooksPath .githooks',
+  'cat > f <<\'EOF\'\nx\nEOF\ngit config core.hooksPath .githooks',
   'npm run hooks:install',
 ]) {
   test(`a subagent's \`${command}\` is blocked`, () => {
@@ -49,6 +51,7 @@ for (const command of [
 
 test('the PowerShell tool is checked too', () => {
   assert.equal(run(call('git config core.hooksPath .githooks', { tool: 'PowerShell' })).status, 2);
+  assert.equal(run(call('C:\\Git\\cmd\\git.exe config core.hooksPath .githooks', { tool: 'PowerShell' })).status, 2);
 });
 
 test('the main session, other tools and unreadable input pass', () => {
@@ -73,6 +76,13 @@ for (const command of [
   'git config core.hooksPath 2>&1',
   'git config user.email > out.txt',
   'git -c core.hooksPath=x status',
+  // Quoted text and heredoc bodies are data, not commands (merger's find on #15).
+  'echo "a; git config core.hooksPath .githooks"',
+  'echo \'a && git config core.hooksPath x\' | cat',
+  'gh api repos/x -f body=\'{"note": "run | git config core.x y"}\'',
+  'node -e "console.log(1); git config core.x y"',
+  'cat > notes.md <<\'EOF\'\nThen: git config core.hooksPath .githooks\nEOF',
+  'cat > notes.md <<EOF\na; git config core.x y\nEOF',
 ]) {
   test(`a subagent's \`${command}\` runs`, () => {
     const r = run(call(command));
