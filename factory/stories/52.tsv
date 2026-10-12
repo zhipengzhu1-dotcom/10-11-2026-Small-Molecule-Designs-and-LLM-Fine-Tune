@@ -129,6 +129,16 @@ story	kind	name
 42	test	the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains
 42	test	the frontier read says so when spec has no ticket-graph snapshot, or every ticket merged
 37	test	proper completion: the sink is reached when every ticket merged, and proper only when every gate token was consumed too
+12	test	a logged challenge on a row puts the row out until a row closes it, and withdrawing the closing row brings the doubt back
+12	test	ISSUES, BLOCKED and unknown stops and fetch.failed are doubts until a later PASS for the ticket, a fetched ref or a row citing them
+37	test	a story with no story-map row is undeveloped, and a story whose only check failed shows an open doubt
+37	test	a later pass eliminates an earlier fail's doubt, for a check and for a test in the results
+37	test	done counts residual doubt once per doubt: stories without passing evidence, failing evidence and open challenges, never multiplied
+37	test	the done read on a clean fixture run prints one line
+37	test	the done read lists stories with no evidence, open challenges, undec rows and whether the run completed properly
+37	test	the done read names the gap when the snapshot lists no stories, and an unmerged ticket as an improper end
+37	test	the snapshot lists the spec's user stories, the numbered items under its User Stories heading, so the done read sees a story missing from the map
+42	test	the done read on a clean fixture run prints one line
 36	test	a file written by two agents is reported with both writes; one agent rewriting its own file is not
 36	test	a check older than its artifact's last write is stale; a check re-run after the write is not
 36	test	a check naming no written file, or a file only as part of a longer path, is never stale
@@ -144,3 +154,5 @@ story	kind	name
 40	test	npm run merge prints the merge read and still merges when the judge is unreachable, saying so
 40	test	npm run merge prints a clean merge read as one line before it merges
 40	test	npm run merge --read prints the read of a branch's changed files and merges and commits nothing
+36	test	a check that ran before its file's last write is an open undercut doubt on its story, until the check runs again
+37	test	a check that ran before its file's last write is an open undercut doubt on its story, until the check runs again

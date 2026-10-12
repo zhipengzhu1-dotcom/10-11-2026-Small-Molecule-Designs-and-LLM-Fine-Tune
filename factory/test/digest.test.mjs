@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { FACTORY, tempRoot } from './helpers.mjs';
 
@@ -149,6 +149,68 @@ test('the frontier read says so when spec has no ticket-graph snapshot, or every
   assert.equal(digest(dir, 'frontier', '1').stdout, 'frontier #1: no ticket-graph snapshot of spec #1; run npm run frontier -- 1 first\n');
 });
 
+// A finished run of spec 52 (#63, then #70, each merged), whose snapshot lists stories 1 and 2: the
+// story map backs 1 with the stories check and 2 with a test, and the run logged both passing.
+// `extra` adds activity events [agent, event] and map rows after those.
+function doneRoot({ extra = [], map = [], rows = [] } = {}) {
+  const dir = frontierRoot({
+    tickets: [{ number: 63, state: 'OPEN', status: 'ready', blockers: [] }, { number: 70, state: 'OPEN', status: 'blocked', blockers: [63] }],
+    dispatches: [[63, 1], [70, 5]],
+    merges: [[63, 4], [70, 8]],
+    rows,
+  });
+  const agents = join(dir, 'factory', 'agents', 'r1');
+  const file = (agent) => join(agents, `${agent}.jsonl`);
+  const orchestrator = readFileSync(file('orchestrator'), 'utf8').split('\n');
+  orchestrator[0] = JSON.stringify({ ...JSON.parse(orchestrator[0]), stories: [1, 2] });
+  writeFileSync(file('orchestrator'), orchestrator.join('\n'));
+  mkdirSync(join(agents, 'tests'));
+  writeFileSync(join(agents, 'tests', 'orchestrator-1.tsv'), 'test\tresult\nlabels are grounded\tpass\n');
+  const events = [
+    ['orchestrator', { type: 'check', name: 'stories', result: 'pass', evidence: 'e' }],
+    ['orchestrator', { type: 'artifact', path: 'factory/agents/r1/tests/orchestrator-1.tsv', kind: 'test-results', tests: '1', pass: '1', fail: '0', skip: '0' }],
+    ...extra,
+  ];
+  events.forEach(([agent, e], i) => {
+    writeFileSync(file(agent), (existsSync(file(agent)) ? readFileSync(file(agent), 'utf8') : '') + JSON.stringify({ ts: `2026-10-12T09:01:${String(i).padStart(2, '0')}Z`, run: 'r1', agent, ...e }) + '\n');
+  });
+  mkdirSync(join(dir, 'factory', 'stories'));
+  const tsv = ['story\tkind\tname', '1\tcheck\tstories', '2\ttest\tlabels are grounded', ...map.map((r) => r.join('\t')), ''];
+  writeFileSync(join(dir, 'factory', 'stories', '52.tsv'), tsv.join('\n'));
+  return dir;
+}
+
+test('the done read on a clean fixture run prints one line', () => {
+  const r = digest(doneRoot(), 'done', '52');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, 'done #52: residual doubt 0: all 2 stories have passing evidence, no open challenge, no undec row, the run completed properly\n');
+});
+
+test('the done read lists stories with no evidence, open challenges, undec rows and whether the run completed properly', () => {
+  const dir = doneRoot({
+    map: [['3', 'none', '-'], ['4', 'test', 'never run']],
+    extra: [
+      ['orchestrator', { type: 'check', name: 'stories', result: 'fail', evidence: 'story 2 names a missing test' }],
+      ['a70', { type: 'agent.stop', role: 'general-purpose', status: 'ISSUES', report: 'ISSUES\nthe done read misses #73' }],
+      ['orchestrator', { type: 'challenge', id: 'c1', target: 'file:factory/graph.mjs', kind: 'undercut', why: 'the graph changed after the last test run' }],
+    ],
+    rows: [['project/x', 'withdraws line 3: option A', 'adopted'], ['project/x', 'withdraws line 2: option B', 'adopted']],
+  });
+  const r = digest(dir, 'done', '52');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, [
+    'done #52: residual doubt 5: 3 of 4 stories without passing evidence, 3 open challenges, 2 undec rows, the run completed properly',
+    '  no evidence (none row): 3',
+    '  evidence never run: 4',
+    '  story 1 failing: check stories fail (event:r1/orchestrator:6)',
+    '  event:r1/a70:1 rebut stop on issue:70: the done read misses #73',
+    '  c1 undercut challenge on file:factory/graph.mjs: the graph changed after the last test run',
+    '  undec row:2: option A',
+    '  undec row:3: option B',
+    '',
+  ].join('\n'));
+});
+
 // A factory root whose activity files hold `events` (each filed under its own run and agent) and
 // whose decision log holds `rows` ([decision, evidence], from line 2).
 function streamRoot(events, rows = []) {
@@ -205,6 +267,17 @@ test('the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED
     '  event:r1/a2:3 doubled stop of agent a2',
     '',
   ].join('\n'));
+});
+
+test('the done read names the gap when the snapshot lists no stories, and an unmerged ticket as an improper end', () => {
+  const dir = frontierRoot({ tickets: [{ number: 63, state: 'OPEN', status: 'ready', blockers: [] }], dispatches: [[63, 1]], merges: [] });
+  assert.equal(digest(dir, 'done', '52').stdout, [
+    'done #52: residual doubt 0: no story known, no open challenge, no undec row, the run did not complete properly',
+    '  story list: not in the snapshot; run npm run frontier -- 52 so a story missing from the map shows',
+    '  not complete: unmerged #63',
+    '',
+  ].join('\n'));
+  assert.equal(digest(dir, 'done', '1').stdout, 'done #1: no ticket-graph snapshot of spec #1; run npm run frontier -- 1 first\n');
 });
 
 test('an unknown moment or a missing ticket number is a usage error', () => {

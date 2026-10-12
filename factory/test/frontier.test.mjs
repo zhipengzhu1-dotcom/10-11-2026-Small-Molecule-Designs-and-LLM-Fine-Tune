@@ -52,6 +52,22 @@ test('in an orchestrated run, the frontier writes one ticket-graph snapshot: eac
   ]);
 });
 
+test('the snapshot lists the spec\'s user stories, the numbered items under its User Stories heading, so the done read sees a story missing from the map', () => {
+  const root = tempRoot();
+  assert.equal(marker(['start', '--root', root, '--run', 'run-1', '--branch', 'integ']).status, 0);
+  const body = ['## Problem Statement', '', '1. not a story', '', '## User Stories', '', '### Logging', '', '1. As the orchestrator, I want a dispatch.',
+    '2. As the orchestrator, I want a refusal.', '', '### Reads', '', '10. As a researcher, I want a view.', '', '## Implementation Decisions', '', '3. not a story'].join('\r\n');
+  const response = JSON.parse(RESPONSE);
+  response.data.repository.issue.body = body;
+  const calls = [];
+  frontier({ number: 1, remote: REMOTE, gh: (args) => (calls.push(args), JSON.stringify(response)), root });
+  assert.match(calls[0].find((a) => a.startsWith('query=')), /\bbody\b/);
+  assert.deepEqual(readStream(root)[0].stories, [1, 2, 10]);
+  // A spec with no User Stories section logs no story list, rather than an empty one.
+  frontier({ number: 1, remote: REMOTE, gh: () => RESPONSE, root });
+  assert.equal('stories' in readStream(root)[1], false);
+});
+
 test('with no run marked, the frontier writes nothing', () => {
   const root = tempRoot();
   const { ready } = frontier({ number: 1, remote: REMOTE, gh: () => RESPONSE, root });

@@ -63,7 +63,8 @@ const SCHEMA = {
   'fetch.failed': { required: ['ref', 'url', 'reason'] },
   check: { required: ['name', 'result', 'evidence'], enums: { result: ['pass', 'fail'] }, optional: { ticket: ticketNumber } },
   // The ticket graph at a frontier step (issue #59): `spec` is the spec or map issue, `tickets`
-  // one { number, state, status, blockers } per child, `blockers` its open blocked-by issues.
+  // one { number, state, status, blockers } per child, `blockers` its open blocked-by issues, and
+  // optionally `stories`, the spec's user story numbers (issue #70).
   'ticket.graph': { required: [], json: { spec: Number.isInteger, tickets: Array.isArray } },
   // Issue #56: written by factory/hooks/dispatch.mjs into the orchestrator's file. `to` is the
   // agent dispatched or messaged (the stamped `agent` is the orchestrator). A dispatch may also
