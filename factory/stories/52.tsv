@@ -5,6 +5,13 @@ story	kind	name
 5	test	a message to a running agent writes a message event (a cause edge), not a dispatch
 6	test	a Cause: line in the prompt or message becomes the event's cause
 7	test	on recorded calls, each dispatch's agent is the agent_id of the agent.start it caused
+11	test	a well-formed challenge is written with its kind, rebut by default, and its ticket as a number
+11	test	a challenge whose target does not parse, or is prose, is refused and nothing is written
+11	test	a challenge of an unknown kind, or with an id that is not a plain name, is refused
+11	test	a target is a pointer, a decision row (row:N) or an event (event:<run>/<agent>:<line>)
+12	test	challenge.eliminated names a challenge already in the stream, from any run
+12	test	challenge.eliminated naming no challenge in the stream is refused and nothing is written
+12	test	a challenge reusing an id already in the stream is refused, so of=<id> names one challenge
 21	check	stories
 22	test	a story-map row naming a check that is no check:* script fails, naming the row
 22	test	a story-map row naming a test that no test file declares fails, naming the row

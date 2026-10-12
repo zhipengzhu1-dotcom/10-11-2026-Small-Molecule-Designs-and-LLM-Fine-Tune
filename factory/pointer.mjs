@@ -9,6 +9,7 @@
 //   url:<url>                       an http(s) URL
 //
 // Text is a pointer when it starts with `<lowercase word>:` and a value; anything else is prose.
+// A challenge's target takes two more forms, row:<N> and event:<run>/<agent>:<line> (parseTarget).
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -40,6 +41,30 @@ export function parsePointer(text) {
   if (kind === 'url') return /^https?:\/\/\S+$/.test(value) ? { kind, text, url: value } : bad(`${text} is not an http(s) URL`);
   if (kind === 'http' || kind === 'https') return bad(`unknown pointer ${text}; write url:${text}`);
   return bad(`unknown pointer ${text}`);
+}
+
+// The parts of a challenge's target (issue #58): any pointer above, or one of two forms that only
+// a target takes, since they name the factory's own logs rather than evidence for a decision:
+//
+//   row:<N>                         line N of the decision log
+//   event:<run>/<agent>:<line>      line <line> of factory/agents/<run>/<agent>.jsonl
+//
+// Same return shape as parsePointer; null when `text` is prose.
+const NAME = '[A-Za-z0-9][A-Za-z0-9._-]*';
+const EVENT = new RegExp(`^(${NAME})/(${NAME}):([1-9]\\d*)$`);
+
+export function parseTarget(text) {
+  const m = KIND.exec(text);
+  if (m?.[1] === 'row') {
+    return /^[1-9]\d*$/.test(m[2]) ? { kind: 'row', text, line: Number(m[2]) }
+      : { kind: 'row', text, problem: `${text} is not a decision row; write row:<line number>` };
+  }
+  if (m?.[1] === 'event') {
+    const e = EVENT.exec(m[2]);
+    return e ? { kind: 'event', text, run: e[1], agent: e[2], line: Number(e[3]) }
+      : { kind: 'event', text, problem: `${text} is not an event; write event:<run>/<agent>:<line>` };
+  }
+  return parsePointer(text);
 }
 
 // Why a file pointer's line range falls outside a file's text, or null. `text` is read lazily.

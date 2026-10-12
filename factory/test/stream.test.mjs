@@ -120,6 +120,38 @@ test('the reader passes dispatch and message events through, in ts order with th
   assert.deepEqual(events.filter((e) => e.agent === 'orchestrator'), [launch, message, resume].map((e) => ({ run: 'run-1', agent: 'orchestrator', ...e })));
 });
 
+// A challenge is eliminated by a later event naming its id, never by an edit (issue #58). The id
+// is looked up in the whole stream, so a challenge from an earlier run can be eliminated later.
+test('challenge.eliminated names a challenge already in the stream, from any run', () => {
+  const root = tempRoot();
+  const raise = write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge', 'id=c1', 'target=row:21', 'why=withdrawn in prose']);
+  assert.equal(raise.status, 0, raise.stderr);
+  const end = write(['--root', root, '--run', 'run-2', '--agent', 'orchestrator', 'challenge.eliminated', 'of=c1', 'by=row:88']);
+  assert.equal(end.status, 0, end.stderr);
+  assert.deepEqual(readStream(root).map((e) => [e.run, e.type, e.id ?? e.of]), [['run-1', 'challenge', 'c1'], ['run-2', 'challenge.eliminated', 'c1']]);
+});
+
+test('challenge.eliminated naming no challenge in the stream is refused and nothing is written', () => {
+  const root = tempRoot();
+  write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge', 'id=c1', 'target=row:21', 'why=w']);
+  const r = write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge.eliminated', 'of=c2', 'by=row:88']);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /challenge\.eliminated: of c2 names no challenge in the stream/);
+  const bad = write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge.eliminated', 'of=c1', 'by=because']);
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /challenge\.eliminated: by because is not a pointer, row or event/);
+  assert.deepEqual(readStream(root).map((e) => e.type), ['challenge']);
+});
+
+test('a challenge reusing an id already in the stream is refused, so of=<id> names one challenge', () => {
+  const root = tempRoot();
+  write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge', 'id=c1', 'target=row:21', 'why=w']);
+  const r = write(['--root', root, '--run', 'run-2', '--agent', 'orchestrator', 'challenge', 'id=c1', 'target=row:30', 'why=w']);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /challenge: id c1 is already a challenge in the stream/);
+  assert.equal(readStream(root).length, 1);
+});
+
 // agent.stop events written before issue #21 also carry a `transcript` field (the subagent's
 // transcript path). The contract lists only role and status, and the path follows from run and
 // agent, so the stream leaves the field out and no consumer can come to depend on it (issue #62).
