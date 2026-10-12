@@ -10,6 +10,7 @@
 // check.mjs.
 import { globSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { TEST_FILES } from '../test-results.mjs';
 import { checkCli, shown } from './check.mjs';
 
 // A check is named by its `check:<name>` script in package.json, which is also the name of the
@@ -18,9 +19,6 @@ function checkScripts(root) {
   const scripts = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts ?? {};
   return new Set(Object.keys(scripts).filter((s) => s.startsWith('check:')).map((s) => s.slice('check:'.length)));
 }
-
-// The test files `npm test` and CI run.
-const TEST_FILES = 'factory/**/*.test.mjs';
 
 // A test is named by the literal first argument of a test(), it(), describe(), suite() or
 // t.test() call in a test file. A name built at run time (a template with `${…}`) is not stable,
