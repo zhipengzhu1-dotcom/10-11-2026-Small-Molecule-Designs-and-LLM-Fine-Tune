@@ -82,7 +82,7 @@ function runCheck(opts) {
   if (rows.length === 0 && problems.length === 0) problems.push('no parameter rows found');
   for (const r of rows) problems.push(...rowProblems(r).map((p) => `${r.id || '(no ID)'} (line ${r.line}): ${p}`));
   const where = `${shown(opts.root, brief)}: ${rows.length} parameter rows`;
-  return { evidence: [where, ...(problems.length ? problems : ['all have a location and a valid verdict'])].join('; '), problems };
+  return { where, ok: 'all have a location and a valid verdict', problems };
 }
 
 checkCli(import.meta.url, {

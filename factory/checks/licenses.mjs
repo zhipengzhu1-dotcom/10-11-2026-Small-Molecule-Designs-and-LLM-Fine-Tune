@@ -78,7 +78,7 @@ function runCheck(opts) {
     }
   }
   const where = `${files.length} committed raw files vs ${shown(opts.root, catalog)} and ${shown(opts.root, list)} (${own.size} own work)`;
-  return { evidence: [where, ...(problems.length ? problems : ['all have an allowlisted license'])].join('; '), problems };
+  return { where, ok: 'all have an allowlisted license', problems };
 }
 
 checkCli(import.meta.url, {
