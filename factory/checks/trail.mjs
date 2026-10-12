@@ -5,7 +5,8 @@
 //   node factory/checks/trail.mjs [--root <repo>] [--run <id>] [--agent <id>] [--transcripts <dir>]
 //
 // Run and agent default to FACTORY_RUN and FACTORY_AGENT, else run "manual" and agent
-// "orchestrator". --transcripts defaults to this project's Claude Code transcripts folder.
+// "orchestrator". --transcripts defaults to the main checkout's Claude Code transcripts folder, also
+// when run from a git worktree.
 //
 // An audit is factory/audit/<run>.tsv, written by the run that audited the log (pstack
 // show-me-your-work), with columns line, ts, verdict, superseded_by, pointers, note:
@@ -22,15 +23,18 @@
 //   - a decision row has no verdict, or a verdict names no row or the wrong ts
 //   - an ok verdict has no pointers, or a file, commit or transcript pointer does not resolve
 //     (issue: and url: need the network and are taken as given)
+//   - a file pointer names a gitignored path, which only one checkout has
 //   - a superseded verdict names no later row
 //   - there is no audit, an audit has no review, or the reviewer is a Claude model
 //   - a row has an empty cell, or a phase other than `start` that is not a lowercase slash path
 //     under the log's one root (the first segment of its first such phase), so the phases form
 //     one tree
+//   - a row from 2026-10-12 on records a push or PR (phase ending /push or /pr): git and GitHub
+//     hold that record, and the row would land in a commit after the push
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultRoot, writeEvent } from '../log.mjs';
 
@@ -57,9 +61,14 @@ function readLog(text) {
 
 const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
 
-// Claude Code keeps a project's transcripts under ~/.claude/projects/<project path, every
-// character other than a letter or digit turned into "-">.
-const defaultTranscripts = (root) => join(homedir(), '.claude', 'projects', resolve(root).replace(/[^A-Za-z0-9]/g, '-'));
+// Claude Code keeps a project's transcripts under ~/.claude/projects/<main checkout's path, every
+// character other than a letter or digit turned into "-">. From a git worktree, the main checkout
+// is the folder holding the shared .git directory.
+function defaultTranscripts(root) {
+  const common = git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir');
+  const main = common.status === 0 ? dirname(common.stdout.trim()) : resolve(root);
+  return join(homedir(), '.claude', 'projects', resolve(main).replace(/[^A-Za-z0-9]/g, '-'));
+}
 
 // Transcripts run to megabytes and many pointers name the same one, so each is read once.
 const transcripts = new Map();
@@ -78,6 +87,9 @@ function pointerProblem(p, opts) {
     const [, path, from, to] = /^(.*?)(?::(\d+)(?:-(\d+))?)?$/.exec(value);
     const full = path.startsWith('~/') ? join(homedir(), path.slice(2)) : join(opts.root, path);
     if (!existsSync(full)) return `${p} does not exist`;
+    if (!path.startsWith('~/') && git(opts.root, 'check-ignore', '-q', path).status === 0) {
+      return `${p} is gitignored; cite a tracked file, commit or transcript instead`;
+    }
     if (!from) return null;
     const lines = readFileSync(full, 'utf8').replace(/\r?\n$/, '').split(/\r?\n/).length;
     return Number(to ?? from) > lines ? `${p} is past the end of the file (${lines} lines)` : null;
@@ -148,6 +160,12 @@ function verdictProblems(v, row, log, opts) {
 const COLUMNS = ['ts', 'phase', 'decision', 'why', 'evidence', 'result'];
 const PHASE = /^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9-]*)*$/;
 
+// A row recording a push or PR is committed after the push, so it always misses it and strands
+// a commit (e75baac needed its own PR, #39). Git and GitHub already hold that record. The rows
+// logged before this rule (lines 21, 71, 75, 76 of the s1 log) stay, since the log is append-only.
+const REMOTE = /\/(push|pr)$/;
+const REMOTE_RULE_FROM = '2026-10-12';
+
 // What is wrong with a row's own cells. `start` rows mark where a run's rows begin
 // (show-me-your-work) and sit outside the tree.
 function rowProblems(row, treeRoot) {
@@ -156,6 +174,9 @@ function rowProblems(row, treeRoot) {
   if (!phase || phase === 'start') return problems;
   if (!PHASE.test(phase)) problems.push(`phase "${phase}" is not a lowercase slash path`);
   else if (phase.split('/')[0] !== treeRoot) problems.push(`phase "${phase}" is not under ${treeRoot}/`);
+  if (REMOTE.test(phase) && row.ts >= REMOTE_RULE_FROM) {
+    problems.push(`phase "${phase}" records a push or PR; git and GitHub hold that record, so log no decision row for it`);
+  }
   return problems;
 }
 

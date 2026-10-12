@@ -1,5 +1,6 @@
 #!/bin/sh
-# Runs the tests in Docker (npm run ci) before every push. A failing test blocks the push.
+# Before every push, tests each pushed commit in Docker and runs the data checks on it
+# (scripts/ci.mjs --pre-push). A failure blocks the push.
 # Enable once per clone: npm run hooks:install
-echo "pre-push: running local CI in Docker"
-exec node scripts/ci.mjs
+echo "pre-push: running local CI on the pushed commits"
+exec node scripts/ci.mjs --pre-push

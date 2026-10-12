@@ -24,11 +24,13 @@ Keep every binding constraint in one shared **brief**, in the user's exact words
 
 ## Shared notes (step 2)
 
-Notes and gitignored source data go somewhere stable: the main checkout's ignored folders or a fixed notes folder outside the session scratchpad. Pass them to agents by absolute path, because worktrees hold no gitignored data. Link them from the status note.
+Agent worktrees branch from the orchestrator's checkout (`worktree.baseRef: head` in `.claude/settings.json`), so keep the main checkout on the integration branch while agents run. `.worktreeinclude` copies gitignored source data into each new worktree, so agents use repo-relative paths. Data an agent needs that the file doesn't list gets a line there before the fan-out. Notes go in a fixed folder outside the session scratchpad, linked from the status note.
 
 ## Push asks (step 3)
 
 Every push ask carries a recommendation and its risks. Ask about a one-off push and a standing push policy as two separate questions. A yes covers only the one asked.
+
+A push or PR gets no decision row: its commit would land after the push and strand. Git and GitHub hold the record, and the trail check rejects such rows.
 
 ## Fan-out (steps 4 and 6)
 

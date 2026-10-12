@@ -1,0 +1,5 @@
+# Gitignored files Claude Code copies into each new worktree (agent isolation included), so
+# agents read source data at its repo path instead of reaching into the main checkout.
+# The s1 code clone (research/s1/raw/code/s1/) is left out: it is a git repo of its own.
+research/s1/raw/arxiv/
+research/refs/*/raw/*

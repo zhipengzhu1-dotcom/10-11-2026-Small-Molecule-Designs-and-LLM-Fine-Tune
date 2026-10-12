@@ -1,4 +1,7 @@
 {
+  "worktree": {
+    "baseRef": "head"
+  },
   "hooks": {
     "SubagentStart": [
       {
@@ -18,6 +21,18 @@
             "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/subagent.mjs\"",
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/long-heredoc.mjs\"",
+            "timeout": 10
           }
         ]
       }
