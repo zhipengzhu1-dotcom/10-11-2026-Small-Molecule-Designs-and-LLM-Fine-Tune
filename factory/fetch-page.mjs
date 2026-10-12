@@ -5,8 +5,8 @@
 //   node factory/fetch-page.mjs [--root <repo>] [--port 4174]
 import { createServer } from 'node:http';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { cli, UsageError } from './cli.mjs';
 import { defaultRoot, writeEvent } from './log.mjs';
 import { readStream } from './read.mjs';
 
@@ -214,15 +214,13 @@ function send(res, status, type, body) {
   res.end(body);
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  const arg = (name, fallback) => {
-    const i = process.argv.indexOf(name);
-    return i > 0 ? process.argv[i + 1] : fallback;
-  };
-  const root = arg('--root', defaultRoot());
+cli(import.meta.url, {
+  usage: 'node factory/fetch-page.mjs [--root <repo>] [--port 4174]',
+  options: { root: 'string', port: 'string' },
+}, ({ root = defaultRoot(), port = '4174' }) => {
+  if (!/^\d+$/.test(port)) throw new UsageError(`--port must be a number, got: ${port}`);
   const server = createFetchPage({ root });
-  server.listen(Number(arg('--port', 4174)), '127.0.0.1', () => {
+  server.listen(Number(port), '127.0.0.1', () => {
     process.stdout.write(`fetch page: http://127.0.0.1:${server.address().port}/ (root ${root})\n`);
   });
-}
+});

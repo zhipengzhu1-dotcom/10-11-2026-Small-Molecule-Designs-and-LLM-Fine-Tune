@@ -9,32 +9,11 @@
 // <root>/research/refs/catalog.tsv. Run and agent default to FACTORY_RUN and FACTORY_AGENT,
 // else run "manual" and agent "orchestrator".
 import { readFileSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { defaultRoot, writeEvent } from '../log.mjs';
+import { join } from 'node:path';
+import { checkCli, shown } from './check.mjs';
 
 // Reference statuses from issue #1.
 export const STATUSES = ['arxiv', 'oa', 'closed', 'fetch-pending', 'fetched'];
-
-function parseArgs(argv, env = process.env) {
-  const opts = { root: defaultRoot(env), run: env.FACTORY_RUN || 'manual', agent: env.FACTORY_AGENT || 'orchestrator' };
-  for (let i = 0; i < argv.length; i++) {
-    const name = argv[i].replace(/^--/, '');
-    if (!['root', 'run', 'agent', 'tex', 'catalog'].includes(name) || i + 1 >= argv.length) {
-      throw new Error(`unknown or incomplete argument: ${argv[i]}`);
-    }
-    opts[name] = argv[++i];
-  }
-  opts.tex ??= join(opts.root, 'research', 's1', 'raw', 'arxiv', 'latex', 'main.tex');
-  opts.catalog ??= join(opts.root, 'research', 'refs', 'catalog.tsv');
-  return opts;
-}
-
-// A path inside the repo is shown relative to it; anything else (a test fixture) in full.
-function shown(root, path) {
-  const rel = relative(root, resolve(path));
-  return (rel.startsWith('..') || isAbsolute(rel) ? resolve(path) : rel).replace(/\\/g, '/');
-}
 
 // Every key in a \cite-family command (\cite, \citep, \citet, \citeauthor, ... with optional
 // [..] arguments) or \nocite, in first-cited order. LaTeX comments are skipped; \% is not one.
@@ -60,8 +39,10 @@ export function readCatalog(text) {
 }
 
 export function runCheck(opts) {
-  const keys = citedKeys(readFileSync(opts.tex, 'utf8'));
-  const rows = readCatalog(readFileSync(opts.catalog, 'utf8'));
+  const tex = opts.tex ?? join(opts.root, 'research', 's1', 'raw', 'arxiv', 'latex', 'main.tex');
+  const catalog = opts.catalog ?? join(opts.root, 'research', 'refs', 'catalog.tsv');
+  const keys = citedKeys(readFileSync(tex, 'utf8'));
+  const rows = readCatalog(readFileSync(catalog, 'utf8'));
   const have = new Set(rows.map((r) => r.key));
   const missing = keys.filter((k) => !have.has(k));
   const problems = [];
@@ -69,21 +50,12 @@ export function runCheck(opts) {
   for (const r of rows) {
     if (!STATUSES.includes(r.status)) problems.push(`line ${r.line} (${r.key}): invalid status "${r.status ?? ''}"`);
   }
-  const result = problems.length ? 'fail' : 'pass';
-  const where = `${shown(opts.root, opts.catalog)} vs ${keys.length} keys cited in ${shown(opts.root, opts.tex)}`;
-  const evidence = problems.length ? `${where}; ${problems.join('; ')}` : `${where}; all present with valid statuses`;
-  writeEvent({ root: opts.root, run: opts.run, agent: opts.agent, type: 'check', fields: { name: 'references', result, evidence } });
-  return { result, evidence };
+  const where = `${shown(opts.root, catalog)} vs ${keys.length} keys cited in ${shown(opts.root, tex)}`;
+  return { summary: problems.length ? where : `${where}; all present with valid statuses`, problems };
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
-  try {
-    const { result, evidence } = runCheck(parseArgs(process.argv.slice(2)));
-    process.stdout.write(`references: ${result}: ${evidence}\n`);
-    process.exit(result === 'pass' ? 0 : 1);
-  } catch (err) {
-    process.stderr.write(`references.mjs: ${err.message}\n`);
-    process.exit(2);
-  }
-}
+checkCli(import.meta.url, {
+  name: 'references',
+  usage: 'node factory/checks/references.mjs [--root <repo>] [--run <id>] [--agent <id>] [--tex <main.tex>] [--catalog <catalog.tsv>]',
+  options: { tex: 'string', catalog: 'string' },
+}, runCheck);
