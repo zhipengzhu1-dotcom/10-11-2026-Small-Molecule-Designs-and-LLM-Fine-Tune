@@ -64,13 +64,13 @@ t('committed raw files under allowlisted licenses pass; gitignored raw files and
   assert.match(r.events[0].evidence, /^4 committed raw files vs research\/refs\/catalog\.tsv/);
 });
 
-t('a committed raw file with no catalog entry fails, and the evidence names the file', () => {
+t('a committed raw file with no license row fails, and the evidence names the file and both places a row can go', () => {
   const r = check(repo({ tracked: ['research/refs/foo/raw/paper.pdf'] }));
   assert.equal(r.status, 1, r.stderr + r.stdout);
   assert.equal(r.events.length, 1);
   assert.equal(r.events[0].name, 'licenses');
   assert.equal(r.events[0].result, 'fail');
-  assert.match(r.events[0].evidence, /research\/refs\/foo\/raw\/paper\.pdf: no catalog entry/);
+  assert.match(r.events[0].evidence, /research\/refs\/foo\/raw\/paper\.pdf: no row in research\/refs\/catalog\.tsv or research\/licenses\.tsv/);
 });
 
 t('a committed raw file whose license is not allowlisted fails, and the evidence names the file and license', () => {
@@ -108,7 +108,7 @@ t('a raw file listed in research/licenses.tsv as own work passes; a README not o
     listed: [['research/s1/raw/README.md', 'own work']],
   }));
   assert.equal(r.status, 1, r.stderr + r.stdout);
-  assert.match(r.events[0].evidence, /research\/refs\/x\/raw\/README\.md: no catalog entry/);
+  assert.match(r.events[0].evidence, /research\/refs\/x\/raw\/README\.md: no row in /);
   assert.doesNotMatch(r.events[0].evidence, /research\/s1\/raw\/README\.md/);
 });
 

@@ -69,7 +69,7 @@ function runCheck(opts) {
   const problems = [];
   for (const file of files.filter((p) => !textFor.has(p) && !own.has(p))) {
     const entries = rows.filter((r) => r.file === file);
-    if (!entries.length) problems.push(`${file}: no catalog entry`);
+    if (!entries.length) problems.push(`${file}: no row in ${shown(opts.root, catalog)} or ${shown(opts.root, list)}`);
     for (const { license = '' } of entries) {
       if (!allowed(license)) problems.push(`${file}: license "${license}" not allowlisted`);
       else if (/^Apache/i.test(licenseId(license)) && !apache.has(posix.dirname(file))) {
