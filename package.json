@@ -9,6 +9,7 @@
     "test": "node --test \"factory/**/*.test.mjs\"",
     "ci": "node scripts/ci.mjs",
     "fetch-page": "node factory/fetch-page.mjs",
+    "merge": "node factory/merge.mjs",
     "fetch:s1": "node scripts/fetch-s1.mjs",
     "hooks:install": "git config core.hooksPath .githooks",
     "catalog:refs": "node scripts/catalog-refs.mjs",
