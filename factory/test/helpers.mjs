@@ -42,6 +42,12 @@ export function hook(payload, extraEnv = {}, cwd = tempRoot()) {
   return spawnSync(process.execPath, [HOOK], { env: env(extraEnv), input, cwd, encoding: 'utf8' });
 }
 
+// Runs the context meter hook the way Claude Code does: payload JSON on stdin.
+export const METER = join(FACTORY, 'hooks', 'context-meter.mjs');
+export function meter(payload, extraEnv = {}, cwd = tempRoot()) {
+  return spawnSync(process.execPath, [METER], { env: env(extraEnv), input: JSON.stringify(payload), cwd, encoding: 'utf8' });
+}
+
 // Runs the run-marker CLI, as the orchestrator does when a run starts or ends.
 export function marker(args, extraEnv = {}) {
   return spawnSync(process.execPath, [MARKER, ...args], { env: env(extraEnv), encoding: 'utf8' });

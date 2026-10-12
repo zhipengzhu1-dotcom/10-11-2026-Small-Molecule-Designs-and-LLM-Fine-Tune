@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { digest, latestSession, latestUsage, transcriptsDir } from '../transcript.mjs';
+import { contextTokens, digest, latestSession, latestUsage, transcriptsDir } from '../transcript.mjs';
 import { FACTORY, tempRoot } from './helpers.mjs';
 
 const SESSION = join(FACTORY, 'test', 'fixtures', 'transcript-session.jsonl');
@@ -12,6 +12,14 @@ test('latestUsage returns the token usage of the last real assistant message, sk
   assert.deepEqual(latestUsage(SESSION), {
     input_tokens: 5, cache_creation_input_tokens: 300, cache_read_input_tokens: 21200, output_tokens: 7,
   });
+});
+
+test('latestUsage and contextTokens skip sidechain (subagent) replies; context is input plus cache read plus cache creation', () => {
+  const file = join(FACTORY, 'test', 'fixtures', 'transcript-meter.jsonl');
+  assert.equal(latestUsage(file).cache_read_input_tokens, 148000);
+  assert.equal(contextTokens(file), 150507);
+  assert.equal(contextTokens(SESSION), 21505);
+  assert.equal(contextTokens(join(FACTORY, 'test', 'fixtures', 'transcript-text.jsonl')), null);
 });
 
 test('latestUsage is null when no assistant message carries usage', () => {

@@ -47,13 +47,23 @@ export function readTranscript(file) {
   return entries;
 }
 
-// A model reply, not an API error or other placeholder Claude Code writes in its place.
-const isReply = (e) => e?.type === 'assistant' && e.message?.usage && !e.isApiErrorMessage && e.message.model !== '<synthetic>';
+// A main-thread model reply: not an API error or other placeholder Claude Code writes in its
+// place, and not a subagent's (sidechain) reply.
+const isReply = (e) =>
+  e?.type === 'assistant' && e.message?.usage && !e.isApiErrorMessage && e.message.model !== '<synthetic>' && !e.isSidechain;
 
-// The token usage of the session's latest assistant message ({ input_tokens,
+// The token usage of the session's latest main-thread assistant message ({ input_tokens,
 // cache_creation_input_tokens, cache_read_input_tokens, output_tokens }), or null if none.
 export function latestUsage(file) {
   return readTranscript(file).findLast(isReply)?.message.usage ?? null;
+}
+
+// The session's context size in tokens: everything the latest main-thread reply read as input
+// (uncached, cache read and cache creation). Null when no reply carries usage.
+export function contextTokens(file) {
+  const u = latestUsage(file);
+  if (!u) return null;
+  return (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
 }
 
 const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();
