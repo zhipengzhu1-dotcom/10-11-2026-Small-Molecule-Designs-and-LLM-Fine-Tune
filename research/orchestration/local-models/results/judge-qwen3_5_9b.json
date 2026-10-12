@@ -1,0 +1,605 @@
+{
+ "model": "qwen3.5:9b",
+ "pairs": {
+  "A1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "then a local model, then Claude as judge",
+    "ms": 10229,
+    "tin": 224,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 233,
+    "tin": 194,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "neither was acted on in this run",
+    "ms": 253,
+    "tin": 222,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "the live URL now serves a different page (not checked for exp-01-21); the 01-27 snapshot names exp-01-21",
+    "ms": 408,
+    "tin": 298,
+    "tout": 50,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 15's evidence file was never committed",
+    "ms": 288,
+    "tin": 205,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 28 pointed at claims.md",
+    "ms": 259,
+    "tin": 237,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page to the scratchpad and deleted it at 21:52:27",
+    "ms": 341,
+    "tin": 263,
+    "tout": 41,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 51 pointed at item 8",
+    "ms": 235,
+    "tin": 283,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 216,
+    "tin": 212,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the orchestrator wrote all 12 reference summaries from the readers' returned text",
+    "ms": 266,
+    "tin": 208,
+    "tout": 30,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 193,
+    "tin": 248,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "models under 8B",
+    "ms": 264,
+    "tin": 239,
+    "tout": 26,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "A2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "then a local model, then Claude as judge",
+    "ms": 248,
+    "tin": 224,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 216,
+    "tin": 194,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "neither was acted on in this run",
+    "ms": 253,
+    "tin": 222,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "the live URL now serves a different page (not checked for exp-01-21); the 01-27 snapshot names exp-01-21",
+    "ms": 389,
+    "tin": 298,
+    "tout": 50,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 15's evidence file was never committed",
+    "ms": 278,
+    "tin": 205,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 28 pointed at claims.md",
+    "ms": 225,
+    "tin": 237,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page to the scratchpad and deleted it at 21:52:27",
+    "ms": 323,
+    "tin": 263,
+    "tout": 41,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 51 pointed at item 8",
+    "ms": 216,
+    "tin": 283,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 204,
+    "tin": 212,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the orchestrator wrote all 12 reference summaries from the readers' returned text",
+    "ms": 256,
+    "tin": 208,
+    "tout": 30,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 183,
+    "tin": 248,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "models under 8B",
+    "ms": 253,
+    "tin": 239,
+    "tout": 26,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "then a local model, then Claude as judge",
+    "ms": 231,
+    "tin": 276,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 234,
+    "tin": 246,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "neither was acted on in this run",
+    "ms": 205,
+    "tin": 274,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "entailment",
+    "span": "",
+    "ms": 186,
+    "tin": 350,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 15's evidence file was never committed",
+    "ms": 255,
+    "tin": 257,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 140,
+    "tin": 289,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page out of the repo",
+    "ms": 222,
+    "tin": 315,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 183,
+    "tin": 335,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 255,
+    "tin": 264,
+    "tout": 20,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the orchestrator wrote all 12 reference summaries from the readers' returned text",
+    "ms": 281,
+    "tin": 260,
+    "tout": 37,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 161,
+    "tin": 300,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 206,
+    "tin": 291,
+    "tout": 18,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "then a local model, then Claude as judge",
+    "ms": 252,
+    "tin": 276,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 249,
+    "tin": 246,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "neither was acted on in this run",
+    "ms": 194,
+    "tin": 274,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "entailment",
+    "span": "",
+    "ms": 167,
+    "tin": 350,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 15's evidence file was never committed",
+    "ms": 249,
+    "tin": 257,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 134,
+    "tin": 289,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page out of the repo",
+    "ms": 207,
+    "tin": 315,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 169,
+    "tin": 335,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 244,
+    "tin": 264,
+    "tout": 20,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the orchestrator wrote all 12 reference summaries from the readers' returned text",
+    "ms": 273,
+    "tin": 260,
+    "tout": 37,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 183,
+    "tin": 300,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 198,
+    "tin": 291,
+    "tout": 18,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ]
+ },
+ "vram": {
+  "ctx2048": {
+   "size": 5420875774,
+   "size_vram": 5420875774,
+   "ctx": 2048
+  },
+  "ctx16384": {
+   "size": 6014380276,
+   "size_vram": 6014380276,
+   "ctx": 16384
+  }
+ },
+ "summaryA": {
+  "caught": "4/4",
+  "falseAlarms": "6/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 264,
+  "tinRange": "194-298"
+ },
+ "summaryB": {
+  "caught": "3/4",
+  "falseAlarms": "3/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 222,
+  "tinRange": "246-350"
+ },
+ "trail": {
+  "fenced": false,
+  "thinkChars": 0,
+  "tin": 5166,
+  "tout": 811,
+  "ms": 13062,
+  "found": [
+   "55->15",
+   "56->18",
+   "57->28",
+   "58->35",
+   "59->38",
+   "60->51",
+   "66->2",
+   "66->15",
+   "66->18",
+   "66->28",
+   "66->35",
+   "66->38",
+   "66->51"
+  ],
+  "hitsAll": [
+   "55->15",
+   "56->18",
+   "57->28",
+   "58->35",
+   "59->38",
+   "60->51"
+  ],
+  "unrecorded": [],
+  "extra": 7
+ }
+}

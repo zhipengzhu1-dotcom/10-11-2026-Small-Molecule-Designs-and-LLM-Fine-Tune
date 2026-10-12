@@ -1,0 +1,596 @@
+{
+ "model": "qwen2.5:3b-instruct",
+ "pairs": {
+  "A1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude can also act as the judge",
+    "ms": 14777,
+    "tin": 220,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "push-after-merge consent is withdrawn",
+    "ms": 86,
+    "tin": 190,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "recommend borrowing the ARIS claim-audit checklists without installing ARIS",
+    "ms": 105,
+    "tin": 218,
+    "tout": 28,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "the live URL now serves a different page (not checked for exp-01-21)",
+    "ms": 121,
+    "tin": 294,
+    "tout": 34,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 15's evidence file was never committed",
+    "ms": 99,
+    "tin": 201,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "sections.md",
+    "ms": 75,
+    "tin": 233,
+    "tout": 16,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "an uncommitted diff, a deleted scratchpad file",
+    "ms": 93,
+    "tin": 259,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "}",
+    "ms": 63,
+    "tin": 279,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "changed the MATH summary's 'do not use an LLM judge' line",
+    "ms": 111,
+    "tin": 208,
+    "tout": 30,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "subagents can't write report files",
+    "ms": 83,
+    "tin": 204,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "14c93a90",
+    "ms": 92,
+    "tin": 244,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the tier-2 judge qwen3.5:9b is over 8B",
+    "ms": 116,
+    "tin": 237,
+    "tout": 32,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "A2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude can also act as the judge",
+    "ms": 89,
+    "tin": 220,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "push-after-merge consent is withdrawn",
+    "ms": 83,
+    "tin": 190,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "recommend borrowing the ARIS claim-audit checklists without installing ARIS",
+    "ms": 101,
+    "tin": 218,
+    "tout": 28,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "the live URL now serves a different page (not checked for exp-01-21)",
+    "ms": 123,
+    "tin": 294,
+    "tout": 34,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 15's evidence file was never committed",
+    "ms": 97,
+    "tin": 201,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "sections.md",
+    "ms": 56,
+    "tin": 233,
+    "tout": 16,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "an uncommitted diff, a deleted scratchpad file",
+    "ms": 84,
+    "tin": 259,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "}",
+    "ms": 50,
+    "tin": 279,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "changed the MATH summary's 'do not use an LLM judge' line",
+    "ms": 111,
+    "tin": 208,
+    "tout": 30,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "subagents can't write report files",
+    "ms": 84,
+    "tin": 204,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "14c93a90",
+    "ms": 93,
+    "tin": 244,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "Qwen3.5-4B is unsourced, the tier-2 judge qwen3.5:9b is over 8B",
+    "ms": 143,
+    "tin": 237,
+    "tout": 44,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 63,
+    "tin": 272,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "push-after-merge consent is withdrawn",
+    "ms": 85,
+    "tin": 242,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "ARIS checklists copied, not installed",
+    "ms": 84,
+    "tin": 270,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 72,
+    "tin": 346,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 70,
+    "tin": 253,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 57,
+    "tin": 285,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "an uncommitted diff, a deleted scratchpad file",
+    "ms": 94,
+    "tin": 311,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 66,
+    "tin": 331,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "changed the MATH summary's 'do not use an LLM judge' line",
+    "ms": 110,
+    "tin": 260,
+    "tout": 30,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "subagents can't write report files",
+    "ms": 84,
+    "tin": 256,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 57,
+    "tin": 296,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 120,
+    "tin": 289,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 67,
+    "tin": 272,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "push-after-merge consent is withdrawn",
+    "ms": 85,
+    "tin": 242,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "ARIS checklists copied, not installed",
+    "ms": 85,
+    "tin": 270,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 61,
+    "tin": 346,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 70,
+    "tin": 253,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 57,
+    "tin": 285,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "an uncommitted diff, a deleted scratchpad file",
+    "ms": 78,
+    "tin": 311,
+    "tout": 24,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 51,
+    "tin": 331,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "changed the MATH summary's 'do not use an LLM judge' line",
+    "ms": 111,
+    "tin": 260,
+    "tout": 30,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "subagents can't write report files",
+    "ms": 85,
+    "tin": 256,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 59,
+    "tin": 296,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 103,
+    "tin": 289,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ]
+ },
+ "vram": {
+  "ctx2048": {
+   "size": 2081779875,
+   "size_vram": 2081779875,
+   "ctx": 2048
+  },
+  "ctx16384": {
+   "size": 2721946009,
+   "size_vram": 2721946009,
+   "ctx": 16384
+  }
+ },
+ "summaryA": {
+  "caught": "4/4",
+  "falseAlarms": "7/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 99,
+  "tinRange": "190-294"
+ },
+ "summaryB": {
+  "caught": "2/4",
+  "falseAlarms": "3/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 84,
+  "tinRange": "242-346"
+ },
+ "trail": {
+  "fenced": false,
+  "thinkChars": 0,
+  "tin": 5162,
+  "tout": 799,
+  "ms": 8083,
+  "found": [
+   "15->14",
+   "47->46",
+   "55->54",
+   "59->58",
+   "65->64",
+   "67->66",
+   "70->69",
+   "71->70",
+   "72->71",
+   "73->72",
+   "74->73"
+  ],
+  "hitsAll": [],
+  "unrecorded": [],
+  "extra": 11
+ }
+}

@@ -1,0 +1,596 @@
+{
+ "model": "gemma4:e4b",
+ "pairs": {
+  "A1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude as judge",
+    "ms": 6831,
+    "tin": 227,
+    "tout": 16,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 149,
+    "tin": 194,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "it ranks arxiv-mcp-server first and recommends borrowing the ARIS claim-audit checklists without installing ARIS; neither was acted on in th",
+    "ms": 197,
+    "tin": 217,
+    "tout": 44,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 111,
+    "tin": 291,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "line 15's evidence file was never committed",
+    "ms": 133,
+    "tin": 207,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 111,
+    "tin": 236,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page out of the repo",
+    "ms": 146,
+    "tin": 264,
+    "tout": 20,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 111,
+    "tin": 280,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 112,
+    "tin": 208,
+    "tout": 13,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 100,
+    "tin": 207,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 109,
+    "tin": 251,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 108,
+    "tin": 235,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "A2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude as judge",
+    "ms": 108,
+    "tin": 227,
+    "tout": 16,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 135,
+    "tin": 194,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "it ranks arxiv-mcp-server first and recommends borrowing the ARIS claim-audit checklists without installing ARIS; neither was acted on in th",
+    "ms": 189,
+    "tin": 217,
+    "tout": 44,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 131,
+    "tin": 291,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "line 15's evidence file was never committed",
+    "ms": 122,
+    "tin": 207,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 101,
+    "tin": 236,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page out of the repo",
+    "ms": 148,
+    "tin": 264,
+    "tout": 20,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "line 51 pointed at item 8, but the judge caveat is in the Tiered grading section",
+    "ms": 158,
+    "tin": 280,
+    "tout": 33,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 116,
+    "tin": 208,
+    "tout": 13,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 103,
+    "tin": 207,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 113,
+    "tin": 251,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 107,
+    "tin": 235,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude as judge",
+    "ms": 119,
+    "tin": 277,
+    "tout": 16,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 138,
+    "tin": 244,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "ARIS checklists copied, not installed",
+    "ms": 108,
+    "tin": 267,
+    "tout": 20,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 121,
+    "tin": 341,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 118,
+    "tin": 257,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 99,
+    "tin": 286,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 115,
+    "tin": 314,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 117,
+    "tin": 330,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 114,
+    "tin": 258,
+    "tout": 13,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 98,
+    "tin": 257,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 105,
+    "tin": 301,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 113,
+    "tin": 285,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude as judge",
+    "ms": 111,
+    "tin": 277,
+    "tout": 16,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 136,
+    "tin": 244,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "ARIS checklists copied, not installed",
+    "ms": 109,
+    "tin": 267,
+    "tout": 20,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 105,
+    "tin": 341,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 123,
+    "tin": 257,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 99,
+    "tin": 286,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 96,
+    "tin": 314,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 114,
+    "tin": 330,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 116,
+    "tin": 258,
+    "tout": 13,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 99,
+    "tin": 257,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 102,
+    "tin": 301,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 103,
+    "tin": 285,
+    "tout": 11,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ]
+ },
+ "vram": {
+  "ctx2048": {
+   "size": 255055625,
+   "size_vram": 255055625,
+   "ctx": 2048
+  },
+  "ctx16384": {
+   "size": 330553097,
+   "size_vram": 330553097,
+   "ctx": 16384
+  }
+ },
+ "summaryA": {
+  "caught": "3/4",
+  "falseAlarms": "1/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 112,
+  "tinRange": "194-291"
+ },
+ "summaryB": {
+  "caught": "3/4",
+  "falseAlarms": "0/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 115,
+  "tinRange": "244-341"
+ },
+ "trail": {
+  "fenced": false,
+  "thinkChars": 0,
+  "tin": 5288,
+  "tout": 157,
+  "ms": 10423,
+  "found": [
+   "55->15",
+   "56->18",
+   "57->28",
+   "58->35",
+   "59->38"
+  ],
+  "hitsAll": [
+   "55->15",
+   "56->18",
+   "57->28",
+   "58->35",
+   "59->38"
+  ],
+  "unrecorded": [],
+  "extra": 0
+ }
+}

@@ -1,0 +1,598 @@
+{
+ "model": "granite4.1:8b",
+ "pairs": {
+  "A1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude as judge",
+    "ms": 4134,
+    "tin": 218,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 219,
+    "tin": 186,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "neither was acted on in this run; the report only recommends it and the #9 reviewer prompts don't include them",
+    "ms": 286,
+    "tin": 215,
+    "tout": 42,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "entailment",
+    "span": "",
+    "ms": 163,
+    "tin": 262,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 15's evidence file was never committed",
+    "ms": 216,
+    "tin": 198,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 138,
+    "tin": 220,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the cited version of the page is gone, so the current page is not the reference; the re-run must not clobber curated fields",
+    "ms": 331,
+    "tin": 253,
+    "tout": 45,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 172,
+    "tin": 276,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "changed the MATH summary's 'do not use an LLM judge' line to the tiered grading plan. Why: it contradicted the user's grading decision (rule",
+    "ms": 401,
+    "tin": 206,
+    "tout": 57,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "one agent builds the brief check test-first and drafts the brief as returned text; the orchestrator writes brief.md and runs the check.",
+    "ms": 298,
+    "tin": 201,
+    "tout": 41,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 146,
+    "tin": 223,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 142,
+    "tin": 230,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "A2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude as judge",
+    "ms": 167,
+    "tin": 218,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 185,
+    "tin": 186,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "neither was acted on in this run; the report only recommends it and the #9 reviewer prompts don't include them",
+    "ms": 262,
+    "tin": 215,
+    "tout": 42,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "entailment",
+    "span": "",
+    "ms": 135,
+    "tin": 262,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "line 15's evidence file was never committed",
+    "ms": 196,
+    "tin": 198,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 119,
+    "tin": 220,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the cited version of the page is gone, so the current page is not the reference; the re-run must not clobber curated fields",
+    "ms": 291,
+    "tin": 253,
+    "tout": 45,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 131,
+    "tin": 276,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "changed the MATH summary's 'do not use an LLM judge' line to the tiered grading plan. Why: it contradicted the user's grading decision (rule",
+    "ms": 359,
+    "tin": 206,
+    "tout": 57,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "one agent builds the brief check test-first and drafts the brief as returned text; the orchestrator writes brief.md and runs the check.",
+    "ms": 268,
+    "tin": 201,
+    "tout": 41,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 130,
+    "tin": 223,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 117,
+    "tin": 230,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude as judge",
+    "ms": 191,
+    "tin": 270,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 210,
+    "tin": 238,
+    "tout": 26,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "neither was acted on in this run",
+    "ms": 189,
+    "tin": 267,
+    "tout": 26,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "entailment",
+    "span": "",
+    "ms": 154,
+    "tin": 314,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "line 15's evidence file was never committed",
+    "ms": 212,
+    "tin": 250,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 134,
+    "tin": 272,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page out of the repo; Why: the cited version of the page is gone, so the current page is not the reference; the re-run must not c",
+    "ms": 362,
+    "tin": 305,
+    "tout": 55,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 156,
+    "tin": 328,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "changed the MATH summary's 'do not use an LLM judge' line to the tiered grading plan",
+    "ms": 285,
+    "tin": 258,
+    "tout": 40,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the orchestrator writes brief.md and runs the check",
+    "ms": 218,
+    "tin": 253,
+    "tout": 28,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 134,
+    "tin": 275,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 154,
+    "tin": 282,
+    "tout": 15,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "Claude as judge",
+    "ms": 170,
+    "tin": 270,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 209,
+    "tin": 238,
+    "tout": 26,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "neither was acted on in this run",
+    "ms": 186,
+    "tin": 267,
+    "tout": 26,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "entailment",
+    "span": "",
+    "ms": 116,
+    "tin": 314,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "line 15's evidence file was never committed",
+    "ms": 206,
+    "tin": 250,
+    "tout": 21,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 134,
+    "tin": 272,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page out of the repo; Why: the cited version of the page is gone, so the current page is not the reference; the re-run must not c",
+    "ms": 330,
+    "tin": 305,
+    "tout": 55,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 135,
+    "tin": 328,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "changed the MATH summary's 'do not use an LLM judge' line to the tiered grading plan",
+    "ms": 264,
+    "tin": 258,
+    "tout": 40,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "the orchestrator writes brief.md and runs the check",
+    "ms": 223,
+    "tin": 253,
+    "tout": 28,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 133,
+    "tin": 275,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 121,
+    "tin": 282,
+    "tout": 15,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ]
+ },
+ "vram": {
+  "ctx2048": {
+   "size": 5554600672,
+   "size_vram": 5554600672,
+   "ctx": 2048
+  },
+  "ctx16384": {
+   "size": 8038687702,
+   "size_vram": 8038687702,
+   "ctx": 16384
+  }
+ },
+ "summaryA": {
+  "caught": "3/4",
+  "falseAlarms": "4/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 219,
+  "tinRange": "186-276"
+ },
+ "summaryB": {
+  "caught": "3/4",
+  "falseAlarms": "3/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 191,
+  "tinRange": "238-328"
+ },
+ "trail": {
+  "fenced": false,
+  "thinkChars": 0,
+  "tin": 4900,
+  "tout": 564,
+  "ms": 9708,
+  "found": [
+   "15->7",
+   "49->49",
+   "58->35",
+   "60->51",
+   "66->15",
+   "66->18",
+   "66->28",
+   "66->35",
+   "66->38",
+   "66->51"
+  ],
+  "hitsAll": [
+   "58->35",
+   "60->51"
+  ],
+  "unrecorded": [],
+  "extra": 8
+ }
+}

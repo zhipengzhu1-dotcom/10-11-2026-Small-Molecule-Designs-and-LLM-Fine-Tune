@@ -1,0 +1,1643 @@
+{
+ "n": 73,
+ "pairs": [
+  {
+   "q": 43,
+   "t": 41,
+   "how": "explicit"
+  },
+  {
+   "q": 55,
+   "t": 15,
+   "how": "explicit"
+  },
+  {
+   "q": 56,
+   "t": 18,
+   "how": "explicit"
+  },
+  {
+   "q": 57,
+   "t": 28,
+   "how": "explicit"
+  },
+  {
+   "q": 58,
+   "t": 35,
+   "how": "explicit"
+  },
+  {
+   "q": 59,
+   "t": 38,
+   "how": "explicit"
+  },
+  {
+   "q": 60,
+   "t": 51,
+   "how": "explicit"
+  },
+  {
+   "q": 71,
+   "t": 21,
+   "how": "hand"
+  },
+  {
+   "q": 51,
+   "t": 3,
+   "how": "hand"
+  },
+  {
+   "q": 47,
+   "t": 43,
+   "how": "hand"
+  },
+  {
+   "q": 49,
+   "t": 45,
+   "how": "hand"
+  },
+  {
+   "q": 64,
+   "t": 44,
+   "how": "hand"
+  }
+ ],
+ "methods": {
+  "tfidf": {
+   "all": {
+    "mrr": 0.919,
+    "r1": "11/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.805,
+    "r1": "4/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.281
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.901
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.286
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.844
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.466
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.858
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.829
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.221
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 37,
+     "of": 49,
+     "s": 0.008
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 1,
+     "of": 45,
+     "s": 0.223
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.226
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.143
+    }
+   ],
+   "dim": 904,
+   "cosMedian": 0.018,
+   "cosMax": 0.901
+  },
+  "embeddinggemma plain": {
+   "all": {
+    "mrr": 0.925,
+    "r1": "11/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.82,
+    "r1": "4/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.624
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.965
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.786
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.926
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.852
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.953
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.937
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.673
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 10,
+     "of": 49,
+     "s": 0.402
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 1,
+     "of": 45,
+     "s": 0.542
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.6
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.637
+    }
+   ],
+   "dim": 768,
+   "embedMs": 25371,
+   "size": 681417113,
+   "size_vram": 681417113,
+   "ctx": 2048,
+   "cosMedian": 0.33,
+   "cosMax": 0.965
+  },
+  "embeddinggemma prompted": {
+   "all": {
+    "mrr": 0.923,
+    "r1": "11/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.815,
+    "r1": "4/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.543
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.901
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.754
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.831
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.792
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.926
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.896
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.6
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 13,
+     "of": 49,
+     "s": 0.324
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 1,
+     "of": 45,
+     "s": 0.578
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.521
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.629
+    }
+   ],
+   "dim": 768,
+   "embedMs": 1201,
+   "size": 681417113,
+   "size_vram": 681417113,
+   "ctx": 2048,
+   "cosMedian": 0.343,
+   "cosMax": 0.966
+  },
+  "qwen3-embedding plain": {
+   "all": {
+    "mrr": 0.822,
+    "r1": "9/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.574,
+    "r1": "2/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.844
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.954
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.894
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.956
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.913
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.955
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.934
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.637
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 28,
+     "of": 49,
+     "s": 0.527
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 2,
+     "of": 45,
+     "s": 0.796
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 3,
+     "of": 47,
+     "s": 0.635
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.831
+    }
+   ],
+   "dim": 1024,
+   "embedMs": 22537,
+   "size": 2370652077,
+   "size_vram": 2370652077,
+   "ctx": 4096,
+   "cosMedian": 0.477,
+   "cosMax": 0.956
+  },
+  "qwen3-embedding instructed": {
+   "all": {
+    "mrr": 0.88,
+    "r1": "10/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.711,
+    "r1": "3/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.754
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.861
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.8
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.933
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.863
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.905
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.779
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.593
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 18,
+     "of": 49,
+     "s": 0.451
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 2,
+     "of": 45,
+     "s": 0.543
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.616
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.729
+    }
+   ],
+   "dim": 1024,
+   "embedMs": 1834,
+   "size": 2370652077,
+   "size_vram": 2370652077,
+   "ctx": 4096,
+   "cosMedian": 0.477,
+   "cosMax": 0.956
+  },
+  "phaseTree": {
+   "all": {
+    "mrr": 0.693,
+    "r1": "7/12",
+    "r3": "9/12"
+   },
+   "explicit": {
+    "mrr": 0.857,
+    "r1": "5/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.464,
+    "r1": "2/5",
+    "r3": "2/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": -1.996
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 2,
+     "of": 53,
+     "s": 0.002
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.002
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.003
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 2,
+     "of": 56,
+     "s": 0.004
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.004
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.005
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.002
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 38,
+     "of": 49,
+     "s": -4
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 24,
+     "of": 45,
+     "s": -3.996
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 4,
+     "of": 47,
+     "s": -1.996
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.004
+    }
+   ]
+  },
+  "RRF(tfidf + embeddinggemma plain)": {
+   "all": {
+    "mrr": 0.921,
+    "r1": "11/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.811,
+    "r1": "4/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.033
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.033
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.033
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.033
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.033
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.033
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.033
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.033
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 18,
+     "of": 49,
+     "s": 0.025
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 1,
+     "of": 45,
+     "s": 0.033
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.033
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.033
+    }
+   ]
+  },
+  "RRF(tfidf + embeddinggemma prompted)": {
+   "all": {
+    "mrr": 0.921,
+    "r1": "11/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.811,
+    "r1": "4/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.033
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.033
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.033
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.033
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.033
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.033
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.033
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.033
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 19,
+     "of": 49,
+     "s": 0.024
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 1,
+     "of": 45,
+     "s": 0.033
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.033
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.033
+    }
+   ]
+  },
+  "RRF(tfidf + qwen3-embedding plain)": {
+   "all": {
+    "mrr": 0.919,
+    "r1": "11/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.805,
+    "r1": "4/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.033
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.033
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.033
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.033
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.033
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.033
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.033
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.033
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 38,
+     "of": 49,
+     "s": 0.022
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 1,
+     "of": 45,
+     "s": 0.033
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.032
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.033
+    }
+   ]
+  },
+  "RRF(tfidf + qwen3-embedding instructed)": {
+   "all": {
+    "mrr": 0.92,
+    "r1": "11/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.808,
+    "r1": "4/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.033
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.033
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.033
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.033
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.033
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.033
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.033
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.033
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 25,
+     "of": 49,
+     "s": 0.023
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 1,
+     "of": 45,
+     "s": 0.033
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.033
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.033
+    }
+   ]
+  },
+  "RRF(tfidf + phaseTree)": {
+   "all": {
+    "mrr": 0.849,
+    "r1": "10/12",
+    "r3": "10/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.638,
+    "r1": "3/5",
+    "r3": "3/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.033
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.033
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.033
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.033
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.033
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.033
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.033
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.033
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 44,
+     "of": 49,
+     "s": 0.021
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 6,
+     "of": 45,
+     "s": 0.028
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.032
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.033
+    }
+   ]
+  },
+  "RRF(tfidf + phaseTree + embeddinggemma plain)": {
+   "all": {
+    "mrr": 0.857,
+    "r1": "10/12",
+    "r3": "10/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.657,
+    "r1": "3/5",
+    "r3": "3/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.049
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.049
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.049
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.049
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.049
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.049
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.049
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.049
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 27,
+     "of": 49,
+     "s": 0.035
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 4,
+     "of": 45,
+     "s": 0.045
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.048
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.049
+    }
+   ]
+  },
+  "RRF(tfidf + phaseTree + embeddinggemma prompted)": {
+   "all": {
+    "mrr": 0.864,
+    "r1": "10/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.674,
+    "r1": "3/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.049
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.049
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.049
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.049
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.049
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.049
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.049
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.049
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 29,
+     "of": 49,
+     "s": 0.034
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 3,
+     "of": 45,
+     "s": 0.045
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.048
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.049
+    }
+   ]
+  },
+  "RRF(tfidf + phaseTree + qwen3-embedding plain)": {
+   "all": {
+    "mrr": 0.877,
+    "r1": "10/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.705,
+    "r1": "3/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.049
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.049
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.049
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.049
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.049
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.049
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.049
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.049
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 42,
+     "of": 49,
+     "s": 0.032
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 2,
+     "of": 45,
+     "s": 0.044
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.048
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.049
+    }
+   ]
+  },
+  "RRF(tfidf + phaseTree + qwen3-embedding instructed)": {
+   "all": {
+    "mrr": 0.864,
+    "r1": "10/12",
+    "r3": "11/12"
+   },
+   "explicit": {
+    "mrr": 1,
+    "r1": "7/7",
+    "r3": "7/7"
+   },
+   "hand": {
+    "mrr": 0.673,
+    "r1": "3/5",
+    "r3": "4/5"
+   },
+   "per": [
+    {
+     "pair": "43->41",
+     "how": "explicit",
+     "rank": 1,
+     "of": 41,
+     "s": 0.049
+    },
+    {
+     "pair": "55->15",
+     "how": "explicit",
+     "rank": 1,
+     "of": 53,
+     "s": 0.049
+    },
+    {
+     "pair": "56->18",
+     "how": "explicit",
+     "rank": 1,
+     "of": 54,
+     "s": 0.049
+    },
+    {
+     "pair": "57->28",
+     "how": "explicit",
+     "rank": 1,
+     "of": 55,
+     "s": 0.049
+    },
+    {
+     "pair": "58->35",
+     "how": "explicit",
+     "rank": 1,
+     "of": 56,
+     "s": 0.049
+    },
+    {
+     "pair": "59->38",
+     "how": "explicit",
+     "rank": 1,
+     "of": 57,
+     "s": 0.049
+    },
+    {
+     "pair": "60->51",
+     "how": "explicit",
+     "rank": 1,
+     "of": 58,
+     "s": 0.049
+    },
+    {
+     "pair": "71->21",
+     "how": "hand",
+     "rank": 1,
+     "of": 69,
+     "s": 0.049
+    },
+    {
+     "pair": "51->3",
+     "how": "hand",
+     "rank": 31,
+     "of": 49,
+     "s": 0.033
+    },
+    {
+     "pair": "47->43",
+     "how": "hand",
+     "rank": 3,
+     "of": 45,
+     "s": 0.044
+    },
+    {
+     "pair": "49->45",
+     "how": "hand",
+     "rank": 1,
+     "of": 47,
+     "s": 0.048
+    },
+    {
+     "pair": "64->44",
+     "how": "hand",
+     "rank": 1,
+     "of": 62,
+     "s": 0.049
+    }
+   ]
+  }
+ }
+}

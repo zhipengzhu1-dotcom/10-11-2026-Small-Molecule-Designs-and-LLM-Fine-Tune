@@ -1,0 +1,598 @@
+{
+ "model": "qwen3.5:4b",
+ "pairs": {
+  "A1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "then a local model, then Claude as judge",
+    "ms": 31862,
+    "tin": 224,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 170,
+    "tin": 194,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "recommends borrowing the ARIS claim-audit checklists without installing ARIS",
+    "ms": 203,
+    "tin": 222,
+    "tout": 30,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "the live URL now serves a different page (not checked for exp-01-21)",
+    "ms": 232,
+    "tin": 298,
+    "tout": 34,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 150,
+    "tin": 205,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 145,
+    "tin": 237,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page to the scratchpad and deleted it",
+    "ms": 205,
+    "tin": 263,
+    "tout": 31,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 131,
+    "tin": 283,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 151,
+    "tin": 212,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 125,
+    "tin": 208,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 158,
+    "tin": 248,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 138,
+    "tin": 239,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "A2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "then a local model, then Claude as judge",
+    "ms": 187,
+    "tin": 224,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 172,
+    "tin": 194,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "recommends borrowing the ARIS claim-audit checklists without installing ARIS",
+    "ms": 209,
+    "tin": 222,
+    "tout": 30,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "the live URL now serves a different page (not checked for exp-01-21)",
+    "ms": 226,
+    "tin": 298,
+    "tout": 34,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 155,
+    "tin": 205,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 135,
+    "tin": 237,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page to the scratchpad and deleted it",
+    "ms": 219,
+    "tin": 263,
+    "tout": 31,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 144,
+    "tin": 283,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 145,
+    "tin": 212,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 125,
+    "tin": 208,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 141,
+    "tin": 248,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 133,
+    "tin": 239,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B1": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "then a local model, then Claude as judge",
+    "ms": 180,
+    "tin": 276,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 199,
+    "tin": 246,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 110,
+    "tin": 274,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 145,
+    "tin": 350,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 143,
+    "tin": 257,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 111,
+    "tin": 289,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page to the scratchpad and deleted it",
+    "ms": 214,
+    "tin": 315,
+    "tout": 31,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 139,
+    "tin": 335,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 156,
+    "tin": 264,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 110,
+    "tin": 260,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 139,
+    "tin": 300,
+    "tout": 18,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 143,
+    "tin": 291,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ],
+  "B2": [
+   {
+    "pair": "41->43",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "then a local model, then Claude as judge",
+    "ms": 180,
+    "tin": 276,
+    "tout": 23,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "21->71",
+    "gold": "C",
+    "label": "contradiction",
+    "span": "standing push-after-merge consent is withdrawn",
+    "ms": 205,
+    "tin": 246,
+    "tout": 22,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "18->56",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 116,
+    "tin": 274,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "38->59",
+    "gold": "C",
+    "label": "neutral",
+    "span": "",
+    "ms": 135,
+    "tin": 350,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "15->55",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 143,
+    "tin": 257,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "28->57",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 107,
+    "tin": 289,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "35->58",
+    "gold": "not C",
+    "label": "contradiction",
+    "span": "moved that page to the scratchpad and deleted it",
+    "ms": 215,
+    "tin": 315,
+    "tout": 31,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "51->60",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 135,
+    "tin": 335,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "43->47",
+    "gold": "not C",
+    "label": "entailment",
+    "span": "",
+    "ms": 154,
+    "tin": 264,
+    "tout": 14,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "45->49",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 109,
+    "tin": 260,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "11->53",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 137,
+    "tin": 300,
+    "tout": 18,
+    "thinkChars": 0,
+    "fenced": false
+   },
+   {
+    "pair": "3->51",
+    "gold": "not C",
+    "label": "neutral",
+    "span": "",
+    "ms": 150,
+    "tin": 291,
+    "tout": 12,
+    "thinkChars": 0,
+    "fenced": false
+   }
+  ]
+ },
+ "vram": {
+  "ctx2048": {
+   "size": 3060803828,
+   "size_vram": 3060803828,
+   "ctx": 2048
+  },
+  "ctx16384": {
+   "size": 3629142506,
+   "size_vram": 3629142506,
+   "ctx": 16384
+  }
+ },
+ "summaryA": {
+  "caught": "4/4",
+  "falseAlarms": "1/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 158,
+  "tinRange": "194-298"
+ },
+ "summaryB": {
+  "caught": "2/4",
+  "falseAlarms": "1/8",
+  "unparsed": 0,
+  "fenced": 0,
+  "thinking": 0,
+  "repeat": "12/12",
+  "msMedian": 143,
+  "tinRange": "246-350"
+ },
+ "trail": {
+  "fenced": false,
+  "thinkChars": 0,
+  "tin": 5166,
+  "tout": 194,
+  "ms": 7695,
+  "found": [
+   "55->15",
+   "56->18",
+   "57->28",
+   "58->35",
+   "59->38",
+   "60->51"
+  ],
+  "hitsAll": [
+   "55->15",
+   "56->18",
+   "57->28",
+   "58->35",
+   "59->38",
+   "60->51"
+  ],
+  "unrecorded": [],
+  "extra": 0
+ }
+}
