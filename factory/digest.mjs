@@ -6,6 +6,8 @@
 //
 //   npm run digest -- dispatch <ticket> [--all] [--root <repo>]
 //       the standing decisions that bind the ticket, for the worker's prompt
+//   npm run digest -- frontier <spec> [--all] [--root <repo>]
+//       the hand-backs nobody acted on and the orphaned or doubled stops, in the spec's runs
 import { cli, UsageError } from './cli.mjs';
 import { buildGraph } from './graph.mjs';
 import { defaultRoot } from './log.mjs';
@@ -40,10 +42,29 @@ export function dispatchRead(graph, n, all = false) {
   return capRead(`dispatch #${n}: ${bound.length} standing decision${s} bind${s ? '' : 's'} it`, items, `npm run digest -- dispatch ${n} --all`, all);
 }
 
-const MOMENTS = { dispatch: dispatchRead };
+// The frontier moment for spec s: the hand-backs no later decision or dispatch acted on, ISSUES and
+// BLOCKED first, then each orphaned or doubled stop, over the agents of the spec's runs.
+export function frontierRead(graph, s, all = false) {
+  const unacted = graph.unacted(s);
+  const stops = graph.lifecycle(s);
+  if (!unacted.length && !stops.length) return [`frontier #${s}: every hand-back acted on, no orphaned or doubled stop`];
+  const gist = (report) => (report ?? '').split('\n').map((l) => l.replace(/^\s*(PASS|ISSUES|BLOCKED)\b[\s:.,-]*/, '').trim()).find(Boolean) ?? '';
+  const items = [
+    ...unacted.map((h) => cut(`  ${h.id} ${h.status}, ${h.role ?? 'unknown'} #${h.ticket ?? '-'}${gist(h.report) ? `: ${gist(h.report)}` : ''}`)),
+    ...stops.map((p) => `  ${p.id} ${p.kind} of agent ${p.agent}`),
+  ];
+  const n = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+  const head = [
+    ...(unacted.length ? [`${n(unacted.length, 'hand-back', 'hand-backs')} not acted on`] : []),
+    ...(stops.length ? [`${n(stops.length, 'orphaned or doubled stop', 'orphaned or doubled stops')}`] : []),
+  ];
+  return capRead(`frontier #${s}: ${head.join(', ')}`, items, `npm run digest -- frontier ${s} --all`, all);
+}
+
+const MOMENTS = { dispatch: dispatchRead, frontier: frontierRead };
 
 cli(import.meta.url, {
-  usage: 'node factory/digest.mjs dispatch <ticket> [--all] [--root <repo>]',
+  usage: 'node factory/digest.mjs dispatch <ticket> | frontier <spec> [--all] [--root <repo>]',
   options: { all: 'flag', root: 'string' },
   positionals: true,
 }, ({ positionals: [moment, ticket, ...extra], all, root = defaultRoot() }) => {

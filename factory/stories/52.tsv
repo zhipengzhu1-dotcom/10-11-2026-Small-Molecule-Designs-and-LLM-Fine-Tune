@@ -64,10 +64,21 @@ story	kind	name
 28	test	a corrects row leaves the row it corrects in, and superseding the correction changes nothing for that row
 29	test	the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec
 29	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
+31	test	a hand-back no later decision or dispatch acted on is listed, ISSUES and BLOCKED before the rest
+31	test	a later row or dispatch acts on a hand-back by citing it: its event, agent, branch or log, a file it wrote, a commit it checked, or a resume
+31	test	for a spec, both lists keep to agents with an event in a run that logged its ticket graph, wherever the agent ran before
+31	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
+32	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
+32	test	an orphaned stop and a doubled stop are reported, and nothing else
+32	test	the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops
+38	test	happens-before comes from dispatches and citations, never from ts: inverted timestamps order correctly
+38	test	an agent resumed across two runs, with 6 starts and 6 stops, replays clean
 39	test	the dispatch read prints one line when no standing decision binds the ticket
+39	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 39	test	a long dispatch read stops at 15 lines, the last one naming the command for the rest
 39	test	a long decision is cut so each line stays short
 42	test	the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out
 42	test	the dispatch read prints one line when no standing decision binds the ticket
+42	test	the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean
 43	test	the digest never writes: the factory root is the same after a read
 44	none	-
