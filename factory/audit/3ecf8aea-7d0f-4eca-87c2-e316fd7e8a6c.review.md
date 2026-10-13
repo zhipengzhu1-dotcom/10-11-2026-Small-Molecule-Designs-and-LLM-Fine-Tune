@@ -2,16 +2,16 @@
 
 reviewed by qwen3.5:4b
 
-Per-pair review of decision-log rows 95, 96, 97, 100, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, by `npm run audit -- review`: each row that still stands against its 3 nearest earlier rows that still stand (TF-IDF), one qwen3.5:4b call per pair, thinking off. A pair the later row already marks (supersedes, withdraws, corrects) is dropped after the judge. It is a sanity check, not a gate: the scripted checks carry the weight.
+Per-pair review of decision-log rows 95, 96, 97, 100, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, by `npm run audit -- review`: each row that still stands against its 3 nearest earlier rows that still stand (TF-IDF), one qwen3.5:4b call per pair, thinking off. A pair the later row already marks (supersedes, withdraws, corrects) is dropped after the judge. It is a sanity check, not a gate: the scripted checks carry the weight.
 
 ## Flags
 
-7 of the 45 pairs judged are flagged.
+7 of the 48 pairs judged are flagged.
 
 - row:91 → row:100 (0.27) contradicts: The new decision redefines the criteria for a ticket being considered 'merged' based on commit presence rather than GitHub closure status, which directly opposes the earlier instruction to close tickets via the spec PR.
   - row:91: gap found by the audit: closed the 13 finished tickets (#13-#17, #19-#21, #40, #44-#47) on GitHub before the push, each with a comment naming its merge commit on spec1/leftovers
   - row:100: a ticket counts as merged when the integration branch has its 'Merge #<n>' commit, not when GitHub closes it; graph tickets put each overlay in a sibling file behind buildGraph
-- row:12 → row:100 (0.21) contradicts: The new decision defines ticket merging based on the commit presence rather than GitHub issue closure, which directly opposes the earlier requirement to close tickets only when the GitHub issue is closed.
+- row:12 → row:100 (0.22) contradicts: The new decision defines ticket merging based on the commit presence rather than GitHub issue closure, which directly opposes the earlier requirement to close tickets only when the GitHub issue is closed.
   - row:12: used intake/s1 as the integration branch and opened no draft PR
   - row:100: a ticket counts as merged when the integration branch has its 'Merge #<n>' commit, not when GitHub closes it; graph tickets put each overlay in a sibling file behind buildGraph
 - row:110 → row:111 (0.11) contradicts: The new decision explicitly states that rebuttal is a mutual attack, which directly contradicts the earlier decision defining it as a one-way interaction.
@@ -20,7 +20,7 @@ Per-pair review of decision-log rows 95, 96, 97, 100, 106, 107, 108, 109, 110, 1
 - row:109 → row:113 (0.20) contradicts: The new decision explicitly states that branch names, files, and commits no longer count as receipts, which directly contradicts the earlier requirement for a hand-back to be acted upon through a commit of the ticket.
   - row:109: order and receipts from the code review: ts order is kept only within the orchestrator's own sequence (one process clock); across agents, stale checks use happensBefore and report only proven check-before-write; a hand-back counts as acted on through a decision row citing its event or agent, a dispatch whose Cause names it, or a Merge #<n> commit of the ticket the agent served; decide accepts event: and agent: pointers in evidence, checked against the stream
   - row:113: accept the fix pass's four calls: a resume still counts as acting on a hand-back; crew-graph T/C uses shortest-path hops, not the d=16 eigenmap (which scored a good star layout below random); branch names, files and commits no longer count as receipts; a Merge #<n> commit acts on every hand-back of its ticket
-- row:100 → row:113 (0.15) contradicts: The NEW decision explicitly states that a Merge #<n> commit acts on every hand-back, which directly contradicts the EARLIER decision that a ticket only counts as merged when this specific commit exists.
+- row:100 → row:113 (0.16) contradicts: The NEW decision explicitly states that a Merge #<n> commit acts on every hand-back, which directly contradicts the EARLIER decision that a ticket only counts as merged when this specific commit exists.
   - row:100: a ticket counts as merged when the integration branch has its 'Merge #<n>' commit, not when GitHub closes it; graph tickets put each overlay in a sibling file behind buildGraph
   - row:113: accept the fix pass's four calls: a resume still counts as acting on a hand-back; crew-graph T/C uses shortest-path hops, not the d=16 eigenmap (which scored a good star layout below random); branch names, files and commits no longer count as receipts; a Merge #<n> commit acts on every hand-back of its ticket
 - row:113 → row:114 (0.25) contradicts: The new decision explicitly states that Merge commits do not act on hand-backs, directly contradicting the earlier rule that they do.
