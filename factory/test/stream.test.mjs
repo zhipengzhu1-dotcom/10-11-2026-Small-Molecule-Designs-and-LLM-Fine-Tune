@@ -93,3 +93,80 @@ test('events from all agents and runs come back in ts order', () => {
     '2026-10-11T10:00:01.000Z', '2026-10-11T10:00:02.500Z', '2026-10-11T10:00:03.000Z', '2026-10-11T10:00:04.000Z',
   ]);
 });
+
+// The orchestrator's dispatch and message events (issue #56) sit in its own file and come back
+// as written, ticket a number and resume a boolean, in ts order with the agents they started.
+test('the reader passes dispatch and message events through, in ts order with the agents\' events', () => {
+  const root = tempRoot();
+  const put = (agent, events) => {
+    const dir = join(root, 'factory', 'agents', 'run-1');
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(join(dir, `${agent}.jsonl`), events.map((e) => JSON.stringify({ run: 'run-1', agent, ...e }) + '\n').join(''));
+  };
+  const launch = { ts: '2026-10-12T08:36:27.300Z', type: 'dispatch', to: 'ac2d803fe514dbc00', role: 'implementer', description: 'implementer #56 dispatch events', tool_use_id: 'toolu_01XE4vWVQAfoiA9t9VYJXiSu', ticket: 56 };
+  const message = { ts: '2026-10-12T08:50:00.000Z', type: 'message', to: 'ac2d803fe514dbc00', tool_use_id: 'toolu_01Au4XvoAJgt8C5AFxcB1BQV', cause: 'row:95' };
+  const resume = { ts: '2026-10-12T09:10:00.200Z', type: 'dispatch', to: 'ac2d803fe514dbc00', role: 'implementer', description: 'implementer #56 dispatch events', tool_use_id: 'toolu_013hYNkpCEmHRvxVAKzegd97', ticket: 56, resume: true, cause: 'row:96' };
+  put('orchestrator', [launch, message, resume]);
+  put('ac2d803fe514dbc00', [
+    { ts: '2026-10-12T08:36:26.964Z', type: 'agent.start', role: 'general-purpose', parent: 'orchestrator' },
+    { ts: '2026-10-12T09:00:00.000Z', type: 'agent.stop', role: 'general-purpose', status: 'ISSUES' },
+    { ts: '2026-10-12T09:10:00.100Z', type: 'agent.start', role: 'general-purpose', parent: 'orchestrator' },
+  ]);
+  const events = readStream(root);
+  assert.deepEqual(events.map((e) => [e.agent, e.type]), [
+    ['ac2d803fe514dbc00', 'agent.start'], ['orchestrator', 'dispatch'], ['orchestrator', 'message'],
+    ['ac2d803fe514dbc00', 'agent.stop'], ['ac2d803fe514dbc00', 'agent.start'], ['orchestrator', 'dispatch'],
+  ]);
+  assert.deepEqual(events.filter((e) => e.agent === 'orchestrator'), [launch, message, resume].map((e) => ({ run: 'run-1', agent: 'orchestrator', ...e })));
+});
+
+// A challenge is eliminated by a later event naming its id, never by an edit (issue #58). The id
+// is looked up in the whole stream, so a challenge from an earlier run can be eliminated later.
+test('challenge.eliminated names a challenge already in the stream, from any run', () => {
+  const root = tempRoot();
+  const raise = write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge', 'id=c1', 'target=row:21', 'why=withdrawn in prose']);
+  assert.equal(raise.status, 0, raise.stderr);
+  const end = write(['--root', root, '--run', 'run-2', '--agent', 'orchestrator', 'challenge.eliminated', 'of=c1', 'by=row:88']);
+  assert.equal(end.status, 0, end.stderr);
+  assert.deepEqual(readStream(root).map((e) => [e.run, e.type, e.id ?? e.of]), [['run-1', 'challenge', 'c1'], ['run-2', 'challenge.eliminated', 'c1']]);
+});
+
+test('challenge.eliminated naming no challenge in the stream is refused and nothing is written', () => {
+  const root = tempRoot();
+  write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge', 'id=c1', 'target=row:21', 'why=w']);
+  const r = write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge.eliminated', 'of=c2', 'by=row:88']);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /challenge\.eliminated: of c2 names no challenge in the stream/);
+  const bad = write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge.eliminated', 'of=c1', 'by=because']);
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /challenge\.eliminated: by because is not a pointer, row or event/);
+  assert.deepEqual(readStream(root).map((e) => e.type), ['challenge']);
+});
+
+test('a challenge reusing an id already in the stream is refused, so of=<id> names one challenge', () => {
+  const root = tempRoot();
+  write(['--root', root, '--run', 'run-1', '--agent', 'orchestrator', 'challenge', 'id=c1', 'target=row:21', 'why=w']);
+  const r = write(['--root', root, '--run', 'run-2', '--agent', 'orchestrator', 'challenge', 'id=c1', 'target=row:30', 'why=w']);
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /challenge: id c1 is already a challenge in the stream/);
+  assert.equal(readStream(root).length, 1);
+});
+
+// agent.stop events written before issue #21 also carry a `transcript` field (the subagent's
+// transcript path). The contract lists only role and status, and the path follows from run and
+// agent, so the stream leaves the field out and no consumer can come to depend on it (issue #62).
+test('the reader leaves the legacy transcript field out of agent.stop events, and only there', () => {
+  const root = tempRoot();
+  const dir = join(root, 'factory', 'agents', 'run-1');
+  mkdirSync(dir, { recursive: true });
+  appendFileSync(join(dir, 'worker-a.jsonl'), [
+    { ts: '2026-10-11T10:00:01.000Z', run: 'run-1', agent: 'worker-a', type: 'artifact', path: 'notes.md', kind: 'notes', transcript: 'kept' },
+    { ts: '2026-10-11T10:00:02.000Z', run: 'run-1', agent: 'worker-a', type: 'agent.stop', role: 'general-purpose', status: 'PASS',
+      transcript: 'C:/Users/me/.claude/projects/p/run-1/subagents/agent-worker-a.jsonl' },
+  ].map((e) => JSON.stringify(e) + '\n').join(''));
+
+  assert.deepEqual(readStream(root), [
+    { ts: '2026-10-11T10:00:01.000Z', run: 'run-1', agent: 'worker-a', type: 'artifact', path: 'notes.md', kind: 'notes', transcript: 'kept' },
+    { ts: '2026-10-11T10:00:02.000Z', run: 'run-1', agent: 'worker-a', type: 'agent.stop', role: 'general-purpose', status: 'PASS' },
+  ]);
+});

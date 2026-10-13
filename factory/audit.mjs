@@ -10,12 +10,14 @@
 //                                      appends the verdict to factory/audit/<session>.tsv, with the
 //                                      row's ts, once the trail check's own rules pass on it
 //   npm run audit -- review [--host <url>]
-//                                      the cross-family review: sends the session's audited rows,
-//                                      its audit and its digest to local qwen (review-qwen.mjs) and
-//                                      writes factory/audit/<session>.review.md
+//                                      the cross-family review (trail-review.mjs): each of the
+//                                      session's audited rows against its 3 nearest earlier standing
+//                                      rows, one local qwen3.5:4b call per pair (judge.mjs), written
+//                                      to factory/audit/<session>.review.md
 //
-// A row's session is the one its evidence names (`npm run decide` puts
-// "~/.claude/projects/<slug>/<session>.jsonl @<time>" first); --run names it for older rows.
+// A row's session is the one its evidence names (`npm run decide` puts transcript:<session>@<iso>
+// first, and "~/.claude/projects/<slug>/<session>.jsonl @<time>" before spec #52); --run names it
+// for older rows.
 // review's session is --run, else FACTORY_RUN, else the run marker's run.
 // Transcripts: --transcripts, else the main checkout's Claude Code transcripts folder.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -23,8 +25,12 @@ import { dirname, join } from 'node:path';
 import { readLog, verdictProblems } from './checks/trail.mjs';
 import { cli, UsageError } from './cli.mjs';
 import { defaultRoot } from './log.mjs';
-import { MODEL, review as askQwen } from './review-qwen.mjs';
+import { parsePointer } from './pointer.mjs';
+import { buildGraph } from './graph.mjs';
+import { createJudge } from './judge.mjs';
+import { readStream } from './read.mjs';
 import { defaultRun } from './run-marker.mjs';
+import { reviewText, trailReview } from './trail-review.mjs';
 import { digest, projectTranscripts } from './transcript.mjs';
 
 // The decision row on `line` of the log, or a UsageError.
@@ -34,8 +40,13 @@ function rowAt(log, line) {
   return r;
 }
 
-// The session named by row `r`'s evidence, or undefined.
-const namedSession = (r) => /([^/\\\s]+)\.jsonl @/.exec(r.cells[4] ?? '')?.[1];
+// The session named by row `r`'s evidence, or undefined: its first transcript: pointer, else the
+// "<session>.jsonl @<time>" path that npm run decide wrote before spec #52.
+function namedSession(r) {
+  const evidence = r.cells[4] ?? '';
+  const pointer = evidence.split(';').map((s) => parsePointer(s.trim())).find((p) => p?.kind === 'transcript' && !p.problem);
+  return pointer?.session ?? /([^/\\\s]+)\.jsonl @/.exec(evidence)?.[1];
+}
 
 // The session whose transcript logged row `r`: --run, else the one its evidence names.
 function sessionOf(r, run) {
@@ -91,44 +102,22 @@ function add(opts, log, [line, verdict, ...extra], { pointers = '', note, by }) 
   return `factory/audit/${audit}: line ${r.line} ${verdict}`;
 }
 
-const PROMPT = 'You are reviewing decision-log rows and their audit. Use only the attached files. Flag weak evidence, '
-  + 'claims the pointers do not support, skipped checks, and anything the transcript digest shows that the rows or the '
-  + 'audit leave out. List each flag with the line or timestamp it concerns. If nothing is wrong, say so plainly. Be brief.';
-
-// The cross-family review of one session's audit, written beside it under the "reviewed by" line
-// the trail check reads.
+// The cross-family review of one session's audited rows by per-pair judging (trail-review.mjs),
+// written beside its audit under the "reviewed by" line the trail check reads. A judge that fails
+// stops the review before anything is written.
 async function review(opts, log, host) {
   const session = opts.run ?? defaultRun(opts.root);
   if (!session) throw new UsageError('review needs a session: pass --run, set FACTORY_RUN or start a run marker');
   const rel = `factory/audit/${session}.tsv`;
   const file = join(opts.root, rel);
   if (!existsSync(file)) throw new Error(`no audit at ${rel}`);
-  const auditText = readFileSync(file, 'utf8');
-  const lines = [...new Set(auditText.split(/\r?\n/).slice(1).filter(Boolean).map((l) => Number(l.split('\t')[0])))];
-  const rows = lines.map((line) => rowAt(log, line)).map((r) => `line ${r.line}\t${r.text}`).join('\n');
-  const answer = await askQwen({
-    prompt: PROMPT,
-    host,
-    files: [
-      { path: 'factory/decisions.tsv (the audited rows)', text: rows },
-      { path: rel, text: auditText },
-      { path: `transcript digest of ${session}`, text: digest(transcriptFile(opts, session)).join('\n') },
-    ],
-  });
-  writeFileSync(file.replace(/\.tsv$/, '.review.md'), [
-    `# Trail review, run ${session.slice(0, 8)}`,
-    '',
-    `reviewed by ${MODEL}`,
-    '',
-    `Cross-family review of decision-log rows ${lines.join(', ')}, by \`npm run audit -- review\` (thinking off). `
-      + 'It is a sanity check, not a gate: the scripted checks carry the weight.',
-    '',
-    '## Flags, verbatim',
-    '',
-    answer,
-    '',
-  ].join('\n'));
-  return `${rel.replace(/\.tsv$/, '.review.md')}: reviewed by ${MODEL}`;
+  const lines = [...new Set(readFileSync(file, 'utf8').split(/\r?\n/).slice(1).filter(Boolean).map((l) => Number(l.split('\t')[0])))];
+  for (const line of lines) rowAt(log, line);
+  const judge = createJudge({ host });
+  const result = await trailReview({ graph: buildGraph(readStream(opts.root)), lines, judge });
+  const out = rel.replace(/\.tsv$/, '.review.md');
+  writeFileSync(join(opts.root, out), reviewText({ session, lines, model: judge.model, ...result }));
+  return `${out}: reviewed by ${judge.model}, ${result.flags.length} of ${result.judged} pairs flagged`;
 }
 
 cli(import.meta.url, {

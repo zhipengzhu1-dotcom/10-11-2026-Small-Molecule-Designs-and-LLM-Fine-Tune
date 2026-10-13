@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { cli, UsageError } from './cli.mjs';
 
-export const MODEL = 'qwen3.5:9b';
+const MODEL = 'qwen3.5:9b';
 const HOST = 'http://127.0.0.1:11434';
 // The s1 trail review (factory/audit/99ae39b6-...review.md) needed about 50K prompt tokens.
 const NUM_CTX = 65536;

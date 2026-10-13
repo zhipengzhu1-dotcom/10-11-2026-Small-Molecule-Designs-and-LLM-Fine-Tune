@@ -1,0 +1,568 @@
+test	result
+in an orchestrated run, a launch whose description breaks the grammar is denied with the grammar shown	pass
+in an orchestrated run, a launch that follows the grammar goes ahead	pass
+#- is accepted for work with no ticket	pass
+with no run marked, or a marker naming another run, a malformed description is allowed	pass
+a subagent's own Agent call is not checked	pass
+in an orchestrated run, a description that is missing, empty or lacks a part is denied	pass
+a payload that isn't JSON, or another tool's call, passes	pass
+the shared parser gives the role, the ticket number (null for #-) and what the agent does	pass
+.claude/settings.json runs the description hook before every Agent launch	pass
+show prints the row and its session since the session's previous row, each line with its pointer	pass
+show finds the session of a row whose evidence leads with a transcript:<session>@<iso> pointer, after an old-form row	pass
+add writes an ok verdict to the session's audit file, with the row's ts filled in	pass
+add refuses a pointer that does not resolve and writes nothing	pass
+review judges each audited row against its nearest earlier standing rows, one qwen3.5:4b call per pair, and the trail check then passes	pass
+review fails, writing no review, when the judge cannot be reached	pass
+with no --run and no FACTORY_RUN, the check files its event under run "manual"	pass
+with no --run and no FACTORY_RUN during an orchestrated run, the check files its event under the marked run	pass
+a brief whose every parameter row is backed passes and logs a pass check event	pass
+a row with no paper location or no verdict fails and the evidence names the row	pass
+a verdict outside VERIFIED, NOT VERIFIED and INCONCLUSIVE fails and the evidence names the row	pass
+a placeholder location (?, TBD, -) fails and the evidence names the row	pass
+a NOT VERIFIED or INCONCLUSIVE row with no assumption fails and the evidence names the row	pass
+a brief with no parameter rows fails rather than passing empty	pass
+an ID table missing a required column fails and the evidence names its header line	pass
+a second run with --download leaves the catalog byte for byte the same and requests nothing	pass
+hand edits to a catalog row survive a rerun	pass
+a ref whose curation says the cited page changed is never fetched and stays fetch-pending	pass
+a missing ignored file is restored only when its SHA-256 matches the catalog	pass
+a cited key missing from reference.bib fails the run by name and writes no catalog	pass
+a ref fetched by hand and recorded in curation.tsv shows as fetched and is never downloaded	pass
+a failing check prints the failure count and the first 5 failures, one per line	pass
+the check event still records every failure	pass
+with 5 failures or fewer, all are printed and nothing more is promised	pass
+a single failure is counted in the singular	pass
+a passing check still prints its evidence on one line	pass
+a check run for a ticket records the ticket number on its event	pass
+a check run with no ticket records none	pass
+a ticket that is not an issue number is a usage error, and no event is written	pass
+CI logs its per-test results and a ci check naming the commit, failing on any problem	pass
+a clean CI run logs a passing ci check	pass
+a skipped test fails CI unless its reason is an allowed one	pass
+pre-push stdin yields each pushed commit and skips deleted refs	pass
+CI runs one data check for every check:* script in package.json	pass
+factory/log.mjs --bogus prints its usage and exits 2	pass
+factory/log.mjs --root prints its usage and exits 2	pass
+factory/log.mjs --root --root x prints its usage and exits 2	pass
+factory/read.mjs --bogus prints its usage and exits 2	pass
+factory/read.mjs --root prints its usage and exits 2	pass
+factory/read.mjs --root --root x prints its usage and exits 2	pass
+factory/read.mjs research/s1/brief.md prints its usage and exits 2	pass
+factory/fetch-page.mjs --bogus prints its usage and exits 2	pass
+factory/fetch-page.mjs --port prints its usage and exits 2	pass
+factory/fetch-page.mjs --port --root x prints its usage and exits 2	pass
+factory/fetch-page.mjs research/s1/brief.md prints its usage and exits 2	pass
+factory/checks/brief.mjs --bogus prints its usage and exits 2	pass
+factory/checks/brief.mjs --brief prints its usage and exits 2	pass
+factory/checks/brief.mjs --brief --root x prints its usage and exits 2	pass
+factory/checks/brief.mjs research/s1/brief.md prints its usage and exits 2	pass
+factory/checks/references.mjs --bogus prints its usage and exits 2	pass
+factory/checks/references.mjs --catalog prints its usage and exits 2	pass
+factory/checks/references.mjs --catalog --root x prints its usage and exits 2	pass
+factory/checks/references.mjs research/s1/brief.md prints its usage and exits 2	pass
+factory/checks/tables.mjs --bogus prints its usage and exits 2	pass
+factory/checks/tables.mjs --notes prints its usage and exits 2	pass
+factory/checks/tables.mjs --notes --root x prints its usage and exits 2	pass
+factory/checks/tables.mjs research/s1/brief.md prints its usage and exits 2	pass
+factory/checks/trail.mjs --bogus prints its usage and exits 2	pass
+factory/checks/trail.mjs --transcripts prints its usage and exits 2	pass
+factory/checks/trail.mjs --transcripts --root x prints its usage and exits 2	pass
+factory/checks/trail.mjs research/s1/brief.md prints its usage and exits 2	pass
+factory/checks/ticket.mjs --bogus prints its usage and exits 2	pass
+factory/checks/ticket.mjs --body prints its usage and exits 2	pass
+factory/checks/ticket.mjs --body --root x prints its usage and exits 2	pass
+factory/checks/ticket.mjs research/s1/brief.md prints its usage and exits 2	pass
+factory/run-marker.mjs --bogus prints its usage and exits 2	pass
+factory/run-marker.mjs --branch prints its usage and exits 2	pass
+factory/run-marker.mjs --branch --root x prints its usage and exits 2	pass
+factory/merge.mjs --bogus prints its usage and exits 2	pass
+factory/merge.mjs -m prints its usage and exits 2	pass
+factory/merge.mjs -m --root x prints its usage and exits 2	pass
+factory/decide.mjs --bogus prints its usage and exits 2	pass
+factory/decide.mjs --run prints its usage and exits 2	pass
+factory/decide.mjs --run --root x prints its usage and exits 2	pass
+factory/audit.mjs --bogus prints its usage and exits 2	pass
+factory/audit.mjs --transcripts prints its usage and exits 2	pass
+factory/audit.mjs --transcripts --root x prints its usage and exits 2	pass
+factory/frontier.mjs --bogus prints its usage and exits 2	pass
+factory/frontier.mjs --root prints its usage and exits 2	pass
+factory/frontier.mjs --root --root x prints its usage and exits 2	pass
+factory/transcript.mjs --bogus prints its usage and exits 2	pass
+factory/transcript.mjs --root prints its usage and exits 2	pass
+factory/transcript.mjs --root --root x prints its usage and exits 2	pass
+factory/review-qwen.mjs --bogus prints its usage and exits 2	pass
+factory/review-qwen.mjs --out prints its usage and exits 2	pass
+factory/review-qwen.mjs --out --root x prints its usage and exits 2	pass
+scripts/catalog-refs.mjs --bogus prints its usage and exits 2	pass
+scripts/catalog-refs.mjs --latex prints its usage and exits 2	pass
+scripts/catalog-refs.mjs --latex --root x prints its usage and exits 2	pass
+scripts/catalog-refs.mjs research/s1/brief.md prints its usage and exits 2	pass
+scripts/fetch-s1.mjs --bogus prints its usage and exits 2	pass
+scripts/fetch-s1.mjs --base-url prints its usage and exits 2	pass
+scripts/fetch-s1.mjs --base-url --root x prints its usage and exits 2	pass
+scripts/fetch-s1.mjs research/s1/brief.md prints its usage and exits 2	pass
+scripts/rules.mjs --bogus prints its usage and exits 2	pass
+scripts/rules.mjs --root prints its usage and exits 2	pass
+scripts/rules.mjs --root --root x prints its usage and exits 2	pass
+scripts/rules.mjs research/s1/brief.md prints its usage and exits 2	pass
+scripts/ci.mjs --bogus prints its usage and exits 2	pass
+scripts/ci.mjs --rev prints its usage and exits 2	pass
+scripts/ci.mjs --rev --root x prints its usage and exits 2	pass
+scripts/ci.mjs research/s1/brief.md prints its usage and exits 2	pass
+in the orchestrated run, each prompt and tool call gets one short line with the context-token count	pass
+with no run marker, or one naming another run, the meter injects nothing	pass
+a tool call inside a subagent gets nothing	pass
+a transcript with no reply yet, or none on disk, gets nothing and no error	pass
+an agent running well past its role's earlier sojourns adds one line naming it, its role and ticket	pass
+the meter's output is unchanged when no agent is overdue: a running agent whose role has no history adds nothing	pass
+when the stream will not read, the meter says the overdue check failed instead of staying silent	pass
+.claude/settings.json runs the meter on every prompt and every tool call	pass
+each row relation flag puts "<relation> line N: " at the start of the decision cell, with " (part)" for a partial one	pass
+--closes <id> puts "closes challenge <id>: " at the start of the decision cell	pass
+--closes refuses with exit 2, and writes nothing, an id with no challenge event in the stream	pass
+several relation flags join in one prefix, separated by ", ", in the order supersedes, withdraws, corrects, closes	pass
+a relation pointing past the last row, at the header, or written as malformed text is refused with exit 2 before anything is written	pass
+a decision that already starts with a relation word is refused, pointing at the flag	pass
+--state puts the claim state first in result, as "<state>: <result>", or alone when result is left out	pass
+an unknown --state word, a check result or "defeated" is refused with exit 2 before anything is written	pass
+with no --state, result must already start with a claim state, else the row is refused	pass
+decide calls the installed pstack log.sh on the decision log, with a transcript:<session>@<iso> pointer to the session first in the evidence	pass
+decide takes the session from --run, then FACTORY_RUN, then the run marker	pass
+decide with no --run, FACTORY_RUN or run marker refuses, and asks for --run instead of taking the newest transcript	pass
+decide refuses with exit 2, and writes nothing, when a file: pointer in the evidence does not resolve	pass
+decide refuses an evidence item of an unknown pointer kind, or a malformed transcript: pointer, and writes nothing	pass
+decide takes event: and agent: pointers in the evidence when the stream holds them, and refuses one it does not	pass
+decide refuses with exit 2, and writes nothing, when a commit: pointer names no commit of the repo	pass
+decide refuses with exit 2, and writes nothing, when pstack is not installed or a cell is missing	pass
+decide prints the precedent check before it writes the row, flagging a standing row the judge finds contradicted	pass
+decide still writes the row when the judge is unreachable, and says so	pass
+decide --dry-run prints the precedent check and writes nothing	pass
+decision log rows join the stream as orchestrator decision events, merged by ts	pass
+every event carries ts, run, agent and type, and only decision events have a null run	pass
+a decision row with the wrong number of cells is reported with its line number	pass
+the dispatch read prints one line when no standing decision binds the ticket	pass
+the dispatch read lists each binding row by its pointer, why it binds, its claim state and any part out	pass
+a long dispatch read stops at 15 lines, the last one naming the command for the rest	pass
+a long decision is cut so each line stays short	pass
+the digest never writes: the factory root is the same after a read	pass
+the frontier read lists the zero-slack tickets and each start before a blocker's merge commit that no row explains	pass
+the frontier read is one line when every early start has a standing row that explains it	pass
+the frontier read says so when spec has no ticket-graph snapshot, or every ticket merged	pass
+the done read on a clean fixture run prints one line	pass
+the done read lists stories with no evidence, open challenges, undec rows and whether the run completed properly	pass
+the frontier read prints one line when every hand-back was acted on and every lifecycle replays clean	pass
+the frontier read lists the hand-backs nobody acted on, ISSUES and BLOCKED first, then orphaned and doubled stops	pass
+the done read names the gap when the snapshot lists no stories, and an unmerged ticket as an improper end	pass
+an unknown moment or a missing ticket number is a usage error	pass
+the disk layout places every node closer to its parent than to any non-ancestor; only its children tie	pass
+every tree edge has the same hyperbolic length, and distance is symmetric and zero only to itself	pass
+drawn from any focus, the focus sits at the centre and the drawing keeps the layout distances	pass
+the layout is the same every time for the same tree	pass
+a launch writes one dispatch in the orchestrator's activity file with agent, role, ticket, description and tool-use id	pass
+a launch for work with no ticket (#-) writes a dispatch with no ticket	pass
+a resume writes a dispatch keyed by resumedAgentId, carrying the role, ticket and description of the agent's launch	pass
+a resume of an agent with no dispatch on record writes a dispatch with role and description unknown	pass
+a message to a running agent writes a message event (a cause edge), not a dispatch	pass
+a SendMessage that failed writes nothing	pass
+a Cause: line in the prompt or message becomes the event's cause	pass
+a cause that isn't a valid target is still written, flagged cause_invalid	pass
+outside an orchestrated run (no marker, or a marker naming another run) nothing is written	pass
+a subagent's own Agent or SendMessage call writes nothing	pass
+another tool's call, or a payload that isn't JSON, writes nothing	pass
+on recorded calls, each dispatch's agent is the agent_id of the agent.start it caused	pass
+.claude/settings.json runs the dispatch hook after every Agent and SendMessage call	pass
+T(k) and C(k) score 1 for an identity projection	pass
+T(k) and C(k) score near the random baseline for a shuffled projection	pass
+T(1) and C(1) of a worked example: two points swapped on a line	pass
+a k of half the points or more has no score, since the measure is only normalised below n/2	pass
+the Laplacian eigenmap of a path orders its nodes along the path	pass
+the 2-D Laplacian eigenmap of a cycle is a regular polygon	pass
+an eigenmap asked for more dimensions than the graph has gives n - 1	pass
+hop distances count the links on a shortest path, and a node out of reach is infinitely far	pass
+dropping a file for an open fetch.failed ref saves it in that ref's raw folder and logs an artifact event	pass
+a drop for a ref with no open fetch.failed event is rejected and writes nothing	pass
+the page lists each open ref with its title, link and reason, and leaves out closed refs	pass
+the page works with no catalog and no events, and escapes untrusted titles and links	pass
+the page cannot be reached from another machine's address	skip
+a request naming another host (DNS rebinding) or a drop from another site is refused	pass
+a dropped filename that tries to leave the raw folder is reduced to a plain name inside it	pass
+a fetch.failed ref that is not a plain folder name cannot be used as a drop target	pass
+a second file with the same name is saved beside the first, never over it	pass
+a fresh checkout gets the PDF, the HTML and the extracted LaTeX, and keeps no tarball	pass
+a download whose SHA-256 differs from README.md fails, names the file and is not kept	pass
+an e-print holding a path that climbs out of the folder is refused and no LaTeX is written	pass
+an e-print holding an absolute path is refused and no LaTeX is written	pass
+an e-print holding a symlink is refused and no LaTeX is written	pass
+a second run finds every file already present and downloads nothing	pass
+a file already present is checked against README.md, and a changed one fails without being replaced	pass
+frontier sorts each child of the map by state, labels, assignee and open blockers, from one gh query	pass
+in an orchestrated run, the frontier writes one ticket-graph snapshot: each child with its title, state and open blockers	pass
+the snapshot lists the spec's user stories, the numbered items under its User Stories heading, so the done read sees a story missing from the map	pass
+with no run marked, the frontier writes nothing	pass
+repoOf reads owner and repo from an https or ssh GitHub remote	pass
+a subagent's git config write to the shared config is blocked with a message naming the fix	pass
+a subagent's `git config --unset core.hooksPath` is blocked	pass
+a subagent's `git config --global user.name "A B"` is blocked	pass
+a subagent's `git config --add remote.origin.fetch +refs/x` is blocked	pass
+a subagent's `git config set core.hooksPath .githooks` is blocked	pass
+a subagent's `git config --show-origin core.hooksPath .githooks` is blocked	pass
+a subagent's `git -C ../main config core.hooksPath .githooks` is blocked	pass
+a subagent's `cd sub && git config core.hooksPath .githooks` is blocked	pass
+a subagent's `echo "a; b" ; git config core.hooksPath .githooks` is blocked	pass
+a subagent's `cat > f <<'EOF'\nx\nEOF\ngit config core.hooksPath .githooks` is blocked	pass
+a subagent's `npm run hooks:install` is blocked	pass
+the PowerShell tool is checked too	pass
+the main session, other tools and unreadable input pass	pass
+a subagent's `git config --worktree core.hooksPath .githooks` runs	pass
+a subagent's `git config --global user.email` runs	pass
+a subagent's `git config --show-origin core.hooksPath` runs	pass
+a subagent's `git config --get core.hooksPath` runs	pass
+a subagent's `git config --get-regexp ^remote\.` runs	pass
+a subagent's `git config --list --show-origin` runs	pass
+a subagent's `git config -l` runs	pass
+a subagent's `git config user.email` runs	pass
+a subagent's `git config --type=bool core.bare` runs	pass
+a subagent's `git config --type bool core.bare` runs	pass
+a subagent's `git config get core.hooksPath` runs	pass
+a subagent's `git config list` runs	pass
+a subagent's `git config core.hooksPath 2>&1` runs	pass
+a subagent's `git config user.email > out.txt` runs	pass
+a subagent's `git -c core.hooksPath=x status` runs	pass
+a subagent's `echo "a; git config core.hooksPath .githooks"` runs	pass
+a subagent's `echo 'a && git config core.hooksPath x' | cat` runs	pass
+a subagent's `gh api repos/x -f body='{"note": "run | git config core.x y"}'` runs	pass
+a subagent's `node -e "console.log(1); git config core.x y"` runs	pass
+a subagent's `cat > notes.md <<'EOF'\nThen: git config core.hooksPath .githooks\nEOF` runs	pass
+a subagent's `cat > notes.md <<EOF\na; git config core.x y\nEOF` runs	pass
+a subagent's `x=$(git config core.hooksPath .githooks)` is blocked	pass
+a subagent's `echo "hooks: $(git config core.hooksPath .githooks)"` is blocked	pass
+a subagent's `bash -c "git config core.hooksPath .githooks"` is blocked	pass
+a subagent's `sh -c 'cd sub && git config core.x y'` is blocked	pass
+a subagent's `cmd /c git config core.hooksPath .githooks` is blocked	pass
+a subagent's `cmd /c "git config core.hooksPath .githooks"` is blocked	pass
+a subagent's `powershell -NoProfile -Command "git config core.x y"` is blocked	pass
+a subagent's `Write-Output "$(git config core.x y)"` is blocked	pass
+a write to the shared config through --file is blocked; one to any other file runs	pass
+a subagent's git config write in a throwaway repo outside the project runs	pass
+a write aimed at the project by --git-dir, --work-tree, GIT_DIR or GIT_WORK_TREE is blocked from anywhere	pass
+a write aimed by --git-dir or GIT_DIR at a throwaway repo runs	pass
+a write to the global config is blocked even from a throwaway repo	pass
+a substitution inside single quotes is data	pass
+.claude/settings.json runs the git config hook before every Bash and PowerShell call	pass
+a story with no story-map row is undeveloped, and a story whose only check failed shows an open doubt	pass
+a later pass eliminates an earlier fail's doubt, for a check and for a test in the results	pass
+a rebut on a row is a mutual attack: row and challenge are both undec until a row closes it, and withdrawing the closing row brings the doubt back	pass
+an undermine or undercut on a row is one-way: the row is out while the challenge stands	pass
+a failed check attacks the rows of its ticket's phase and the rows citing it until a later pass: the #4 close with an open defeater	pass
+ISSUES, BLOCKED and unknown stops and fetch.failed are doubts until a later PASS for the ticket, a fetched ref or a row citing them	pass
+a check that ran before its file's last write is an open undercut doubt on its story, until the check runs again	pass
+done counts residual doubt once per doubt: stories without passing evidence, failing evidence and open challenges, never multiplied	pass
+a hand-back no later decision or dispatch acted on is listed, ISSUES and BLOCKED before the rest	pass
+a hand-back is acted on by a row citing its event or agent, a dispatch whose Cause names it, a resume, or its ticket's Merge commit	pass
+only those count: an orchestrator check or challenge citing a hand-back, or a row naming its branch, log, file or commit, does not act on it	pass
+an agent: or event: citation of a name with a dot still counts, as the pointer grammar allows	pass
+an agent resumed across two runs, with 6 starts and 6 stops, replays clean	pass
+happens-before comes from dispatches and citations, never from ts: inverted timestamps order correctly	pass
+through readStream, happens-before ignores ts across agents: each file keeps its own order, and only the orchestrator's activity file and decision log interleave by ts	pass
+for a spec, both lists keep to agents with an event in a run that logged its ticket graph, wherever the agent ran before	pass
+an orphaned stop and a doubled stop are reported, and nothing else	pass
+a file written by two agents is reported with both writes; one agent rewriting its own file is not	pass
+a check that provably ran before its artifact's last write is stale; a check re-run after the write is not	pass
+a check concurrent with a write is not stale, whatever their ts: only happens-before counts	pass
+a check naming no written file, or a file only as part of a longer path, is never stale	pass
+both queries narrow to the given paths, which match an artifact logged by its absolute path too	pass
+an agent running past its role's bound from earlier runs is flagged; one whose role has no history is not	pass
+a resumed agent is timed from its latest start, and history comes only from other runs	pass
+with a run given, only that run's agents are flagged: an earlier run's agent that never stopped is left out	pass
+on spec #1's replaced rows, each recorded supersede or withdraw names its target as the rank-1 earlier neighbour	pass
+similarity is exact cosine: a text scores 1 against itself, 0 against a text sharing no term, and ranks highest first	pass
+the text nodes are decision rows (decision and why), hand-back reports and tickets (their titles)	pass
+precedents are the 3 nearest earlier rows that still stand: an out row is never one	pass
+the base is PROV-DM: agents, the events they ran as activities, rows, files and tickets as entities, named in the pointer grammar	pass
+a withdrawn row is out, and comes back in when its withdrawal is itself withdrawn	pass
+a superseded row stays out when its replacement is itself superseded: a supersede takes over its target's attacks	pass
+a partial supersede puts only the replaced part out: the row stays in with that part out	pass
+a partial supersede takes over no whole-row attack, since attacks do not name parts	pass
+two rows that withdraw each other are both undec, until standing rows withdraw them	pass
+the decisions that bind a ticket: standing given rows, and standing adopted rows on the ticket, its blockers or its spec	pass
+the graph module is pure: it, the pointer grammar and every module they import import no built-in or package, so no file, network or model code	pass
+a corrects row leaves the row it corrects in, and superseding the correction changes nothing for that row	pass
+a ticket started before its blocker merged, with no decision row explaining it, is an early start; a standing row naming both explains it	pass
+zero-slack tickets are the unmerged tickets on a longest chain, each ticket one step	pass
+proper completion: the sink is reached when every ticket merged, and proper only when every gate token was consumed too	pass
+with no run marker, SubagentStart and SubagentStop write nothing and inject no writer instructions	pass
+with a run marker naming another run, the hooks write nothing and inject no writer instructions	pass
+after the orchestrator clears the run marker, the hooks write nothing	pass
+SubagentStart then SubagentStop record agent.start and agent.stop for that agent in the stream	pass
+the hook writes under CLAUDE_PROJECT_DIR, not the worktree it runs in	pass
+a hook payload missing the agent type records role unknown instead of dropping the event	pass
+a SubagentStop with empty agent type for an agent that never started writes nothing	pass
+a SubagentStop with missing agent type for an agent that never started writes nothing	pass
+a SubagentStop with no agent type still records the stop of an agent that did start	pass
+a final message with no PASS, ISSUES or BLOCKED records status unknown	pass
+the status is the first PASS, ISSUES or BLOCKED in the final message	pass
+with no status in last_assistant_message, the status comes from the subagent transcript (transcript-handback.jsonl: PASS)	pass
+with no status in last_assistant_message, the status comes from the subagent transcript (transcript-handback.jsonl: PASS)	pass
+with no status in last_assistant_message, the status comes from the subagent transcript (transcript-text.jsonl: ISSUES)	pass
+with no status in last_assistant_message, the status comes from the subagent transcript (transcript-no-status.jsonl: unknown)	pass
+with no status in last_assistant_message, the status comes from the subagent transcript (does-not-exist.jsonl: unknown)	pass
+a status in last_assistant_message wins over the transcript	pass
+a stop that handed back through SubagentHandback logs its full text as report	pass
+a stop with no report text anywhere writes no report field	pass
+a report at the 64k-character cap is kept whole	pass
+a report over the 64k-character cap is cut to the cap and flagged report_truncated	pass
+a payload missing the agent id or session id still records the event, as unknown	pass
+SubagentStart tells the subagent its ids and a writer command that writes to its own file	pass
+the hook commands registered in .claude/settings.json record start and stop when run by a POSIX shell	pass
+malformed hook input fails loudly and writes nothing	pass
+the judge asks local qwen3.5:4b about one pair per call, with thinking off, and returns its verdict and reason	pass
+the judge loads its model at a 4k context, inside the 8 GiB cap	pass
+the prompt names no relation between the rows	pass
+a later text of kind report is put to the judge as a hand-back report against the standing decision	pass
+an answer that is not a verdict reads as unclear, never as consistent	pass
+the judge takes its host from the option, else FACTORY_JUDGE_HOST, and throws on an HTTP error or a refused connection	pass
+committed raw files under allowlisted licenses pass; gitignored raw files and files outside raw/ are not checked	pass
+a committed raw file with no license row fails, and the evidence names the file and both places a row can go	pass
+a committed raw file whose license is not allowlisted fails, and the evidence names the file and license	pass
+an Apache-2.0 raw file fails until its license text is committed beside it	pass
+a raw file listed in research/licenses.tsv as own work passes; a README not on the list is still checked	pass
+a license recorded in research/licenses.tsv counts like a catalog row, and is held to the same allowlist	pass
+an Apache-2.0 raw file fails when the license text beside it is a different license	pass
+a raw file named like a license text but holding no license text is checked like any other file	pass
+a hand-back report contradicting a standing decision is reported with the judge's reason	pass
+the judge sees each report against its 3 nearest rows that still stand, one call per pair, as a report	pass
+a clean read is one line	pass
+the reports judged are the latest of each agent dispatched for the ticket, or of the agent the branch names	pass
+files written twice and stale checks among the changed files are listed, each on its line	pass
+an unreachable judge is named, its reports listed unjudged, and the provenance lines still shown	pass
+a long read is cut to 15 lines, the last naming the command that prints it all	pass
+a merge commits the run's activity files and decision log, then merges, leaving the checkout clean	pass
+events written with no run during the run, by the writer or a check, are committed by the merge too	pass
+a merge commits activity left by earlier runs and unmarked writes too, leaving no factory path uncommitted	pass
+only the factory paths go in the factory commit: other changes in the checkout stay as they were	pass
+close-out commits the factory paths without merging, and with nothing new it commits nothing	pass
+a merge with no run marked fails and commits nothing	pass
+a merge from a checkout not on the marker's integration branch fails and commits nothing	pass
+a conflicting merge fails with the factory paths already committed, for the merger to resolve	pass
+a multi-line -m keeps its lines, and the factory commit carries its Co-Authored-By trailer	pass
+-F reads the merge message from a file	pass
+close-out takes -m or -F too, and its factory commit carries the trailer	pass
+npm run merge prints the merge read and still merges when the judge is unreachable, saying so	pass
+npm run merge prints a clean merge read as one line before it merges	pass
+npm run merge --read prints the read of a branch's changed files and merges and commits nothing	pass
+-m and -F together are refused	pass
+arguments: PDFs, with an optional --out folder	pass
+each PDF becomes <name>.txt beside it, or in --out	pass
+two PDFs that would write the same .txt are refused before any runs	pass
+pdftotext comes from PATH, else from Git for Windows, else nowhere	pass
+the CLI names a missing PDF and exits 1, and a usage error exits 2	pass
+the CLI turns real PDFs into text in one run	skip
+a target is a pointer, a decision row (row:N) or an event (event:<run>/<agent>:<line>)	pass
+a malformed row or event target parses to a problem naming the form to write	pass
+row: and event: are targets, not evidence: the evidence grammar does not take them	pass
+each pointer kind of the grammar parses into its parts	pass
+a pointer of an unknown kind, or a known kind with a malformed value, parses to a problem naming it	pass
+text with no `<kind>:` prefix is prose, not a pointer	pass
+the judge sees only the 3 nearest rows that still stand, one call per pair, and never an out row	pass
+a clean check is one line naming the rows judged	pass
+a contradicted row the new row does not mark is flagged with the judge's reason and the flags that would mark it	pass
+a contradiction the new row already marks with --supersedes or --withdraws is no flag	pass
+a corrects pair is judged like any other but never reported as a contradiction	pass
+when the judge cannot be reached, the check says so and lists the nearest standing rows unjudged, asking no more	pass
+with no similar standing row the judge is not asked, and the check is one line	pass
+with no --run and no FACTORY_RUN, the check files its event under run "manual"	pass
+a catalog with every cited key and valid statuses passes and logs a pass check event	pass
+a catalog missing cited keys fails and the evidence names each missing key	pass
+a row with an invalid or empty status fails and the evidence names the row	pass
+arguments: owner/repo names, and GitHub URLs reduced to them	pass
+one TSV row per repo: name, SPDX license, stars, last push date, archived	pass
+the CLI rejects a bad name before calling gh	pass
+review asks local qwen3.5:9b once, with thinking off, and returns its answer	pass
+review fails loudly on an empty answer instead of returning nothing	pass
+review reports an Ollama HTTP error	pass
+the CLI sends the prompt, then the named files, to the host and writes the review under a "reviewed by" line	pass
+the CLI refuses a prompt with no files to review	pass
+review puts the prompt ahead of the files	pass
+a test that reads the project's live data is caught, naming the line	pass
+the repo passes its own rules: no hosted CI workflows and no test reading live data	pass
+a Bash command carrying a long heredoc is blocked with a message naming the Write tool and --body-file	pass
+short heredocs, such as a commit message, and other tools pass	pass
+.claude/settings.json runs the heredoc hook before every Bash call	pass
+the run marker gives the active run and its integration branch, and nothing once cleared	pass
+the run comes from FACTORY_RUN when --run is not passed	pass
+starting a run without its integration branch fails and leaves no marker	pass
+a run does not start while a tracked file outside the factory logs has uncommitted changes	pass
+a run starts beside untracked files and uncommitted factory logs	pass
+the PCA scatter's T(k) and C(k) at k = 5 and 10 match a direct computation on fixture vectors	pass
+vectors that lie on a plane come out at their true distances, so the PCA scatter scores 1	pass
+the same vectors always give the same picture	pass
+PCA carries no warning; UMAP, asked for, carries its small-data warning and its own T(k) and C(k)	pass
+UMAP keeps two clusters of rows apart	pass
+an unknown method is refused	pass
+a story-map row naming a check that is no check:* script fails, naming the row	pass
+a story-map row naming a test that no test file declares fails, naming the row	pass
+a map naming real checks and tests, nested and quoted ones included, passes	pass
+a story with no evidence is a none row, which passes unless the story also has evidence	pass
+a malformed map fails, naming the header or each bad row	pass
+a test declared through a wrapper of test() is named like any other; a helper that only takes a string is not	pass
+a generated test name is not stable, so the map cannot name it	pass
+two writers appending to one activity file at the same time produce no corrupt lines and lose no events	pass
+each agent writes only to its own activity file	pass
+an agent cannot pass someone else's agent or run as a field	pass
+an agent id that would escape the activity folder is rejected	pass
+the reader refuses an event filed under another agent's file, naming the file	pass
+the reader reports a corrupt line with its file and line number	pass
+a line still being written (no newline yet) is left out until it is complete	pass
+events from all agents and runs come back in ts order	pass
+the reader passes dispatch and message events through, in ts order with the agents' events	pass
+challenge.eliminated names a challenge already in the stream, from any run	pass
+challenge.eliminated naming no challenge in the stream is refused and nothing is written	pass
+a challenge reusing an id already in the stream is refused, so of=<id> names one challenge	pass
+the reader leaves the legacy transcript field out of agent.stop events, and only there	pass
+a matching set of notes passes and records a pass check event	pass
+with no --run and no FACTORY_RUN, the check files its event under run "manual"	pass
+one wrong cell fails, and the evidence names the table, row and column	pass
+a row missing from the notes fails with both row counts	pass
+tab:toy with no note fails, and the evidence names tab:toy	pass
+fig:curve with no note fails, and the evidence names fig:curve	pass
+a float is named by the label after its caption, not by labels in subfigures or body text	pass
+a table the check cannot parse is INCONCLUSIVE and never recorded as a pass	pass
+the report ends with the line every check prints: tables: <verdict>: <the evidence its event records>	pass
+a test run writes an artifact listing each test name with its result	pass
+a ticket body asking for a refused deliverable name fails and the evidence names each line	pass
+a ticket body on stdin whose deliverables have names that pass (notes.md, scout.md, review-a.md) passes	pass
+a refused name piped on stdin fails, whatever its case	pass
+every refused word fails, singular or plural	pass
+a name that only contains a refused word passes	pass
+a refused name in double quotes or on a > quote line is a mention, not a deliverable	pass
+each reviewed row is judged against its 3 nearest earlier rows that still stand, one call per pair, never a later or an out row	pass
+a row that is out itself is not reviewed: it replaces nothing	pass
+the review lists each flagged pair with the judge's label under a "reviewed by" line naming the judge	pass
+an answer outside the schema is flagged as unclear	pass
+a contradiction the later row already marks, a corrects pair among them, is judged but never flagged	pass
+a clean review says so plainly, with the pairs it judged	pass
+the review states the number of nearest rows it was run with	pass
+a judge that throws stops the review: no partial review is returned	pass
+a fully audited, append-only trail with a named reviewer passes and logs a pass check event	pass
+with no --run and no FACTORY_RUN, the check files its event under run "manual"	pass
+a decision row with no audit verdict fails and the evidence names its line	pass
+an ok verdict whose pointers do not resolve fails and the evidence names the line and pointer	pass
+a file pointer to a gitignored path fails even though the file exists, since only one checkout has it	pass
+run from a git worktree with no --transcripts, the check reads the main checkout's transcripts folder	pass
+pointers to a real commit and a line range resolve; an ok verdict with no pointers fails	pass
+a file pointer deleted after its audit row was committed resolves at that commit, and the evidence says so	pass
+when every pointer that is gone from HEAD resolves at its audit row's commit, the CLI passes and exits 0	pass
+a deleted file pointer fails when it did not resolve at the commit that added its audit row either	pass
+a superseded row replaced by a later row passes and is counted as superseded	pass
+a bad verdict fails: no later replacement, an unknown verdict, a ts that does not match its line	pass
+no audit at all fails rather than passing empty	pass
+an audit with no review, or a review that names no reviewer, fails	pass
+a review by a Claude model fails because it is not cross-family	pass
+a row whose phase is not a clean slash path on the log's one tree, or that has an empty cell, fails	pass
+a push or PR row fails, since its commit always lands after the push it records; rows from before the rule stay	pass
+from the claim-rules cutoff, a row needs a claim state first in result and well-formed relations to earlier rows; rows before it pass as written	pass
+a log that only grew across its commits passes and says how many versions it compared	pass
+a log whose committed row was edited or removed fails and the evidence names the line and commit	pass
+a log whose last committed row was dropped fails	pass
+latestUsage returns the token usage of the last real assistant message, skipping API errors and a half-written line	pass
+latestUsage and contextTokens skip sidechain (subagent) replies; context is input plus cache read plus cache creation	pass
+latestUsage is null when no assistant message carries usage	pass
+transcriptsDir is the project folder Claude Code names after the checkout path	pass
+the CLI prints the digest of a transcript file, or its latest usage with --usage	pass
+digest keeps the user's answers to AskUserQuestion, one line per prompt, and still drops other tool results	pass
+digest gives one timestamped line per user message, assistant text and tool call, and drops tool results	pass
+the graph has a root, a node per phase and a dot per decision, each with a tree link to its parent	pass
+a decision that supersedes an earlier row links to that row's decision	pass
+row links come from the relations the server sends, never from the text	pass
+a decision that mentions a ticket links to that ticket's phase, unless it is its own or has no phase	pass
+a source cited by decisions in different phases becomes an evidence node linked to each of them	pass
+the force layout settles in the plane to finite, spread-out positions with linked nodes closer than unlinked ones	pass
+the layout is the same every time for the same graph	pass
+a pinned node stays where it is pinned, and a node that already has a position starts there	pass
+the simulation cools down and can be reheated	pass
+the scatter has a node per row at its point, carrying the row from the tree	pass
+picking a row in either view highlights the same row in the other; picking a phase clears it	pass
+the crew graph has an orchestrator hub per run and a node per agent, each dispatched by its hub	pass
+agents on the same ticket are chained in the order they started	pass
+an agent that names another agent's ticket builds on the latest one that started before it	pass
+agents that wrote the same file are linked once per pair, with the files	pass
+the crew layout settles with every agent near its hub	pass
+a lane is labelled with the agent's task, else its role	pass
+lanes put the orchestrator first, then each agent by start time, with bars from start to stop	pass
+in the newest run a running agent's bar reaches now; in an older run it ends at its last event	pass
+a check run by hand after the session does not stop its running bars	pass
+decisions and checks become marks on the timeline	pass
+an empty run has no lanes but a usable time range	pass
+each agent in a run gets its role, parent and status; one with no stop event is still running	pass
+an agent whose start event is missing takes its role and status from its stop event	pass
+runs are listed oldest first and the newest is picked by default	pass
+the manual run is never the newest: a check run by hand does not end the session that is still working	pass
+the timeline holds the run's events plus the decisions made while it ran, newest first	pass
+decisions form a tree by their slash-path phase, in the order each node first appeared	pass
+each decision in the tree carries the graph module's label and relations	pass
+the state counts the decisions in, out and undec	pass
+the state carries the phase disk's trustworthiness and continuity at k = 5 and 10, against Laplacian eigenmaps of the full graph	pass
+a log too small for a k leaves that score null	pass
+the state carries the PCA scatter of the decision text, a point per row keyed by its line, with T(k) and C(k) at k = 5 and 10	pass
+UMAP is off by default; asked for, the scatter is UMAP with its small-data warning	pass
+each story node carries its residual doubt from the done read, and the spec's total, for the latest spec with stories	pass
+the latest result of each check in the run is reported	pass
+the state carries the agent network's T(k) and C(k) at k = 5 and 10, its settled force layout against the crew graph's shortest-path hops	pass
+the crew holds every agent of every run, with the files it wrote; only the newest run has live agents	pass
+agents take their task, tickets and mentions from what they were asked to do	pass
+a subagent transcript gives the task from its .meta.json and the tickets from it and the first message	pass
+a subagent's transcript is looked up in the main checkout's Claude Code project folder by run and agent id	pass
+GET /state returns the summary of the factory logs, for the run asked for	pass
+GET /state serves each decision with its label and relations from the graph module	pass
+GET /state serves the PCA scatter unless ?scatter=umap asks for UMAP; any other method is refused	pass
+GET /state gives each story of the snapshot's spec its doubts from the committed story map	pass
+GET /state gives each agent the task from its transcript in the user's Claude Code folder	pass
+GET /state reports a corrupt log as an error instead of failing	pass
+GET / serves the viewer page	pass
+the page's scripts are served from factory/viewer as JavaScript	pass
+three.js is gone: no dependency, no import map or CDN on the page, no script importing a package, and no 3-D view	pass
+only the page's own scripts are served: other files and path tricks get 404	pass
+the viewer is read-only: anything but GET is refused and the logs are untouched	pass
+a request with a foreign Host header is refused	pass
+arguments: models, context lengths and host, with the defaults	pass
+a model that is not installed is named before anything loads	pass
+the verdict uses the nvidia-smi delta against 8 GiB, not what Ollama reports	pass
+a valid artifact event appears in the merged stream with ts, run and agent stamped	pass
+a valid agent.start event appears in the merged stream with its fields and stamps	pass
+agent.start without role is rejected with an error naming role	pass
+agent.start without parent is rejected with an error naming parent	pass
+a valid agent.stop event appears in the merged stream with its fields and stamps	pass
+agent.stop without role is rejected with an error naming role	pass
+agent.stop without status is rejected with an error naming status	pass
+a valid artifact event appears in the merged stream with its fields and stamps	pass
+artifact without path is rejected with an error naming path	pass
+artifact without kind is rejected with an error naming kind	pass
+a valid fetch.failed event appears in the merged stream with its fields and stamps	pass
+fetch.failed without ref is rejected with an error naming ref	pass
+fetch.failed without url is rejected with an error naming url	pass
+fetch.failed without reason is rejected with an error naming reason	pass
+a valid check event appears in the merged stream with its fields and stamps	pass
+check without name is rejected with an error naming name	pass
+check without result is rejected with an error naming result	pass
+check without evidence is rejected with an error naming evidence	pass
+a valid dispatch event appears in the merged stream with its fields and stamps	pass
+dispatch without to is rejected with an error naming to	pass
+dispatch without role is rejected with an error naming role	pass
+dispatch without description is rejected with an error naming description	pass
+dispatch without tool_use_id is rejected with an error naming tool_use_id	pass
+a valid message event appears in the merged stream with its fields and stamps	pass
+message without to is rejected with an error naming to	pass
+message without tool_use_id is rejected with an error naming tool_use_id	pass
+an event with no run is rejected with an error naming run	pass
+an event with no agent is rejected with an error naming agent	pass
+the error for a missing run names every place a run comes from, the run marker too	pass
+a status or result outside its allowed values is rejected with an error naming the field	pass
+an unknown event type is rejected	pass
+run and agent can come from FACTORY_RUN and FACTORY_AGENT, and root from CLAUDE_PROJECT_DIR	pass
+with no --run and no FACTORY_RUN, the run comes from the run marker	pass
+FACTORY_RUN still wins over the run marker	pass
+a check event written with ticket=#59 records ticket 59; a ticket that is no issue number is rejected	pass
+a well-formed challenge is written with its kind, rebut by default, and its ticket as a number	pass
+a challenge whose target does not parse, or is prose, is refused and nothing is written	pass
+a challenge of an unknown kind, or with an id that is not a plain name, is refused	pass

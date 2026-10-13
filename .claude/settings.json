@@ -49,6 +49,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Agent|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/dispatch.mjs\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -68,6 +78,16 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/git-config.mjs\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/factory/hooks/agent-description.mjs\"",
             "timeout": 10
           }
         ]

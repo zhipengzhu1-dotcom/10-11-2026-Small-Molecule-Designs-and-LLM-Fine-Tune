@@ -16,6 +16,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cli, UsageError } from '../factory/cli.mjs';
+import { defaultRoot, writeEvent } from '../factory/log.mjs';
+import { defaultRun } from '../factory/run-marker.mjs';
+import { logTestResults, resultsLine } from '../factory/test-results.mjs';
 
 // The full Debian image, not alpine: it ships git, which the trail check's tests need.
 const IMAGE = 'node:24.15.0';
@@ -38,6 +41,8 @@ export function dataChecks(main) {
     ticket: ['--body', 'docs/agents/ticket-template.md'],
     // Asks git what the pushed commit tracks under research/**/raw/.
     licenses: [],
+    // Every factory/stories/<spec>.tsv against the commit's check scripts and test files.
+    stories: [],
   };
 }
 
@@ -54,19 +59,29 @@ export function pushedCommits(stdin) {
   return stdin.split(/\r?\n/).map((l) => l.trim().split(/\s+/)).filter((f) => f.length === 4 && !/^0+$/.test(f[1])).map((f) => f[1]);
 }
 
+// Logs a CI run's results into the event stream: the per-test results artifact (with the commit
+// as `rev`) and a `check` event named `ci`, which fails on any problem the run found.
+export function logResults({ root, run, agent, rev, tap, problems }) {
+  const results = logTestResults({ root, run, agent, tap, fields: { rev } });
+  const evidence = [`${rev}: ${results.pass} pass, ${results.fail} fail, ${results.skip} skip (${results.path})`, ...problems].join('; ');
+  writeEvent({ root, run, agent, type: 'check', fields: { name: 'ci', result: problems.length ? 'fail' : 'pass', evidence } });
+  return results;
+}
+
 const git = (...args) => spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8' });
 
+// The tests in Docker: the problems they raise and the runner's TAP.
 function runTests(tree) {
   const args = ['run', '--rm', '--network', 'none', '-v', `${tree}:/app:ro`, '-w', '/app', IMAGE,
     'node', '--test', '--test-reporter=tap', 'factory/**/*.test.mjs'];
   console.log(`ci: docker ${args.join(' ')}`);
   // MSYS_NO_PATHCONV stops Git Bash from rewriting /app into a Windows path.
   const r = spawnSync('docker', args, { encoding: 'utf8', maxBuffer: 64 << 20, env: { ...process.env, MSYS_NO_PATHCONV: '1' } });
-  if (r.error) return [`could not run docker: ${r.error.message}. Is Docker Desktop running?`];
+  if (r.error) return { tap: '', problems: [`could not run docker: ${r.error.message}. Is Docker Desktop running?`] };
   const summary = r.stdout.split('\n').filter((l) => /^# (tests|pass|fail|skipped)/.test(l)).join(', ');
   console.log(`ci: tests: ${summary}`);
-  if (r.status !== 0) return [`tests failed (exit ${r.status}):\n${r.stdout.split('\n').filter((l) => /^\s*not ok/.test(l)).join('\n')}\n${r.stderr}`];
-  return unexpectedSkips(r.stdout).map((s) => `skipped test: ${s}`);
+  if (r.status !== 0) return { tap: r.stdout, problems: [`tests failed (exit ${r.status}):\n${r.stdout.split('\n').filter((l) => /^\s*not ok/.test(l)).join('\n')}\n${r.stderr}`] };
+  return { tap: r.stdout, problems: unexpectedSkips(r.stdout).map((s) => `skipped test: ${s}`) };
 }
 
 function runChecks(tree, main) {
@@ -83,36 +98,50 @@ function runChecks(tree, main) {
   return problems;
 }
 
-// Tests and data checks on one commit, in a throwaway worktree. Its check events are discarded
-// with it.
+const short = (rev) => git('rev-parse', '--short', rev).stdout.trim();
+
+// Tests and data checks on one commit, in a throwaway worktree. Its data checks' events are
+// discarded with it; the results are logged by main.
 function checkCommit(rev) {
   const main = dirname(git('rev-parse', '--path-format=absolute', '--git-common-dir').stdout.trim());
   const tree = join(mkdtempSync(join(tmpdir(), 'ci-')), 'tree');
   const add = git('worktree', 'add', '--detach', '-q', tree, rev);
-  if (add.status !== 0) return [`cannot check out ${rev}: ${add.stderr.trim()}`];
+  if (add.status !== 0) return { rev, tap: '', problems: [`cannot check out ${rev}: ${add.stderr.trim()}`] };
   try {
-    console.log(`ci: checking ${git('rev-parse', '--short', rev).stdout.trim()} in ${tree}`);
-    return [...runTests(tree), ...runChecks(tree, main)];
+    console.log(`ci: checking ${short(rev)} in ${tree}`);
+    const tests = runTests(tree);
+    return { rev: short(rev), tap: tests.tap, problems: [...tests.problems, ...runChecks(tree, main)] };
   } finally {
     git('worktree', 'remove', '--force', tree);
     rmSync(dirname(tree), { recursive: true, force: true });
   }
 }
 
-function main({ rev, 'pre-push': prePush }) {
+function main({ rev, 'pre-push': prePush, ...ids }) {
   if (rev !== undefined && prePush) throw new UsageError('--rev and --pre-push do not go together');
-  let problems;
+  let runs;
   if (prePush) {
     const revs = [...new Set(pushedCommits(readFileSync(0, 'utf8')))];
-    problems = revs.flatMap(checkCommit);
+    runs = revs.map(checkCommit);
   } else if (rev !== undefined) {
-    problems = checkCommit(rev);
+    runs = [checkCommit(rev)];
   } else {
-    problems = runTests(repo);
+    runs = [{ rev: `working folder at ${short('HEAD')}`, ...runTests(repo) }];
   }
+  const problems = runs.flatMap((r) => r.problems);
   for (const p of problems) console.error(`ci: ${p}`);
+  // A push logs nothing: it runs after close-out, so its events would land uncommitted.
+  if (!prePush) {
+    const env = process.env;
+    const root = ids.root ?? defaultRoot(env);
+    const at = { root, run: ids.run ?? (defaultRun(root, env) || 'manual'), agent: ids.agent ?? (env.FACTORY_AGENT || 'orchestrator') };
+    for (const r of runs) console.log(`ci: logged ${resultsLine(logResults({ ...at, ...r }))}`);
+  }
   console.log(problems.length ? 'ci: FAIL' : 'ci: PASS');
   return problems.length ? 1 : 0;
 }
 
-cli(import.meta.url, { usage: 'node scripts/ci.mjs [--rev <commit> | --pre-push]', options: { rev: 'string', 'pre-push': 'flag' } }, main);
+cli(import.meta.url, {
+  usage: 'node scripts/ci.mjs [--rev <commit> | --pre-push] [--root <repo>] [--run <id>] [--agent <id>]',
+  options: { rev: 'string', 'pre-push': 'flag', root: 'string', run: 'string', agent: 'string' },
+}, main);

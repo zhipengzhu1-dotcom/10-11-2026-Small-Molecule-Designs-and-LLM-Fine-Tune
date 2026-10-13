@@ -1,13 +1,19 @@
-// Geometry for the viewer's diagrams, with no three.js and no DOM so that node:test can run it:
-// the decision graph, the crew graph, their 3-D force layout, and the swimlane timeline.
+// Geometry for the viewer's diagrams, with no DOM so that node:test can run it and the server can
+// score what the page draws: the decision graph and its phase disk, the crew graph and its 2-D
+// force layout, the text scatter and the link between it and the disk, and the swimlane timeline.
+import { sarkar } from './disk.js';
 
 // The decision log as a graph. Tree links join a root, one node per phase folder and one dot
 // per decision, each to its parent. Cross-links join what the rows themselves cite:
-//   supersedes  a decision to the earlier row it replaces ("supersedes line 15")
+//   supersedes, withdraws, corrects
+//               a decision to the earlier row a relation of it names, from the `relations` the
+//               server took from the graph module (factory/graph.mjs); `part` marks a partial one
 //   mentions    a decision to the ticket-N phase of a ticket it names (#N), outside its own phase
 //   evidence    an evidence node, for a source cited in two or more phases, to each citing decision
 // Links hold node indexes and a kind.
-export function buildGraph(tree) {
+export const ROWS = ['supersedes', 'withdraws', 'corrects'];
+
+export function buildDecisionGraph(tree) {
   const nodes = [{ id: '', kind: 'root', label: 'decisions', count: tree.count }];
   const links = [];
   const link = (source, target, kind) => links.push({ source, target, kind });
@@ -29,9 +35,9 @@ export function buildGraph(tree) {
   const text = (d) => [d.decision, d.why, d.result].join(' ');
   const byLine = new Map(dots.map(([j, d]) => [d.line, j]));
   for (const [j, d] of dots) {
-    for (const m of text(d).matchAll(/supersedes line (\d+)/g)) {
-      const k = byLine.get(Number(m[1]));
-      if (k !== undefined && k !== j) link(j, k, 'supersedes');
+    for (const r of d.relations ?? []) {
+      const k = byLine.get(r.line);
+      if (ROWS.includes(r.kind) && k !== undefined && k !== j) links.push({ source: j, target: k, kind: r.kind, part: r.part });
     }
   }
   const tickets = new Map();
@@ -66,6 +72,50 @@ export function buildGraph(tree) {
     for (const j of cited) link(e, j, 'evidence');
   }
   return { nodes, links };
+}
+
+// The phase tree of a decision graph (root, phases and decisions, not evidence nodes) laid out in
+// the Poincare disk (see disk.js). `members` are the graph's node indexes on the disk, in order;
+// `disk` answers for positions in that order.
+export function phaseDisk(graph) {
+  const members = graph.nodes.flatMap((n, i) => (n.kind === 'evidence' ? [] : [i]));
+  const at = new Map(members.map((i, p) => [i, p]));
+  const parents = members.map(() => -1);
+  for (const l of graph.links) if (l.kind === 'tree') parents[at.get(l.target)] = at.get(l.source);
+  return { members, disk: sarkar(parents) };
+}
+
+// The text scatter (state.scatter, see textScatter in viewer.mjs) as a graph for the plane: a node
+// per row at its 2-D point, carrying the row from the decision tree. No links: nearness is the
+// picture, and its T(k) and C(k) say how far to trust it.
+export function buildScatter(scatter, tree) {
+  const rows = new Map();
+  const visit = (n) => { for (const d of n.decisions) rows.set(d.line, d); n.children.forEach(visit); };
+  visit(tree);
+  const nodes = scatter.points.map((p) => ({ id: `row:${p.line}`, kind: 'decision', label: rows.get(p.line)?.decision ?? `line ${p.line}`, count: 1, x: p.x, y: p.y, decision: rows.get(p.line) ?? { line: p.line, label: p.label } }));
+  return { nodes, links: [] };
+}
+
+// Linked selection between views of the decision rows (the disk and the scatter). A view joins
+// with `graph()` (its current { nodes }, a row's node carrying `decision.line`) and `highlight(i)`
+// (light node i, or nothing for null). Picking node i in one view highlights the same row in every
+// other; picking a node that is no row (a phase), or nothing, clears them.
+export function linkViews() {
+  const views = [];
+  return {
+    join(view) {
+      views.push(view);
+      return view;
+    },
+    pick(from, i) {
+      const line = i == null ? null : from.graph()?.nodes[i]?.decision?.line ?? null;
+      for (const v of views) {
+        if (v === from) continue;
+        const at = line == null ? -1 : (v.graph()?.nodes ?? []).findIndex((n) => n.decision?.line === line);
+        v.highlight(at < 0 ? null : at);
+      }
+    },
+  };
 }
 
 // The crew (see summarize in viewer.mjs) as a graph: a hub per run for its orchestrator and a
@@ -117,38 +167,36 @@ export function buildCrew(crew) {
 }
 
 const CHARGE = { root: -300, phase: -150, decision: -35, evidence: -60, hub: -90, agent: -45 };
-const LENGTH = { tree: { root: 60, phase: 48, decision: 16 }, supersedes: 24, mentions: 110, evidence: 70, dispatched: 45, ticket: 18, builds: 40, files: 40 };
+const LENGTH = { tree: { root: 60, phase: 48, decision: 16 }, supersedes: 24, withdraws: 24, corrects: 24, mentions: 110, evidence: 70, dispatched: 45, ticket: 18, builds: 40, files: 40 };
 // Cross-links pull gently so the phase tree keeps the shape and cross-links read as bridges.
-const STRENGTH = { tree: 1, supersedes: 0.3, mentions: 0.015, evidence: 0.01, dispatched: 1, ticket: 0.5, builds: 0.15, files: 0.1 };
+const STRENGTH = { tree: 1, supersedes: 0.3, withdraws: 0.3, corrects: 0.3, mentions: 0.015, evidence: 0.01, dispatched: 1, ticket: 0.5, builds: 0.15, files: 0.1 };
 // Every node is pulled to the centre; run hubs harder, so the runs sit together instead of
 // their agents pushing them apart.
 const GRAVITY = { hub: 0.08 };
 
-// A small d3-force-3d style simulation: springs on links, repulsion between every pair, a pull
-// to the centre. No randomness, so the same graph always settles the same way. A node with
-// fx/fy/fz is pinned there (for dragging); a node that already has x/y/z starts there.
+// A small d3-force style simulation in the plane: springs on links, repulsion between every pair,
+// a pull to the centre. No randomness, so the same graph always settles the same way. A node with
+// fx/fy is pinned there (for dragging); a node that already has x/y starts there.
 export function createSimulation(nodes, links, { alphaMin = 0.001, decay = 0.6 } = {}) {
   const golden = Math.PI * (3 - Math.sqrt(5));
-  const roll = Math.PI * 20 / (9 + Math.sqrt(221));
   nodes.forEach((n, i) => {
-    if (![n.x, n.y, n.z].every(Number.isFinite)) {
-      const r = 14 * Math.cbrt(0.5 + i), a = i * golden, b = i * roll;
-      n.x = r * Math.sin(b) * Math.cos(a);
-      n.y = r * Math.cos(b);
-      n.z = r * Math.sin(b) * Math.sin(a);
+    if (![n.x, n.y].every(Number.isFinite)) {
+      const r = 14 * Math.sqrt(0.5 + i), a = i * golden; // a sunflower, so no two start together
+      n.x = r * Math.cos(a);
+      n.y = r * Math.sin(a);
     }
-    n.vx = n.vy = n.vz = 0;
+    n.vx = n.vy = 0;
   });
   const degree = nodes.map(() => 0);
   for (const l of links) { degree[l.source]++; degree[l.target]++; }
   let alpha = 1;
   const alphaDecay = 1 - Math.pow(alphaMin, 1 / 300);
-  const AXES = [['x', 'vx', 'fx'], ['y', 'vy', 'fy'], ['z', 'vz', 'fz']];
+  const AXES = [['x', 'vx', 'fx'], ['y', 'vy', 'fy']];
 
   function tick() {
     for (const l of links) {
       const s = nodes[l.source], t = nodes[l.target];
-      const d = [t.x + t.vx - s.x - s.vx, t.y + t.vy - s.y - s.vy, t.z + t.vz - s.z - s.vz];
+      const d = [t.x + t.vx - s.x - s.vx, t.y + t.vy - s.y - s.vy];
       const len = Math.hypot(...d) || 1e-6;
       const rest = l.kind === 'tree' ? LENGTH.tree[t.kind] : LENGTH[l.kind];
       const k = ((len - rest) / len) * alpha * STRENGTH[l.kind] / Math.min(degree[l.source], degree[l.target]);
@@ -159,18 +207,17 @@ export function createSimulation(nodes, links, { alphaMin = 0.001, decay = 0.6 }
       const a = nodes[i];
       for (let j = i + 1; j < nodes.length; j++) {
         const b = nodes[j];
-        let dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
-        if (dx === 0 && dy === 0 && dz === 0) { dx = 1e-3 * (j - i); dy = dz = 1e-3; }
+        let dx = b.x - a.x, dy = b.y - a.y;
+        if (dx === 0 && dy === 0) { dx = 1e-3 * (j - i); dy = 1e-3; }
         // falls off with distance squared, as in d3's many-body force
-        const d2 = Math.max(dx * dx + dy * dy + dz * dz, 25);
+        const d2 = Math.max(dx * dx + dy * dy, 25);
         const fa = (CHARGE[b.kind] * alpha) / d2, fb = (CHARGE[a.kind] * alpha) / d2;
-        a.vx += dx * fa; a.vy += dy * fa; a.vz += dz * fa;
-        b.vx -= dx * fb; b.vy -= dy * fb; b.vz -= dz * fb;
+        a.vx += dx * fa; a.vy += dy * fa;
+        b.vx -= dx * fb; b.vy -= dy * fb;
       }
       const g = (GRAVITY[a.kind] ?? 0.01) * alpha;
       a.vx -= a.x * g;
       a.vy -= a.y * g;
-      a.vz -= a.z * g;
     }
     for (const n of nodes) {
       for (const [p, v, f] of AXES) {

@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { join } from 'node:path';
 import { readTask, subagentTranscript, summarize } from '../viewer.mjs';
 import { startViewer, tempRoot } from './helpers.mjs';
+
+const SCRIPTS = ['app.js', 'ui.js', 'layout.js', 'disk.js', 'plane.js', 'swimlane.js', 'graph.js', 'crew.js', 'scatter.js'];
 
 const ev = (ts, run, agent, type, fields = {}) => ({ ts: `2026-10-11T10:${ts}:00Z`, run, agent, type, ...fields });
 const decision = (ts, phase, extra = {}) =>
@@ -85,6 +87,110 @@ test('decisions form a tree by their slash-path phase, in the order each node fi
   assert.equal(s.tree.count, 5);
 });
 
+// Rows 2 to 5 as decisions.tsv holds them: 3 supersedes 2, 4 withdraws 3, 5 corrects part of 2.
+const argued = () => summarize([
+  decision('00', 'plan/a', { line: 2, decision: 'use rule A', result: 'adopted' }),
+  decision('01', 'plan/a', { line: 3, decision: 'supersedes line 2: use rule B', result: 'adopted' }),
+  decision('02', 'plan/b', { line: 4, decision: 'withdraws line 3: rule B was a mistake', result: 'adopted' }),
+  decision('03', 'plan/b', { line: 5, decision: 'corrects line 2 (part): fix a typo in rule A', result: 'adopted' }),
+]);
+
+test("each decision in the tree carries the graph module's label and relations", () => {
+  const rows = (n) => [...n.decisions, ...n.children.flatMap(rows)];
+  const byLine = new Map(rows(argued().tree).map((d) => [d.line, d]));
+  // row 4 takes row 3 out, so row 2 is reinstated
+  assert.deepEqual([...byLine].map(([line, d]) => [line, d.label]), [[2, 'in'], [3, 'out'], [4, 'in'], [5, 'in']]);
+  assert.deepEqual(byLine.get(3).relations, [{ kind: 'supersedes', line: 2, part: false }]);
+  assert.deepEqual(byLine.get(5).relations, [{ kind: 'corrects', line: 2, part: true }]);
+  assert.deepEqual(byLine.get(2).relations, []);
+  assert.equal(byLine.get(3).decision, 'supersedes line 2: use rule B');
+});
+
+test('the state counts the decisions in, out and undec', () => {
+  assert.deepEqual(argued().labels, { in: 3, out: 1, undec: 0 });
+  assert.deepEqual(summarize([]).labels, { in: 0, out: 0, undec: 0 });
+});
+
+// 30 rows over 3 phases of 4 subphases each, a few superseding an earlier row of the same subphase.
+const wide = () => summarize(Array.from({ length: 30 }, (_, i) => decision(String(i).padStart(2, '0'), `p${i % 3}/q${i % 4}`, {
+  line: i + 2,
+  decision: i >= 24 ? `supersedes line ${i + 2 - 12}: again` : `row ${i}`,
+})));
+
+test("the state carries the phase disk's trustworthiness and continuity at k = 5 and 10, against Laplacian eigenmaps of the full graph", () => {
+  const { disk } = wide();
+  assert.equal(disk.n, 1 + 3 + 12 + 30); // the root, every phase and every decision
+  assert.deepEqual(disk.against, { method: 'laplacian eigenmaps', d: 16 });
+  assert.ok(disk.tau > 0);
+  for (const k of [5, 10]) {
+    // a random picture's expected score (see distortion.test.mjs); the disk keeps the tree, so it beats that
+    const random = 1 - (disk.n - 1 - k) ** 2 / ((disk.n - 1) * (2 * disk.n - 3 * k - 1));
+    for (const m of ['T', 'C']) assert.ok(disk[m][k] > random + 0.05 && disk[m][k] <= 1, `${m}(${k}) = ${disk[m][k]}, random ${random}`);
+  }
+});
+
+test('a log too small for a k leaves that score null', () => {
+  const { disk } = argued();
+  assert.equal(disk.n, 1 + 3 + 4); // k = 5 needs 11 points or more
+  assert.deepEqual([disk.T, disk.C], [{ 5: null, 10: null }, { 5: null, 10: null }]);
+  assert.deepEqual(summarize([]).disk.T, { 5: null, 10: null });
+});
+
+// 24 rows whose text draws three words each from a small vocabulary, so rows share some terms.
+const WORDS = 'merge ticket judge disk scatter story doubt check stale report graph phase row label vector cosine'.split(' ');
+const worded = () => Array.from({ length: 24 }, (_, i) => decision(String(i).padStart(2, '0'), `p${i % 3}`, {
+  line: i + 2,
+  decision: [WORDS[i % 16], WORDS[(i * 7 + 3) % 16], WORDS[(i * 5 + 1) % 16]].join(' '),
+  why: WORDS[(i * 3) % 16],
+}));
+
+test('the state carries the PCA scatter of the decision text, a point per row keyed by its line, with T(k) and C(k) at k = 5 and 10', () => {
+  const { scatter } = summarize(worded());
+  assert.equal(scatter.method, 'pca');
+  assert.equal(scatter.warning, null);
+  assert.equal(scatter.n, 24);
+  assert.deepEqual(scatter.points.map((p) => p.line), Array.from({ length: 24 }, (_, i) => i + 2));
+  assert.ok(scatter.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && p.label === 'in'));
+  for (const k of [5, 10]) for (const m of ['T', 'C']) assert.ok(scatter[m][k] > 0.5 && scatter[m][k] <= 1, `${m}(${k}) = ${scatter[m][k]}`);
+  assert.deepEqual(scatter.against, { space: 'tf-idf', metric: 'euclidean' });
+  assert.deepEqual(summarize([]).scatter.points, []);
+});
+
+test('UMAP is off by default; asked for, the scatter is UMAP with its small-data warning', () => {
+  assert.equal(summarize(worded()).scatter.method, 'pca');
+  const { scatter } = summarize(worded(), undefined, undefined, { scatter: 'umap' });
+  assert.equal(scatter.method, 'umap');
+  assert.match(scatter.warning, /500 samples/);
+  assert.match(scatter.warning, /24 rows/);
+});
+
+// A ticket-graph snapshot lists stories 1 to 4 of spec 52. The story map backs 1 with the trail
+// check (passing), 2 with nothing (a none row), 4 with the stories check (failing); 3 has no row. A
+// later snapshot of spec 77 has no stories and no map.
+const assured = () => summarize([
+  ev('00', 'r1', 'orchestrator', 'ticket.graph', { spec: 52, tickets: [{ number: 73, state: 'OPEN', status: 'ready', blockers: [] }], stories: [1, 2, 3, 4] }),
+  ev('01', 'r1', 'orchestrator', 'check', { name: 'trail', result: 'pass', evidence: 'ok' }),
+  ev('02', 'r1', 'orchestrator', 'check', { name: 'stories', result: 'fail', evidence: 'story 4 names a missing test' }),
+  ev('03', 'r2', 'orchestrator', 'ticket.graph', { spec: 77, tickets: [] }),
+], undefined, undefined, {
+  evidence: (spec) => (spec === 52 ? {
+    map: [{ story: 1, kind: 'check', name: 'trail' }, { story: 2, kind: 'none', name: '' }, { story: 4, kind: 'check', name: 'stories' }],
+    results: {},
+  } : { map: [], results: {} }),
+});
+
+test("each story node carries its residual doubt from the done read, and the spec's total, for the latest spec with stories", () => {
+  const { stories } = assured();
+  assert.equal(stories.spec, 52);
+  assert.deepEqual(stories.goals.map((g) => [g.story, g.status, g.doubts.length]), [
+    [1, 'supported', 0], [2, 'none', 1], [3, 'undeveloped', 1], [4, 'failing', 1],
+  ]);
+  // story 4's doubt is the failed check, also an open challenge, so it counts once: 1 + 1 + 1
+  assert.deepEqual(stories.goals[3].doubts, ['event:r1/orchestrator:3']);
+  assert.equal(stories.residual, 3);
+  assert.equal(summarize([]).stories, null); // no snapshot, no spec, no stories
+});
+
 test('the latest result of each check in the run is reported', () => {
   const s = summarize([
     ev('00', 'r1', 'c', 'check', { name: 'tables', result: 'fail', evidence: 'row 3' }),
@@ -92,6 +198,22 @@ test('the latest result of each check in the run is reported', () => {
     ev('02', 'r1', 'c', 'check', { name: 'tables', result: 'pass', evidence: 'all rows' }),
   ]);
   assert.deepEqual(s.checks.map((c) => [c.name, c.result, c.evidence]), [['tables', 'pass', 'all rows'], ['brief', 'pass', 'ok']]);
+});
+
+test("the state carries the agent network's T(k) and C(k) at k = 5 and 10, its settled force layout against the crew graph's shortest-path hops", () => {
+  // Two runs of ten agents; in each, agents pass notes along in pairs, so the crew graph has structure.
+  const events = ['r1', 'r2'].flatMap((run, r) => Array.from({ length: 10 }, (_, i) => [
+    ev(String(r * 20 + i).padStart(2, '0'), run, `a${r}${i}`, 'agent.start', { role: 'general-purpose', parent: 'orchestrator' }),
+    ev(String(r * 20 + i).padStart(2, '0'), run, `a${r}${i}`, 'artifact', { path: `${run}/notes-${Math.floor(i / 2)}.md`, kind: 'notes' }),
+  ]).flat());
+  const { network } = summarize(events);
+  assert.equal(network.n, 2 + 20); // a hub per run and every agent
+  assert.deepEqual(network.against, { method: 'shortest-path hops' });
+  for (const k of [5, 10]) {
+    const random = 1 - (network.n - 1 - k) ** 2 / ((network.n - 1) * (2 * network.n - 3 * k - 1));
+    for (const m of ['T', 'C']) assert.ok(network[m][k] > random + 0.05 && network[m][k] <= 1, `${m}(${k}) = ${network[m][k]}, random ${random}`);
+  }
+  assert.deepEqual(summarize(events.slice(0, 6)).network, { n: 4, T: { 5: null, 10: null }, C: { 5: null, 10: null }, against: { method: 'shortest-path hops' } });
 });
 
 test('the crew holds every agent of every run, with the files it wrote; only the newest run has live agents', () => {
@@ -191,6 +313,42 @@ test('GET /state returns the summary of the factory logs, for the run asked for'
   });
 });
 
+test('GET /state serves each decision with its label and relations from the graph module', async () => {
+  const root = seed();
+  appendFileSync(join(root, 'factory', 'decisions.tsv'), '2026-10-11T10:03:00Z\tintake/a\tsupersedes line 2: read it twice\tonce missed a line\tx\tadopted\n');
+  await withViewer(root, async (url) => {
+    const s = await (await fetch(`${url}/state`)).json();
+    const [a] = s.tree.children;
+    const read = a.children[0].decisions.map((d) => [d.line, d.label, d.relations]);
+    assert.deepEqual(read, [[2, 'out', []], [3, 'in', [{ kind: 'supersedes', line: 2, part: false }]]]);
+    assert.deepEqual(s.labels, { in: 1, out: 1, undec: 0 });
+  });
+});
+
+test('GET /state serves the PCA scatter unless ?scatter=umap asks for UMAP; any other method is refused', async () => {
+  const root = seed();
+  await withViewer(root, async (url) => {
+    assert.equal((await (await fetch(`${url}/state`)).json()).scatter.method, 'pca');
+    const umap = (await (await fetch(`${url}/state?scatter=umap`)).json()).scatter;
+    assert.equal(umap.method, 'umap');
+    assert.match(umap.warning, /500 samples/);
+    assert.equal((await fetch(`${url}/state?scatter=tsne`)).status, 400);
+  });
+});
+
+test("GET /state gives each story of the snapshot's spec its doubts from the committed story map", async () => {
+  const root = seed();
+  appendFileSync(join(root, 'factory', 'agents', 'r1', 'a1.jsonl'),
+    JSON.stringify(ev('02', 'r1', 'a1', 'ticket.graph', { spec: 52, tickets: [], stories: [1, 2] })) + '\n'
+    + JSON.stringify(ev('03', 'r1', 'a1', 'check', { name: 'trail', result: 'pass', evidence: 'ok' })) + '\n');
+  mkdirSync(join(root, 'factory', 'stories'));
+  writeFileSync(join(root, 'factory', 'stories', '52.tsv'), 'story\tkind\tname\n1\tcheck\ttrail\n');
+  await withViewer(root, async (url) => {
+    const { stories } = await (await fetch(`${url}/state`)).json();
+    assert.deepEqual(stories, { spec: 52, goals: [{ story: 1, status: 'supported', doubts: [] }, { story: 2, status: 'undeveloped', doubts: ['story:2'] }], residual: 1 });
+  });
+});
+
 test("GET /state gives each agent the task from its transcript in the user's Claude Code folder", async () => {
   const root = seed();
   const home = tempRoot();
@@ -231,11 +389,27 @@ test('GET / serves the viewer page', async () => {
 
 test('the page\'s scripts are served from factory/viewer as JavaScript', async () => {
   await withViewer(seed(), async (url) => {
-    for (const name of ['app.js', 'ui.js', 'layout.js', 'swimlane.js', 'force.js', 'graph.js', 'crew.js']) {
+    for (const name of SCRIPTS) {
       const res = await fetch(`${url}/assets/${name}`);
       assert.equal(res.status, 200, name);
       assert.match(res.headers.get('content-type'), /text\/javascript/, name);
     }
+  });
+});
+
+test('three.js is gone: no dependency, no import map or CDN on the page, no script importing a package, and no 3-D view', async () => {
+  const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+  assert.deepEqual(Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }).filter((d) => /three/i.test(d)), []);
+  await withViewer(seed(), async (url) => {
+    const page = await (await fetch(url + '/')).text();
+    assert.doesNotMatch(page, /three|importmap|cdn\.|https?:\/\/(?!127\.0\.0\.1)/i);
+    for (const name of SCRIPTS) {
+      const text = await (await fetch(`${url}/assets/${name}`)).text();
+      const specs = [...text.matchAll(/\bfrom\s+['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]/g)].map((m) => m[1] ?? m[2]);
+      for (const s of specs) assert.match(s, /^\.\/[a-z]+\.js$/, `${name} imports ${s}`);
+      assert.doesNotMatch(text, /THREE|WebGL|PerspectiveCamera/, name);
+    }
+    assert.equal((await fetch(`${url}/assets/force.js`)).status, 404); // the 3-D force graph
   });
 });
 

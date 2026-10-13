@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readStream } from '../read.mjs';
 import { REPO, hook, marker, shell, tempRoot } from './helpers.mjs';
@@ -81,9 +81,10 @@ test('after the orchestrator clears the run marker, the hooks write nothing', ()
   assert.deepEqual(readStream(root).map((e) => e.type), ['agent.start']);
 });
 
-// The events carry the contract's fields and nothing else (issue #1). The parent is always the
-// orchestrator: Claude Code fires SubagentStart and SubagentStop only for agents the orchestrator
-// session spawns, never for an agent a subagent spawns (issue #21).
+// The events carry the contract's fields and nothing else (issue #1, plus agent.stop's report from
+// spec #52). The parent is always the orchestrator: Claude Code fires SubagentStart and
+// SubagentStop only for agents the orchestrator session spawns, never for an agent a subagent
+// spawns (issue #21).
 test('SubagentStart then SubagentStop record agent.start and agent.stop for that agent in the stream', () => {
   const root = runRoot();
   const env = { CLAUDE_PROJECT_DIR: root };
@@ -93,7 +94,7 @@ test('SubagentStart then SubagentStop record agent.start and agent.stop for that
   const events = readStream(root);
   assert.deepEqual(events.map(strip), [
     { run: SESSION, agent: 'a1b2c3d4e5f6', type: 'agent.start', role: 'general-purpose', parent: 'orchestrator' },
-    { run: SESSION, agent: 'a1b2c3d4e5f6', type: 'agent.stop', role: 'general-purpose', status: 'PASS' },
+    { run: SESSION, agent: 'a1b2c3d4e5f6', type: 'agent.stop', role: 'general-purpose', status: 'PASS', report: 'PASS\n\nBranch: x. Tests: 31 pass.' },
   ]);
 });
 
@@ -171,6 +172,57 @@ test('a status in last_assistant_message wins over the transcript', () => {
   const r = hook(stop({ last_assistant_message: 'BLOCKED: login wall', agent_transcript_path: join(FIXTURES, 'transcript-handback.jsonl') }), { CLAUDE_PROJECT_DIR: root });
   assert.equal(r.status, 0, r.stderr);
   assert.equal(readStream(root)[0].status, 'BLOCKED');
+});
+
+// The hand-back report is logged whole on agent.stop, so it can be searched without the
+// transcript (spec #52, story 8).
+test('a stop that handed back through SubagentHandback logs its full text as report', () => {
+  const root = runRoot();
+  const r = hook(stop({ last_assistant_message: 'Report delivered.', agent_transcript_path: join(FIXTURES, 'transcript-handback.jsonl') }), { CLAUDE_PROJECT_DIR: root });
+  assert.equal(r.status, 0, r.stderr);
+  const [e] = readStream(root);
+  assert.equal(e.report, 'PASS: ran the writer once and it exited 0.');
+  assert.equal('report_truncated' in e, false);
+});
+
+test('a stop with no report text anywhere writes no report field', () => {
+  const root = runRoot();
+  const r = hook(stop({ last_assistant_message: '', agent_transcript_path: join(FIXTURES, 'does-not-exist.jsonl') }), { CLAUDE_PROJECT_DIR: root });
+  assert.equal(r.status, 0, r.stderr);
+  const [e] = readStream(root);
+  assert.equal(e.status, 'unknown');
+  assert.equal('report' in e, false);
+  assert.equal('report_truncated' in e, false);
+});
+
+// A subagent transcript whose SubagentHandback carries `message`.
+function handbackTranscript(message) {
+  const file = join(tempRoot(), 'agent-long.jsonl');
+  const content = [{ type: 'tool_use', id: 'toolu_9', name: 'SubagentHandback', input: { message } }];
+  writeFileSync(file, JSON.stringify({ type: 'assistant', message: { role: 'assistant', content } }) + '\n');
+  return file;
+}
+
+// The stop event a hand-back of `length` characters writes. The two tests below have static
+// names, so the story map can name them (story 8).
+const CAP = 64 * 1024;
+function stopWithReport(length) {
+  const root = runRoot();
+  const text = 'PASS ' + 'r'.repeat(length - 5);
+  const r = hook(stop({ last_assistant_message: '', agent_transcript_path: handbackTranscript(text) }), { CLAUDE_PROJECT_DIR: root });
+  assert.equal(r.status, 0, r.stderr);
+  const [e] = readStream(root);
+  assert.equal(e.status, 'PASS');
+  assert.equal(e.report, text.slice(0, CAP));
+  return e;
+}
+
+test('a report at the 64k-character cap is kept whole', () => {
+  assert.equal('report_truncated' in stopWithReport(CAP), false);
+});
+
+test('a report over the 64k-character cap is cut to the cap and flagged report_truncated', () => {
+  assert.equal(stopWithReport(CAP + 5000).report_truncated, true);
 });
 
 test('a payload missing the agent id or session id still records the event, as unknown', () => {

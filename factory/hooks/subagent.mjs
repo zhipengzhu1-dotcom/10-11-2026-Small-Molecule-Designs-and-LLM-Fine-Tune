@@ -8,16 +8,17 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { UNKNOWN, activityFile, defaultRoot, writeEvent } from '../log.mjs';
+import { activityFile, defaultRoot, safeId, writeEvent } from '../log.mjs';
 import { inMarkedRun } from '../run-marker.mjs';
 
 // The payload has no parent field. Claude Code fires these hooks only for agents the orchestrator
 // session spawns, never for one a subagent spawns, so every agent recorded here is its child.
 const PARENT = 'orchestrator';
 
-// An id safe as a file name: characters outside [A-Za-z0-9._-] become _, leading punctuation goes,
-// and a missing or emptied id is "unknown".
-const safeId = (v) => (v ? String(v).replace(/[^A-Za-z0-9._-]/g, '_').replace(/^[._-]+/, '') || UNKNOWN : UNKNOWN);
+// agent.stop keeps the hand-back report whole up to this many characters, a safety cap on one
+// event line. A longer report is cut here and flagged report_truncated (spec #52, story 8).
+const REPORT_CAP = 64 * 1024;
+
 const slash = (p) => p.replace(/\\/g, '/');
 
 function statusOf(message) {
@@ -56,14 +57,19 @@ function reportsFromTranscript(path) {
   return [handback, lastText];
 }
 
-function stopStatus(payload) {
-  const direct = statusOf(payload.last_assistant_message);
-  if (direct || !payload.agent_transcript_path) return direct;
-  for (const report of reportsFromTranscript(payload.agent_transcript_path)) {
+// The hand-back: its status, and its report, the text the status was read from. With no status
+// anywhere, the report is the SubagentHandback message, else the final message, else the last
+// assistant text.
+function handBack(payload) {
+  const direct = payload.last_assistant_message || undefined;
+  const status = statusOf(direct);
+  if (status || !payload.agent_transcript_path) return { status, report: direct };
+  const [handback, lastText] = reportsFromTranscript(payload.agent_transcript_path);
+  for (const report of [handback, lastText]) {
     const s = statusOf(report);
-    if (s) return s;
+    if (s) return { status: s, report };
   }
-  return undefined;
+  return { status: undefined, report: handback || direct || lastText || undefined };
 }
 
 // The writer is the log.mjs next to this hook, i.e. the main checkout's copy, never a worktree's.
@@ -115,7 +121,10 @@ function main() {
       // agent_type and never start. Skip them unless the agent already has an activity file.
       if (!role && !existsSync(activityFile(root, run, agent))) break;
       // No transcript field: the contract doesn't list one, and the path follows from run and agent.
-      writeEvent({ root, run, agent, type: 'agent.stop', fields: { role, status: stopStatus(payload) }, fillUnknown: true });
+      const { status, report } = handBack(payload);
+      const fields = { role, status, report };
+      if (report?.length > REPORT_CAP) Object.assign(fields, { report: report.slice(0, REPORT_CAP), report_truncated: true });
+      writeEvent({ root, run, agent, type: 'agent.stop', fields, fillUnknown: true });
       break;
     }
     default:

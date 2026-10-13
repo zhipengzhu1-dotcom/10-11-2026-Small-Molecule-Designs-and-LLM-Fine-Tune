@@ -32,11 +32,11 @@ function git(root, ...args) {
 }
 
 // A repo with a committed two-row decision log, and the transcript of the session that logged it.
-function fixture() {
+function fixture(log = LOG) {
   const root = tempRoot();
   git(root, 'init', '-q');
   put(root, 'notes/source.md', 'line one\nline two\n');
-  put(root, 'factory/decisions.tsv', LOG);
+  put(root, 'factory/decisions.tsv', log);
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', 'log');
   const transcripts = join(root, 'transcripts');
@@ -63,6 +63,17 @@ t('show prints the row and its session since the session\'s previous row, each l
   assert.match(r.stdout, /transcript:sess-1@2026-10-11T09:48:30 user: the epochs question first came up/);
   assert.match(r.stdout, /transcript:sess-1@2026-10-11T09:55:12 user: use 3 epochs, not 5/);
   assert.match(r.stdout, /transcript:sess-1@2026-10-11T10:00:01 tool Bash: npm test/);
+  assert.doesNotMatch(r.stdout, /an old message|a later message/);
+});
+
+// npm run decide writes transcript:<session>@<iso> since spec #52; older rows keep the old form.
+t('show finds the session of a row whose evidence leads with a transcript:<session>@<iso> pointer, after an old-form row', () => {
+  const log = LOG.split('\n').slice(0, 2).join('\n') + '\n'
+    + row('2026-10-11T10:05:00Z', 'project/b', 'picked 3 epochs', 'the paper says 5',
+      'transcript:sess-1@2026-10-11T10:04:58; file:notes/source.md:2', 'adopted');
+  const r = audit(fixture(log), 'show', '3');
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /transcript:sess-1@2026-10-11T09:55:12 user: use 3 epochs, not 5/);
   assert.doesNotMatch(r.stdout, /an old message|a later message/);
 });
 
@@ -108,27 +119,49 @@ const auditAsync = ({ root, transcripts }, ...args) => new Promise((resolve) => 
   p.on('close', (status) => resolve({ status, stderr }));
 });
 
-t('review sends the audited rows, the audit and the session digest to qwen, and the trail check then passes', async () => {
-  const ollama = await fakeOllama('- No flags.');
+// Row 4 overrides row 3 in prose only, as L43 did L41 on spec #1.
+const OVERRIDE_LOG = LOG
+  + row('2026-10-11T10:07:00Z', 'project/b', 'picked 3 epochs, then 2 epochs for the small model', 'the small model overfits',
+    '~/.claude/projects/x/sess-1.jsonl @10:06:00Z; notes/source.md:2', 'adopted');
+
+// The override log with every row audited ok in session sess-1.
+function audited() {
+  const f = fixture(OVERRIDE_LOG);
+  for (const line of ['2', '3', '4']) {
+    const a = audit(f, 'add', line, 'ok', '--pointers', 'transcript:sess-1@2026-10-11T09:55:12', '--note', 'matches');
+    assert.equal(a.status, 0, a.stderr);
+  }
+  return f;
+}
+
+t('review judges each audited row against its nearest earlier standing rows, one qwen3.5:4b call per pair, and the trail check then passes', async () => {
+  const ollama = await fakeOllama(JSON.stringify({ verdict: 'contradicts', why: 'row 4 replaces the epoch count' }));
   try {
-    const f = fixture();
-    assert.equal(audit(f, 'add', '2', 'ok', '--pointers', 'transcript:sess-1@2026-10-11T09:40:00', '--note', 'matches').status, 0);
-    assert.equal(audit(f, 'add', '3', 'ok', '--pointers', 'transcript:sess-1@2026-10-11T09:55:12', '--note', 'matches').status, 0);
+    const f = audited();
     const r = await auditAsync(f, 'review', '--run', 'sess-1', '--host', ollama.host);
     assert.equal(r.status, 0, r.stderr);
 
-    const sent = ollama.seen[0].messages[0].content;
-    assert.match(sent, /line 3\t2026-10-11T10:05:00Z\tproject\/b\tpicked 3 epochs/);
-    assert.match(sent, /=== factory\/audit\/sess-1\.tsv ===\nline\tts/);
-    assert.match(sent, /user: use 3 epochs, not 5/);
+    assert.equal(ollama.seen.length, 1, 'row 4 and row 3 are the only pair that shares terms');
+    assert.equal(ollama.seen[0].model, 'qwen3.5:4b');
+    assert.equal(ollama.seen[0].think, false);
+    assert.match(ollama.seen[0].messages[0].content, /EARLIER decision: picked 3 epochs\n[\s\S]*NEW decision: picked 3 epochs, then 2 epochs/);
     const text = readFileSync(join(f.root, 'factory', 'audit', 'sess-1.review.md'), 'utf8');
-    assert.match(text, /^reviewed by qwen3\.5:9b$/m);
-    assert.match(text, /- No flags\./);
+    assert.match(text, /^reviewed by qwen3\.5:4b$/m);
+    assert.match(text, /^- row:3 → row:4 \(0\.\d\d\) contradicts: row 4 replaces the epoch count$/m);
 
     const check = spawnSync(process.execPath, [join(FACTORY, 'checks', 'trail.mjs'), '--root', f.root, '--run', 'run-1',
       '--agent', 'auditor', '--transcripts', f.transcripts], { encoding: 'utf8' });
     assert.equal(check.status, 0, check.stdout + check.stderr);
+    assert.match(check.stdout + check.stderr, /reviewed by qwen3\.5:4b/);
   } finally {
     await ollama.close();
   }
+});
+
+t('review fails, writing no review, when the judge cannot be reached', async () => {
+  const f = audited();
+  const r = await auditAsync(f, 'review', '--run', 'sess-1', '--host', 'http://127.0.0.1:9');
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /qwen3\.5:4b: .*judging row:3 → row:4/);
+  assert.ok(!existsSync(join(f.root, 'factory', 'audit', 'sess-1.review.md')));
 });

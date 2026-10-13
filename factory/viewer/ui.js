@@ -6,6 +6,8 @@ export function h(tag, attrs, ...kids) {
   for (const k of kids.flat()) if (k != null) el.append(k instanceof Node ? k : String(k));
   return el;
 }
+// A label cut to n characters, with an ellipsis.
+export const trim = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
 export const short = (id) => (id && id.length > 12 ? id.slice(0, 8) : id);
 export const clock = (ts) => (ts ? new Date(ts).toLocaleTimeString([], { hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '');
 export function span(a, b) {

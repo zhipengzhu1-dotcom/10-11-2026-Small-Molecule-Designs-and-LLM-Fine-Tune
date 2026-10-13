@@ -1,5 +1,5 @@
-// The viewer page: polls /state, draws the lists, and hands the state to the three.js
-// diagrams. If three.js cannot load (offline), the diagrams say so and the lists still work.
+// The viewer page: polls /state, draws the lists, and hands the state to the canvas diagrams. If
+// the diagrams cannot start, they say so and the lists still work.
 import { clock, h, short, span } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
@@ -9,8 +9,9 @@ let agentFilter = null;  // agent whose events the timeline shows; null shows al
 let last = null;
 let state;
 const open = new Set();  // tree paths opened in the fallback list
-let lanes = null, graph = null, crew = null;
+let lanes = null, graph = null, crew = null, scatter = null;
 let allRuns = true;      // the agent network shows every run, or only the picked one
+let umap = false;        // the text scatter is PCA unless the user turns UMAP on
 
 function selectAgent(agent) {
   agentFilter = agent && agent !== agentFilter ? agent : null;
@@ -30,6 +31,7 @@ function applyTheme() {
   lanes?.recolor();
   graph?.recolor();
   crew?.recolor();
+  scatter?.recolor();
 }
 $('theme').addEventListener('click', () => {
   theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
@@ -44,6 +46,7 @@ $('run').addEventListener('change', (e) => {
   if (!allRuns) crew?.refit();
   poll();
 });
+$('umap').addEventListener('change', (e) => { umap = e.target.checked; last = null; scatter?.refit(); poll(); });
 $('all-runs').addEventListener('change', (e) => { allRuns = e.target.checked; crew?.refit(); if (state) render(state); });
 
 // Full screen for a diagram's panel; the stage grows to fill it.
@@ -52,12 +55,15 @@ for (const b of document.querySelectorAll('[data-full]')) {
 }
 document.addEventListener('fullscreenchange', () => {
   for (const b of document.querySelectorAll('[data-full]')) b.textContent = document.fullscreenElement?.id === b.dataset.full ? 'exit full screen' : 'full screen';
-  requestAnimationFrame(() => { graph?.fit(); crew?.fit(); }); // after the stage has its new size
+  requestAnimationFrame(() => { graph?.fit(); crew?.fit(); scatter?.fit(); }); // after the stage has its new size
 });
 
 async function poll() {
   try {
-    const res = await fetch('/state' + (picked ? '?run=' + encodeURIComponent(picked) : ''), { cache: 'no-store' });
+    const query = new URLSearchParams();
+    if (picked) query.set('run', picked);
+    if (umap) query.set('scatter', 'umap');
+    const res = await fetch('/state' + (query.size ? '?' + query : ''), { cache: 'no-store' });
     const text = await res.text();
     if (!res.ok) throw new Error(text);
     $('updated').textContent = 'updated ' + clock(new Date().toISOString());
@@ -77,15 +83,45 @@ function render(s) {
     return o;
   }).reverse());
   $('checks').replaceChildren(...s.checks.map((c) => h('span', { class: 'chip ' + c.result, title: c.evidence }, c.name)));
-  $('dcount').textContent = '(' + s.tree.count + ')';
+  $('dcount').textContent = '(' + s.tree.count + ': ' + s.labels.in + ' in, ' + s.labels.out + ' out, ' + s.labels.undec + ' undec)';
+  $('dscore').replaceChildren(...scores(s.disk, diskAgainst(s.disk)));
+  $('scount').textContent = '(' + s.scatter.n + ' rows, ' + s.scatter.method.toUpperCase() + ')';
+  $('sscore').replaceChildren(...scores(s.scatter, scatterAgainst(s.scatter)));
+  $('cscore').replaceChildren(...scores(s.network, networkAgainst(s.network)));
+  $('swarn').textContent = s.scatter.warning ?? '';
+  renderStories(s.stories);
   const members = allRuns ? s.crew : s.crew.filter((c) => c.run === s.run);
   $('ccount').textContent = count(members);
   renderAgents();
   renderTimeline();
   if (lanes) { lanes.update(s); lanes.setSelected(agentFilter); }
   crew?.update(members);
+  scatter?.update({ scatter: s.scatter, tree: s.tree });
   if (graph) graph.update(s.tree);
   else $('tree').replaceChildren(...s.tree.children.map((n) => branch(n, true)));
+}
+
+// "T(5) 0.92 C(5) 0.89 · T(10) 0.85 C(10) 0.84", how far a view distorts its full space (see
+// diskView, networkView and textScatter in viewer.mjs), then what it was scored against; a k too
+// large for the view shows a dash.
+function scores(d, against) {
+  const f = (v) => (v == null ? '–' : v.toFixed(2));
+  return [h('b', null, [5, 10].map((k) => 'T(' + k + ') ' + f(d.T[k]) + ' C(' + k + ') ' + f(d.C[k])).join(' · ')),
+    ' ' + against + ' · 1 is faithful, about 0.5 is random'];
+}
+const diskAgainst = (d) => 'against ' + d.against.method + ' (d = ' + d.against.d + ') of the full graph, ' + d.n + ' nodes · every edge is ' + d.tau.toFixed(2) + ' long, so one hop from the centre is near the rim';
+const scatterAgainst = (d) => 'of ' + d.method.toUpperCase() + ' against the ' + d.against.metric + ' distances of the full ' + d.against.space + ' vectors, ' + d.n + ' rows';
+const networkAgainst = (d) => 'of the layout of every run against the crew graph\'s ' + d.against.method + ', ' + d.n + ' nodes';
+
+// Each story of the spec as a node: filled when supported, grey when unrun or with no evidence,
+// an outline when failing or undeveloped, with its count of residual doubts; the title lists them.
+const STORY = { supported: 'sw dot', unrun: 'sw dot grey', none: 'sw dot grey', failing: 'sw dot ring', undeveloped: 'sw dot ring' };
+function renderStories(st) {
+  $('no-stories').hidden = Boolean(st);
+  $('stcount').textContent = st ? '(spec #' + st.spec + ': ' + st.goals.length + ' stories, residual doubt ' + st.residual + ')' : '';
+  $('stories').replaceChildren(...(st?.goals ?? []).map((g) => h('span', {
+    class: 'story', title: 'story ' + g.story + ' · ' + g.status + (g.doubts.length ? '\n' + g.doubts.join('\n') : ''),
+  }, h('i', { class: STORY[g.status] }), String(g.story), h('span', { class: 'd' }, g.doubts.length ? 'doubt ' + g.doubts.length : ''))));
 }
 
 // "15 agents · 3 running · 12 stopped (9 PASS, 2 ISSUES, 1 BLOCKED / unknown)"
@@ -115,12 +151,12 @@ function refreshTimes() {
   for (const td of document.querySelectorAll('td[data-start]')) td.textContent = span(td.dataset.start, td.dataset.stop);
 }
 
-// The plain list of the decision tree, shown only when three.js is unavailable.
+// The plain list of the decision tree, shown only when the diagrams cannot start.
 function branch(n, top) {
   const d = h('details', { class: top ? 'top' : null },
     h('summary', null, n.name, ' ', h('span', { class: 'n' }, n.count)),
     n.decisions.map((x) => h('div', { class: 'dec', title: x.evidence },
-      h('div', null, h('code', null, clock(x.ts)), ' ', x.decision),
+      h('div', null, h('code', null, clock(x.ts) + ' · ' + x.label), ' ', x.decision),
       h('div', { class: 'why' }, x.why),
       h('div', { class: 'res' }, x.result))),
     n.children.map((c) => branch(c, false)));
@@ -162,18 +198,26 @@ function renderTimeline() {
 
 async function loadDiagrams() {
   try {
-    const [{ createSwimlane }, { createGraph }, { createCrew }] = await Promise.all([import('./swimlane.js'), import('./graph.js'), import('./crew.js')]);
+    const [{ createSwimlane }, { createGraph }, { createCrew }, { createScatter }, { linkViews }] = await Promise.all([
+      import('./swimlane.js'), import('./graph.js'), import('./crew.js'), import('./scatter.js'), import('./layout.js')]);
     lanes = createSwimlane({ labels: $('lane-labels'), plot: $('lane-plot'), axis: $('axis'), tip: $('lane-tip') }, { onSelect: selectAgent, roleOf });
-    graph = createGraph({ stage: $('graph'), labels: $('graph-labels'), tip: $('graph-tip'), card: $('card') });
-    crew = createCrew({ stage: $('crew'), labels: $('crew-labels'), tip: $('crew-tip'), card: $('crew-card') });
+    // the disk and the scatter light the same row: a click in one highlights it in the other
+    const link = linkViews();
+    let diskSide, scatterSide;
+    graph = createGraph({ stage: $('graph'), tip: $('graph-tip'), card: $('card') }, { picked: (i) => link.pick(diskSide, i) });
+    scatter = createScatter({ stage: $('scatter'), tip: $('scatter-tip'), card: $('scatter-card') }, { picked: (i) => link.pick(scatterSide, i) });
+    diskSide = link.join({ graph: graph.graph, highlight: graph.highlight });
+    scatterSide = link.join({ graph: scatter.graph, highlight: scatter.highlight });
+    crew = createCrew({ stage: $('crew'), tip: $('crew-tip'), card: $('crew-card') });
     for (const box of document.querySelectorAll('#layers input')) box.addEventListener('change', () => graph.setLayer(box.dataset.kind, box.checked));
     for (const box of document.querySelectorAll('#crew-layers input[data-kind]')) box.addEventListener('change', () => crew.setLayer(box.dataset.kind, box.checked));
     if (state) render(state);
   } catch (err) {
-    const note = 'three.js could not load (' + err.message + '), so the diagrams are off. The lists below still work.';
-    $('lanes').replaceChildren(h('p', { class: 'nothree' }, note));
-    $('graph').replaceWith(h('p', { class: 'nothree' }, note));
-    $('crew').replaceWith(h('p', { class: 'nothree' }, note));
+    const note = 'The diagrams could not start (' + err.message + '). The lists below still work.';
+    $('lanes').replaceChildren(h('p', { class: 'nodraw' }, note));
+    $('graph').replaceWith(h('p', { class: 'nodraw' }, note));
+    $('crew').replaceWith(h('p', { class: 'nodraw' }, note));
+    $('scatter').replaceWith(h('p', { class: 'nodraw' }, note));
     $('layers').hidden = true;
     $('crew-layers').hidden = true;
     $('tree').hidden = false;

@@ -1,0 +1,51 @@
+{
+  "_source": "Agent tool_use blocks recorded in this project's Claude Code session transcripts (runs 14c93a90, a52ce0ba, 3ecf8aea), copied as recorded except that each prompt is cut to its first line.",
+  "launches": [
+    {
+      "tool_use_id": "toolu_014oSx1QCensJhBjTbo3puFa",
+      "tool_input": {
+        "description": "implementer #55 description grammar hook",
+        "prompt": "You are the implementer for ticket #55 of spec #52 in this repo.",
+        "subagent_type": "general-purpose",
+        "isolation": "worktree",
+        "run_in_background": "true"
+      }
+    },
+    {
+      "tool_use_id": "toolu_018zeLEzXVnCsbaMXFGP4sr8",
+      "tool_input": {
+        "description": "Implement #13 hook marker",
+        "subagent_type": "general-purpose",
+        "isolation": "worktree",
+        "run_in_background": "true",
+        "prompt": "You implement GitHub issue #13 (child of spec #1) in this repo."
+      }
+    },
+    {
+      "tool_use_id": "toolu_01WeWkye3pCEWP3px6cn5Fqm",
+      "tool_input": {
+        "description": "Audit decision rows 77-87",
+        "run_in_background": "true",
+        "prompt": "Audit decision-log rows 77-87 of `factory/decisions.tsv` in the main checkout."
+      }
+    },
+    {
+      "tool_use_id": "toolu_01EVGEGi9iDSsFCSC8rhAGU5",
+      "tool_input": {
+        "description": "Code review: spec axis",
+        "subagent_type": "general-purpose",
+        "prompt": "Code review, SPEC axis. Read-only: do not edit, create or commit files in the repo."
+      }
+    },
+    {
+      "tool_use_id": "toolu_01Ky23YWWYwfhZGYyQAbKyx2",
+      "tool_input": {
+        "description": "#10 reader: AIME",
+        "subagent_type": "general-purpose",
+        "isolation": "worktree",
+        "run_in_background": "true",
+        "prompt": "You are a key-reference reader for ticket #10."
+      }
+    }
+  ]
+}

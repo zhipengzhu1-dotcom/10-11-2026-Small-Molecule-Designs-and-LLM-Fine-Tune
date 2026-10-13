@@ -13,13 +13,20 @@
 //   human      labelled ready-for-human
 //   not-ready  anything else (needs-triage, needs-info, no label)
 // The frontier is the ready children, in map order. Needs `gh` logged in.
+//
+// During an orchestrated run (the run marker in the factory root names one), each call also
+// writes a `ticket.graph` snapshot event under that run, as agent orchestrator (issue #59).
+// With no run marked it writes nothing.
 import { spawnSync } from 'node:child_process';
 import { cli, UsageError } from './cli.mjs';
 import { git } from './git.mjs';
+import { defaultRoot, writeEvent } from './log.mjs';
+import { readMarker } from './run-marker.mjs';
 
 const QUERY = `query($owner: String!, $repo: String!, $number: Int!) {
   repository(owner: $owner, name: $repo) {
     issue(number: $number) {
+      body
       subIssues(first: 100) {
         nodes {
           number title state
@@ -49,8 +56,12 @@ function statusOf(c) {
   return 'not-ready';
 }
 
-// gh(args) runs the gh CLI and returns its stdout.
-export function frontier({ number, remote, gh }) {
+// gh(args) runs the gh CLI and returns its stdout. With a factory root whose run marker names an
+// orchestrated run, it also writes one `ticket.graph` event as the orchestrator: each child's
+// title (the ticket's text node, graph/text.mjs), state, status and open blockers, and the spec's
+// user stories (`stories`, when it lists any), so
+// the graph can be rebuilt from the logs without GitHub.
+export function frontier({ number, remote, gh, root }) {
   const { owner, repo } = repoOf(remote);
   const out = gh(['api', 'graphql', '-f', `query=${QUERY}`, '-f', `owner=${owner}`, '-f', `repo=${repo}`, '-F', `number=${number}`]);
   const issue = JSON.parse(out).data?.repository?.issue;
@@ -67,7 +78,23 @@ export function frontier({ number, remote, gh }) {
     };
     return { ...c, status: statusOf(c) };
   });
+  const run = root && readMarker(root)?.run;
+  if (run) {
+    const tickets = children.map((c) => ({ number: c.number, title: c.title, state: c.state, status: c.status, blockers: c.openBlockers }));
+    const stories = userStories(issue.body ?? '');
+    writeEvent({ root, run, agent: 'orchestrator', type: 'ticket.graph', fields: { spec: number, tickets, ...(stories.length ? { stories } : {}) } });
+  }
   return { children, ready: children.filter((c) => c.status === 'ready').map((c) => c.number) };
+}
+
+// The spec's user stories: the numbers of the numbered items under its `## User Stories` heading,
+// up to the next `## ` heading (its `### ` groups stay inside), for the assurance case's goals.
+function userStories(body) {
+  const lines = body.split(/\r?\n/);
+  const start = lines.findIndex((l) => /^##\s+User Stories\s*$/i.test(l));
+  if (start < 0) return [];
+  const end = lines.findIndex((l, i) => i > start && /^##\s/.test(l));
+  return lines.slice(start + 1, end < 0 ? undefined : end).flatMap((l) => /^(\d+)\.\s/.exec(l)?.[1] ?? []).map(Number);
 }
 
 function gh(args) {
@@ -84,7 +111,7 @@ cli(import.meta.url, {
   if (!/^[1-9]\d*$/.test(number ?? '')) throw new UsageError(number ? `not an issue number: ${number}` : 'missing map issue number');
   if (extra.length) throw new UsageError(`unexpected argument: ${extra[0]}`);
   const remote = git('.', 'remote', 'get-url', 'origin');
-  const result = frontier({ number: Number(number), remote, gh });
+  const result = frontier({ number: Number(number), remote, gh, root: defaultRoot() });
   if (json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
